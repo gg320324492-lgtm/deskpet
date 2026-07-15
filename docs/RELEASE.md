@@ -44,6 +44,16 @@
 
 工作流中的 `actions/checkout`、`actions/setup-node` 和 `actions/upload-artifact` 均固定到具体提交，避免可移动 tag 带来的供应链漂移。
 
+### 仅个人使用的自签名模式
+
+自签名证书不适合公开分发，但可用于只在自己设备上安装的版本。启用方式是在 `production` Environment 中设置变量 `ALLOW_SELF_SIGNED_RELEASE=true`，并继续使用 `WIN_CSC_LINK` 与 `WIN_CSC_KEY_PASSWORD` 两个 Secret。工作流只在该变量明确为 `true` 时执行以下操作：
+
+1. 验证证书确实为自签名证书并包含代码签名用途；
+2. 只在临时 GitHub Actions 运行器的当前用户证书存储中信任它；
+3. 完成构建、签名验证和发布后始终移除临时信任。
+
+使用安装包的个人 Windows 账户也需要将对应的公开 `.cer` 证书导入“当前用户”的“受信任的根证书颁发机构”和“受信任的发布者”。不要把 PFX、私钥或密码提交到仓库，也不要在不受控设备上安装该公开证书。将 `ALLOW_SELF_SIGNED_RELEASE` 删除或设为 `false` 即可恢复正式证书模式。
+
 ## 本地预检
 
 PowerShell 示例：

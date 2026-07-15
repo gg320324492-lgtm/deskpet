@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createReleaseConfiguration, safeReleaseSummary } from '../scripts/release-policy.mjs';
 
 const packageJson = { version: '1.2.3' };
+const releaseWorkflow = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
 
 test('GitHub release configuration is public, signed and secret-free', () => {
     const secret = 'base64-private-certificate';
@@ -100,4 +102,13 @@ test('certificate-store and Azure signing modes validate only non-secret metadat
     }, packageJson);
     assert.equal(azure.signing.azure.endpoint, 'https://eus.codesigning.azure.net');
     assert.equal(JSON.stringify(azure).includes(azureSecret), false);
+});
+
+test('self-signed CI trust is explicit, scoped and always removed', () => {
+    assert.match(releaseWorkflow, /ALLOW_SELF_SIGNED_RELEASE:.*vars\.ALLOW_SELF_SIGNED_RELEASE/);
+    assert.match(releaseWorkflow, /if: env\.ALLOW_SELF_SIGNED_RELEASE == 'true'/);
+    assert.match(releaseWorkflow, /certificate\.Subject -ne \$certificate\.Issuer/);
+    assert.match(releaseWorkflow, /@\('Root', 'TrustedPublisher'\)/);
+    assert.match(releaseWorkflow, /if: always\(\) && env\.ALLOW_SELF_SIGNED_RELEASE == 'true'/);
+    assert.match(releaseWorkflow, /FindByThumbprint/);
 });
