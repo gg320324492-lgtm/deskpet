@@ -6,6 +6,7 @@ import { createReleaseConfiguration, safeReleaseSummary } from '../scripts/relea
 
 const packageJson = { version: '1.2.3' };
 const releaseWorkflow = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
+const signatureVerifier = readFileSync(new URL('../scripts/verify-signatures.ps1', import.meta.url), 'utf8');
 
 test('GitHub release configuration is public, signed and secret-free', () => {
     const secret = 'base64-private-certificate';
@@ -104,11 +105,26 @@ test('certificate-store and Azure signing modes validate only non-secret metadat
     assert.equal(JSON.stringify(azure).includes(azureSecret), false);
 });
 
-test('self-signed CI trust is explicit, scoped and always removed', () => {
+test('self-signed CI verification is explicit and never modifies trust stores', () => {
     assert.match(releaseWorkflow, /ALLOW_SELF_SIGNED_RELEASE:.*vars\.ALLOW_SELF_SIGNED_RELEASE/);
-    assert.match(releaseWorkflow, /if: env\.ALLOW_SELF_SIGNED_RELEASE == 'true'/);
-    assert.match(releaseWorkflow, /certificate\.Subject -ne \$certificate\.Issuer/);
-    assert.match(releaseWorkflow, /@\('Root', 'TrustedPublisher'\)/);
-    assert.match(releaseWorkflow, /if: always\(\) && env\.ALLOW_SELF_SIGNED_RELEASE == 'true'/);
-    assert.match(releaseWorkflow, /FindByThumbprint/);
+    assert.doesNotMatch(releaseWorkflow, /TrustedPublisher|X509Store/);
+    assert.match(signatureVerifier, /\[switch\] \$AllowSelfSigned/);
+    assert.match(signatureVerifier, /SignerCertificate\.Thumbprint -ne \$expectedCertificate\.Thumbprint/);
+    assert.match(signatureVerifier, /SignatureStatus\]::NotTrusted/);
+    assert.match(signatureVerifier, /SignatureStatus\]::UnknownError/);
+});
+
+test('self-signed release policy is opt-in and restricted to PFX mode', () => {
+    const config = createReleaseConfiguration({
+        GITHUB_REPOSITORY: 'owner/repo',
+        WIN_CSC_LINK: 'certificate',
+        ALLOW_SELF_SIGNED_RELEASE: 'true',
+    }, packageJson);
+    assert.equal(config.signing.allowSelfSigned, true);
+    assert.equal(safeReleaseSummary(config).selfSigned, true);
+    assert.throws(() => createReleaseConfiguration({
+        GITHUB_REPOSITORY: 'owner/repo',
+        WIN_CSC_LINK: 'certificate',
+        ALLOW_SELF_SIGNED_RELEASE: 'sometimes',
+    }, packageJson), /true or false/);
 });

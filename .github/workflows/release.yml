@@ -56,55 +56,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Trust opt-in self-signed certificate
-        if: env.ALLOW_SELF_SIGNED_RELEASE == 'true'
-        shell: pwsh
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:WIN_CSC_LINK) -or
-              [string]::IsNullOrWhiteSpace($env:WIN_CSC_KEY_PASSWORD)) {
-            throw 'Self-signed release mode requires WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD.'
-          }
-
-          try {
-            $pfxBytes = [Convert]::FromBase64String($env:WIN_CSC_LINK)
-            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
-              $pfxBytes,
-              $env:WIN_CSC_KEY_PASSWORD,
-              [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
-            )
-          } catch {
-            throw 'Unable to load the self-signed release certificate from the configured secrets.'
-          }
-
-          if ($certificate.Subject -ne $certificate.Issuer) {
-            throw 'ALLOW_SELF_SIGNED_RELEASE only accepts a self-signed certificate.'
-          }
-          $codeSigningOid = '1.3.6.1.5.5.7.3.3'
-          $hasCodeSigningEku = $certificate.Extensions |
-            Where-Object { $_ -is [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] } |
-            ForEach-Object { $_.EnhancedKeyUsages } |
-            Where-Object { $_.Value -eq $codeSigningOid }
-          if (-not $hasCodeSigningEku) {
-            throw 'The self-signed certificate is not valid for code signing.'
-          }
-
-          $publicCertificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
-            $certificate.Export([Security.Cryptography.X509Certificates.X509ContentType]::Cert)
-          )
-          foreach ($storeName in @('Root', 'TrustedPublisher')) {
-            $store = [Security.Cryptography.X509Certificates.X509Store]::new(
-              $storeName,
-              [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-            )
-            try {
-              $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-              $store.Add($publicCertificate)
-            } finally {
-              $store.Close()
-            }
-          }
-          "LOCAL_SIGNING_THUMBPRINT=$($publicCertificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
       - name: Run quality gates
         run: |
           npm test
@@ -140,26 +91,3 @@ jobs:
           $flags = @('--verify-tag', '--generate-notes', '--title', "Date Night Girl $env:RELEASE_TAG")
           if ($env:RELEASE_CHANNEL -eq 'beta') { $flags += '--prerelease' }
           gh release create $env:RELEASE_TAG $files.FullName @flags
-
-      - name: Remove opt-in self-signed trust
-        if: always() && env.ALLOW_SELF_SIGNED_RELEASE == 'true'
-        shell: pwsh
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:LOCAL_SIGNING_THUMBPRINT)) { exit 0 }
-          foreach ($storeName in @('Root', 'TrustedPublisher')) {
-            $store = [Security.Cryptography.X509Certificates.X509Store]::new(
-              $storeName,
-              [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-            )
-            try {
-              $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-              $matches = $store.Certificates.Find(
-                [Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
-                $env:LOCAL_SIGNING_THUMBPRINT,
-                $false
-              )
-              foreach ($match in $matches) { $store.Remove($match) }
-            } finally {
-              $store.Close()
-            }
-          }
