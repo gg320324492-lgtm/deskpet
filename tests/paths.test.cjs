@@ -43,3 +43,14 @@ test('runtime icon is packaged separately from the Windows build resource', () =
     assert.ok(packageJson.build.files.includes('assets/icon.ico'));
     assert.equal(packageJson.build.extraResources, undefined);
 });
+
+test('Windows release artifacts use stable update-safe names', () => {
+    assert.equal(
+        packageJson.build.nsis.artifactName,
+        '${productName}-Setup-${version}.${ext}',
+    );
+    assert.equal(
+        packageJson.build.portable.artifactName,
+        '${productName}-Portable-${version}.${ext}',
+    );
+});
