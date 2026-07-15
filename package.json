@@ -1,6 +1,6 @@
 {
   "name": "date-night-girl",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Date Night Girl - a cute animated desktop companion for Windows",
   "main": "src/main/main.js",
   "scripts": {
@@ -68,11 +68,15 @@
       "icon": "build/icon.ico"
     },
     "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Date Night Girl"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
     }
   },
   "dependencies": {
