@@ -37,15 +37,24 @@ function githubRepository(value) {
 function signingConfiguration(env) {
     const mode = (env.SIGNING_MODE || 'pfx').trim().toLowerCase();
     if (!SIGNING_MODES.has(mode)) throw new Error('SIGNING_MODE must be pfx, store or azure');
+    const selfSignedValue = String(env.ALLOW_SELF_SIGNED_RELEASE || '').trim().toLowerCase();
+    if (selfSignedValue && selfSignedValue !== 'true' && selfSignedValue !== 'false') {
+        throw new Error('ALLOW_SELF_SIGNED_RELEASE must be true or false');
+    }
+    const allowSelfSigned = selfSignedValue === 'true';
+    if (allowSelfSigned && mode !== 'pfx') {
+        throw new Error('ALLOW_SELF_SIGNED_RELEASE requires pfx signing mode');
+    }
     if (mode === 'pfx') {
         if (!(env.WIN_CSC_LINK || env.CSC_LINK)) {
             throw new Error('WIN_CSC_LINK or CSC_LINK is required for signed release builds');
         }
-        return { mode };
+        return { mode, allowSelfSigned };
     }
     if (mode === 'store') {
         return {
             mode,
+            allowSelfSigned,
             certificateSubjectName: safeName(env.WIN_CERTIFICATE_SUBJECT_NAME, 'WIN_CERTIFICATE_SUBJECT_NAME'),
         };
     }
@@ -55,6 +64,7 @@ function signingConfiguration(env) {
     required(env.AZURE_CLIENT_SECRET, 'AZURE_CLIENT_SECRET', 1_024);
     return {
         mode,
+        allowSelfSigned,
         azure: {
             endpoint: httpsUrl(env.AZURE_TRUSTED_SIGNING_ENDPOINT, 'AZURE_TRUSTED_SIGNING_ENDPOINT'),
             codeSigningAccountName: safeName(env.AZURE_CODE_SIGNING_ACCOUNT_NAME, 'AZURE_CODE_SIGNING_ACCOUNT_NAME'),
@@ -124,6 +134,7 @@ export function safeReleaseSummary(configuration) {
             ? `${configuration.publish.owner}/${configuration.publish.repo}`
             : configuration.publish.url,
         signingMode: configuration.signing.mode,
+        selfSigned: configuration.signing.allowSelfSigned,
         forceCodeSigning: true,
     };
 }

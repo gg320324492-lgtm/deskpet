@@ -37,6 +37,7 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
       WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
       WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      ALLOW_SELF_SIGNED_RELEASE: ${{ vars.ALLOW_SELF_SIGNED_RELEASE || 'false' }}
       NPM_CONFIG_FUND: 'false'
 
     steps:

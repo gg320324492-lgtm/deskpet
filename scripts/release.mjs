@@ -62,7 +62,10 @@ const executables = artifacts.filter((file) => path.extname(file).toLowerCase() 
 if (executables.length < 2) throw new Error('release build did not produce both installer and portable executables');
 
 const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-run(powershell, ['-NoProfile', '-NonInteractive', '-File', path.join(scriptDir, 'verify-signatures.ps1'), ...executables]);
+const signatureArguments = ['-NoProfile', '-NonInteractive', '-File', path.join(scriptDir, 'verify-signatures.ps1')];
+if (release.signing.allowSelfSigned) signatureArguments.push('-AllowSelfSigned');
+signatureArguments.push(...executables);
+run(powershell, signatureArguments);
 
 const dist = path.join(root, config.directories?.output || 'dist');
 const files = await readdir(dist, { withFileTypes: true });

@@ -44,6 +44,16 @@
 
 工作流中的 `actions/checkout`、`actions/setup-node` 和 `actions/upload-artifact` 均固定到具体提交，避免可移动 tag 带来的供应链漂移。
 
+### 仅个人使用的自签名模式
+
+自签名证书不适合公开分发，但可用于只在自己设备上安装的版本。启用方式是在 `production` Environment 中设置变量 `ALLOW_SELF_SIGNED_RELEASE=true`，并继续使用 `WIN_CSC_LINK` 与 `WIN_CSC_KEY_PASSWORD` 两个 Secret。工作流只在该变量明确为 `true` 时执行以下操作：
+
+1. 验证证书确实为自签名证书并包含代码签名用途；
+2. 从 PFX Secret 在内存中取得预期证书指纹，不把证书加入运行器信任库；
+3. 只接受签名完整、证书指纹完全匹配且失败原因仅为“不受公共信任”的产物。哈希不匹配、未签名或签名证书漂移仍会失败。
+
+自签名安装包在首次运行时仍可能显示 Windows 警告，这是个人模式的预期行为。如果希望当前账户信任该发布者，可手动审查并导入对应的公开 `.cer` 证书；工作流不会修改任何 Windows 信任库。不要把 PFX、私钥或密码提交到仓库。将 `ALLOW_SELF_SIGNED_RELEASE` 删除或设为 `false` 即可恢复正式证书模式。
+
 ## 本地预检
 
 PowerShell 示例：
