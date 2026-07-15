@@ -32,10 +32,7 @@ function getStateManifestPath() {
 }
 
 function getIconPath() {
-    if (app.isPackaged) {
-        return path.join(process.resourcesPath, 'build', 'icon.ico');
-    }
-    return path.join(__dirname, '..', '..', 'build', 'icon.ico');
+    return path.join(getAssetRoot(), 'icon.ico');
 }
 
 function getRendererDir() {

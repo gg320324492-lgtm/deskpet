@@ -5,6 +5,8 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const Module = require('node:module');
 
+const packageJson = require('../package.json');
+
 const appRoot = path.join('C:', 'Program Files', 'DateNightGirl', 'resources', 'app.asar');
 const electronStub = {
     app: {
@@ -30,7 +32,14 @@ const paths = require('../src/main/paths.js');
 
 test('packaged resources resolve inside app.asar instead of nonexistent resources folders', () => {
     assert.equal(paths.getAssetRoot(), path.join(appRoot, 'assets'));
+    assert.equal(paths.getIconPath(), path.join(appRoot, 'assets', 'icon.ico'));
     assert.equal(paths.getRendererDir(), path.join(appRoot, 'src', 'renderer'));
     assert.equal(paths.getRoomDir(), path.join(appRoot, 'src', 'room'));
     assert.equal(paths.getSharedDir(), path.join(appRoot, 'src', 'shared'));
+});
+
+test('runtime icon is packaged separately from the Windows build resource', () => {
+    assert.equal(packageJson.build.win.icon, 'build/icon.ico');
+    assert.ok(packageJson.build.files.includes('assets/icon.ico'));
+    assert.equal(packageJson.build.extraResources, undefined);
 });
