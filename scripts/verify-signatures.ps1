@@ -6,6 +6,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$securityModulePath = Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1'
+if (-not (Test-Path -LiteralPath $securityModulePath -PathType Leaf)) {
+    throw "Microsoft.PowerShell.Security is unavailable at the expected Windows PowerShell path: $securityModulePath"
+}
+Import-Module -Name $securityModulePath -ErrorAction Stop
+
 if ($Paths.Count -eq 0) {
     throw 'No executable artifacts were supplied for signature verification.'
 }

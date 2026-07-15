@@ -112,6 +112,8 @@ test('self-signed CI verification is explicit and never modifies trust stores', 
     assert.match(signatureVerifier, /SignerCertificate\.Thumbprint -ne \$expectedCertificate\.Thumbprint/);
     assert.match(signatureVerifier, /SignatureStatus\]::NotTrusted/);
     assert.match(signatureVerifier, /SignatureStatus\]::UnknownError/);
+    assert.match(signatureVerifier, /Join-Path \$PSHOME 'Modules\\Microsoft\.PowerShell\.Security/);
+    assert.match(signatureVerifier, /Import-Module -Name \$securityModulePath -ErrorAction Stop/);
 });
 
 test('self-signed release policy is opt-in and restricted to PFX mode', () => {
