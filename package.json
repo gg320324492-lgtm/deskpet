@@ -41,17 +41,12 @@
     },
     "files": [
       "src/**/*",
+      "assets/icon.ico",
       "assets/processed/**/*",
       "assets/state-manifest.json",
       "assets/audio/**",
       "assets/outfits/**",
       "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "build/icon.ico",
-        "to": "build/icon.ico"
-      }
     ],
     "win": {
       "electronUpdaterCompatibility": ">=2.16",
