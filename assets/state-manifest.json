@@ -1,0 +1,313 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-15T11:53:15.772Z",
+  "source": "state-catalog.mjs",
+  "states": [
+    {
+      "key": "idle",
+      "catalogKey": "IDLE",
+      "sprite": "idle.png",
+      "fallbackSprite": "idle.png",
+      "hasSprite": true,
+      "category": "persistent",
+      "defaultDuration": 2000,
+      "cssClass": "state-idle",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "常用",
+      "sources": {
+        "v2": null,
+        "v1": "02_walk.png"
+      }
+    },
+    {
+      "key": "walk",
+      "catalogKey": "WALK",
+      "sprite": "walk.png",
+      "fallbackSprite": "walk.png",
+      "hasSprite": true,
+      "category": "action",
+      "defaultDuration": 2000,
+      "cssClass": "state-walk",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "行为",
+      "sources": {
+        "v2": "03_run_strong.png",
+        "v1": "03_sit.png"
+      }
+    },
+    {
+      "key": "sit",
+      "catalogKey": "SIT",
+      "sprite": "sit.png",
+      "fallbackSprite": "sit.png",
+      "hasSprite": true,
+      "category": "persistent",
+      "defaultDuration": 2000,
+      "cssClass": "state-sit",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "常用",
+      "sources": {
+        "v2": "06_sit_pillow.png",
+        "v1": "04_eat.png"
+      }
+    },
+    {
+      "key": "eat",
+      "catalogKey": "EAT",
+      "sprite": "eat.png",
+      "fallbackSprite": "eat.png",
+      "hasSprite": true,
+      "category": "temporary",
+      "defaultDuration": 5000,
+      "cssClass": "state-eat",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "行为",
+      "sources": {
+        "v2": null,
+        "v1": "04_eat.png"
+      }
+    },
+    {
+      "key": "think",
+      "catalogKey": "THINK",
+      "sprite": "think.png",
+      "fallbackSprite": "think.png",
+      "hasSprite": true,
+      "category": "temporary",
+      "defaultDuration": 4000,
+      "cssClass": "state-think",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "行为",
+      "sources": {
+        "v2": null,
+        "v1": "06_think.png"
+      }
+    },
+    {
+      "key": "cheer",
+      "catalogKey": "CHEER",
+      "sprite": "cheer.png",
+      "fallbackSprite": "cheer.png",
+      "hasSprite": true,
+      "category": "temporary",
+      "defaultDuration": 2000,
+      "cssClass": "state-cheer",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "表情",
+      "sources": {
+        "v2": "04_spin_dress.png",
+        "v1": "07_cheer.png"
+      }
+    },
+    {
+      "key": "surprise",
+      "catalogKey": "SURPRISE",
+      "sprite": "surprise.png",
+      "fallbackSprite": "surprise.png",
+      "hasSprite": true,
+      "category": "temporary",
+      "defaultDuration": 1500,
+      "cssClass": "state-surprise",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "表情",
+      "sources": {
+        "v2": null,
+        "v1": "08_surprise.png"
+      }
+    },
+    {
+      "key": "sleep",
+      "catalogKey": "SLEEP",
+      "sprite": "sleep.png",
+      "fallbackSprite": "sleep.png",
+      "hasSprite": true,
+      "category": "persistent",
+      "defaultDuration": 2000,
+      "cssClass": "state-sleep",
+      "particles": "sleep_z",
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "常用",
+      "sources": {
+        "v2": null,
+        "v1": "09_sleep.png"
+      }
+    },
+    {
+      "key": "yawn",
+      "catalogKey": "YAWN",
+      "sprite": "yawn.png",
+      "fallbackSprite": "yawn.png",
+      "hasSprite": true,
+      "category": "temporary",
+      "defaultDuration": 2500,
+      "cssClass": "state-yawn",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "表情",
+      "sources": {
+        "v2": "02_yawn.png",
+        "v1": null
+      }
+    },
+    {
+      "key": "love",
+      "catalogKey": "LOVE",
+      "sprite": "love.png",
+      "fallbackSprite": "love.png",
+      "hasSprite": true,
+      "category": "temporary",
+      "defaultDuration": 2000,
+      "cssClass": "state-love",
+      "particles": "love_hearts",
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "表情",
+      "sources": {
+        "v2": "05_heart.png",
+        "v1": null
+      }
+    },
+    {
+      "key": "work",
+      "catalogKey": "WORK",
+      "sprite": "work.png",
+      "fallbackSprite": "work.png",
+      "hasSprite": true,
+      "category": "sustained",
+      "defaultDuration": 2000,
+      "cssClass": "state-work",
+      "particles": "work_keys",
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "常用",
+      "sources": {
+        "v2": "07_laptop.png",
+        "v1": null
+      }
+    },
+    {
+      "key": "peek",
+      "catalogKey": "PEEK",
+      "sprite": "peek.png",
+      "fallbackSprite": "peek.png",
+      "hasSprite": true,
+      "category": "temporary",
+      "defaultDuration": 1500,
+      "cssClass": "state-peek",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "行为",
+      "sources": {
+        "v2": "08_tilt_wink.png",
+        "v1": null
+      }
+    },
+    {
+      "key": "wave",
+      "catalogKey": "WAVE",
+      "sprite": "wave.png",
+      "fallbackSprite": "cheer.png",
+      "hasSprite": false,
+      "category": "temporary",
+      "defaultDuration": 1500,
+      "cssClass": "state-wave",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "互动",
+      "sources": null
+    },
+    {
+      "key": "drink",
+      "catalogKey": "DRINK",
+      "sprite": "drink.png",
+      "fallbackSprite": "eat.png",
+      "hasSprite": false,
+      "category": "temporary",
+      "defaultDuration": 2000,
+      "cssClass": "state-drink",
+      "particles": "love_hearts",
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "互动",
+      "sources": null
+    },
+    {
+      "key": "run",
+      "catalogKey": "RUN",
+      "sprite": "run.png",
+      "fallbackSprite": "walk.png",
+      "hasSprite": false,
+      "category": "action",
+      "defaultDuration": 2000,
+      "cssClass": "state-run",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "行为",
+      "sources": null
+    },
+    {
+      "key": "land",
+      "catalogKey": "LAND",
+      "sprite": "land.png",
+      "fallbackSprite": "sit.png",
+      "hasSprite": false,
+      "category": "temporary",
+      "defaultDuration": 1500,
+      "cssClass": "state-land",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": null,
+      "sources": null
+    },
+    {
+      "key": "angry",
+      "catalogKey": "ANGRY",
+      "sprite": "angry.png",
+      "fallbackSprite": "surprise.png",
+      "hasSprite": false,
+      "category": "temporary",
+      "defaultDuration": 1500,
+      "cssClass": "state-angry",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "表情",
+      "sources": null
+    },
+    {
+      "key": "stretch",
+      "catalogKey": "STRETCH",
+      "sprite": "stretch.png",
+      "fallbackSprite": "yawn.png",
+      "hasSprite": false,
+      "category": "temporary",
+      "defaultDuration": 2500,
+      "cssClass": "state-stretch",
+      "particles": null,
+      "bubbleKey": null,
+      "transitionGroup": null,
+      "menuGroup": "互动",
+      "sources": null
+    }
+  ]
+}

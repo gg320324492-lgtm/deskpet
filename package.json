@@ -1,0 +1,86 @@
+{
+  "name": "date-night-girl",
+  "version": "1.0.0",
+  "description": "Date Night Girl - a cute animated desktop companion for Windows",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "node scripts/launch.js",
+    "prestart": "node scripts/gen_state_manifest.mjs",
+    "dev": "node scripts/launch.js --enable-logging",
+    "predev": "node scripts/gen_state_manifest.mjs",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "release:preflight": "node scripts/release.mjs --preflight",
+    "release:win": "node scripts/release.mjs",
+    "prebuild": "node scripts/gen_state_manifest.mjs",
+    "prebuild:win": "node scripts/gen_state_manifest.mjs",
+    "preprocess": "python scripts/preprocess_assets.py",
+    "postinstall": "echo Installed. Run 'npm run preprocess' first if you haven't preprocessed sprites yet.",
+    "manifest": "node scripts/gen_state_manifest.mjs",
+    "manifest:check": "node scripts/gen_state_manifest.mjs --check",
+    "test": "node --test \"tests/**/*.test.*\""
+  },
+  "keywords": [
+    "desktop-pet",
+    "electron",
+    "anime",
+    "companion"
+  ],
+  "author": "Date Night Girl Project",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "43.1.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.datennightgirl.desktop",
+    "productName": "DateNightGirl",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/processed/**/*",
+      "assets/state-manifest.json",
+      "assets/audio/**",
+      "assets/outfits/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "build/icon.ico"
+      }
+    ],
+    "win": {
+      "electronUpdaterCompatibility": ">=2.16",
+      "verifyUpdateCodeSignature": true,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Date Night Girl"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  }
+}

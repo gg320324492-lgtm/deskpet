@@ -1,0 +1,708 @@
+/** Five accessible client-side panels for the character room. */
+import { ACHIEVEMENTS } from '../renderer/achievements.js';
+
+const meterPct = (value, low, high) => {
+    if (!Number.isFinite(value) || high <= low) return 0;
+    return Math.max(0, Math.min(100, ((value - low) / (high - low)) * 100));
+};
+
+function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+        if (value == null) continue;
+        if (key === 'class') node.className = value;
+        else if (key.startsWith('on') && typeof value === 'function') {
+            node.addEventListener(key.slice(2), value);
+        } else if (key.startsWith('aria-') || key.startsWith('data-') || ['role', 'title', 'for'].includes(key)) {
+            node.setAttribute(key, String(value));
+        } else if (key in node) {
+            node[key] = value;
+        } else {
+            node.setAttribute(key, String(value));
+        }
+    }
+    for (const child of children) {
+        if (child == null) continue;
+        if (typeof child === 'string' || typeof child === 'number') {
+            node.appendChild(document.createTextNode(String(child)));
+        } else {
+            node.appendChild(child);
+        }
+    }
+    return node;
+}
+
+function panelHeader(kicker, title, description) {
+    return el('header', { class: 'panel-head' },
+        el('p', { class: 'eyebrow' }, kicker),
+        el('h2', {}, title),
+        description ? el('p', { class: 'panel-description' }, description) : null,
+    );
+}
+
+function sectionTitle(text) {
+    return el('h3', { class: 'section-title' }, text);
+}
+
+function runAsync(button, task, { announce, success, failure }) {
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    return Promise.resolve()
+        .then(task)
+        .then((result) => {
+            const message = typeof success === 'function' ? success(result) : success;
+            if (message) announce(message);
+            return result;
+        })
+        .catch((error) => {
+            const message = typeof failure === 'function'
+                ? failure(error)
+                : (failure || '保存失败，请稍后再试。');
+            announce(message, 'error');
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+        });
+}
+
+// ============ Stats ============
+export const statsTab = {
+    render(root, { getSettings }) {
+        const mood = getSettings().mood || {};
+        const pomodoro = getSettings().pomodoro || {};
+        const stats = getSettings().stats || {};
+
+        root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
+        root.appendChild(sectionTitle('身心状态'));
+
+        const metric = (label, key, low, high, note = '') => {
+            const value = Number(mood[key]) || 0;
+            const display = `${Math.round(value)} / ${high}`;
+            return el('article', { class: 'card metric-card' },
+                el('div', { class: 'card-row metric-copy' },
+                    el('span', { class: 'metric-label' }, label),
+                    el('span', { class: 'metric-value' }, display),
+                ),
+                el('progress', {
+                    class: 'meter',
+                    max: 100,
+                    value: meterPct(value, low, high),
+                    'aria-label': `${label}：${display}${note ? `，${note}` : ''}`,
+                }),
+                note ? el('p', { class: 'metric-note' }, note) : null,
+            );
+        };
+
+        root.appendChild(el('div', { class: 'metric-grid' },
+            metric('心情', 'mood', 0, 100),
+            metric('精力', 'energy', 0, 100),
+            metric('饥饿', 'hunger', 0, 100, '数值越低越舒适'),
+            el('article', { class: 'card metric-card affinity-card' },
+                el('span', { class: 'metric-label' }, '亲密度'),
+                el('strong', { class: 'affinity-value' }, String(Math.round(Number(mood.affinity) || 0))),
+                el('p', { class: 'metric-note' }, '每次陪伴都会留下积累'),
+            ),
+        ));
+
+        root.appendChild(sectionTitle('专注与陪伴'));
+        root.appendChild(el('div', { class: 'summary-grid' },
+            el('article', { class: 'card summary-card' },
+                el('span', { class: 'summary-label' }, '今日番茄钟'),
+                el('strong', {}, String(pomodoro.sessionsToday ?? 0)),
+                el('small', {}, `累计 ${pomodoro.sessionsTotal ?? 0} 次`),
+            ),
+            el('article', { class: 'card summary-card' },
+                el('span', { class: 'summary-label' }, '连续陪伴'),
+                el('strong', {}, `${stats.streakDays ?? 0} 天`),
+                el('small', {}, `累计 ${stats.totalCompanionMinutes ?? 0} 分钟`),
+            ),
+        ));
+    },
+};
+
+// ============ Achievements ============
+export const achievementsTab = {
+    render(root, { getSettings }) {
+        const unlocked = getSettings().achievements?.unlocked || {};
+        const achievements = Object.values(ACHIEVEMENTS);
+        const unlockedCount = achievements.filter((item) => unlocked[item.id]).length;
+
+        root.appendChild(panelHeader(
+            `${unlockedCount} / ${achievements.length} 已解锁`,
+            '成就收藏',
+            '持续陪伴、完成专注和探索隐藏互动，都会留下纪念。',
+        ));
+
+        const tileGrid = (items) => el('div', { class: 'tile-grid achievement-grid' },
+            ...items.map((achievement) => {
+                const record = unlocked[achievement.id];
+                const lockedLabel = achievement.hidden ? '隐藏成就' : achievement.label;
+                const date = record?.unlockedAt ? new Date(record.unlockedAt) : null;
+                return el('article', {
+                    class: `tile achievement-tile ${record ? 'unlocked' : 'locked'}`,
+                    'aria-label': `${record ? '已解锁' : '未解锁'}：${record ? achievement.label : lockedLabel}`,
+                },
+                    el('span', { class: 'tile-status' }, record ? '已解锁' : '未解锁'),
+                    el('h4', {}, record ? achievement.label : lockedLabel),
+                    date && !Number.isNaN(date.valueOf())
+                        ? el('time', { datetime: date.toISOString() }, date.toLocaleDateString())
+                        : el('small', {}, achievement.hidden ? '继续探索房间' : '等待达成条件'),
+                );
+            }),
+        );
+
+        root.appendChild(sectionTitle('公开成就'));
+        root.appendChild(tileGrid(achievements.filter((item) => !item.hidden)));
+        root.appendChild(sectionTitle('隐藏成就'));
+        root.appendChild(tileGrid(achievements.filter((item) => item.hidden)));
+    },
+};
+
+// ============ Outfits ============
+export const outfitsTab = {
+    render(root, { getSettings, setSettings, announce }) {
+        const active = getSettings().settings?.outfit || 'default';
+        root.appendChild(panelHeader('衣橱', '服装搭配', '已上线服装可以立即换装，其余位置会在新素材到达后开放。'));
+
+        let defaultTile;
+        defaultTile = el('button', {
+            class: `tile outfit-tile interactive ${active === 'default' ? 'active' : ''}`,
+            type: 'button',
+            'aria-pressed': String(active === 'default'),
+            onclick: () => runAsync(defaultTile, async () => {
+                await setSettings({ settings: { outfit: 'default' } });
+                defaultTile.classList.add('active');
+                defaultTile.setAttribute('aria-pressed', 'true');
+                document.dispatchEvent(new CustomEvent('wardrobe:change', { detail: 'default' }));
+            }, { announce, success: '已换上默认白裙。' }),
+        },
+            el('span', { class: 'outfit-swatch default-swatch', 'aria-hidden': 'true' }),
+            el('strong', {}, '默认白裙'),
+            el('small', {}, active === 'default' ? '当前穿着' : '点击换装'),
+        );
+
+        const placeholders = ['樱花', '夜色', '果茶', '运动', '睡衣', '学生'].map((name) =>
+            el('article', { class: 'tile outfit-tile locked', 'aria-disabled': 'true' },
+                el('span', { class: 'outfit-swatch locked-swatch', 'aria-hidden': 'true' }),
+                el('strong', {}, name),
+                el('small', {}, '等待素材'),
+            ),
+        );
+
+        root.appendChild(el('div', { class: 'tile-grid outfit-grid' }, defaultTile, ...placeholders));
+        root.appendChild(el('p', { class: 'room-note' },
+            '新增服装时，将同名状态 PNG 放入 assets/outfits/<名称>，重新启动应用即可加载。'));
+    },
+};
+
+// ============ Feed / interaction ============
+export const feedTab = {
+    render(root, { getSettings, setSettings, announce }) {
+        let mood = { ...(getSettings().mood || {}) };
+        root.appendChild(panelHeader('陪伴行动', '一起做点什么', '选择一个轻量互动，状态会立即同步到桌面宠物。'));
+
+        const actionCard = (title, body, success, makePatch) => {
+            let button;
+            button = el('button', {
+                class: 'action',
+                type: 'button',
+                onclick: () => runAsync(button, async () => {
+                    const patch = makePatch(mood);
+                    await setSettings({ mood: patch });
+                    mood = { ...mood, ...patch };
+                }, { announce, success }),
+            }, '执行');
+            return el('article', { class: 'card action-card' },
+                el('div', { class: 'action-copy' }, el('h3', {}, title), el('p', {}, body)),
+                button,
+            );
+        };
+
+        root.appendChild(el('div', { class: 'action-list' },
+            actionCard('准备点心', '降低饥饿值，同时让心情稍微变好。', '点心准备好了。', (state) => ({
+                hunger: Math.max(0, (state.hunger ?? 30) - 20),
+                mood: Math.min(100, (state.mood ?? 60) + 5),
+                lastTickAt: Date.now(),
+            })),
+            actionCard('一起看书', '恢复精力，也会增加一点亲密度。', '安静的阅读时间开始了。', (state) => ({
+                mood: Math.min(100, (state.mood ?? 60) + 5),
+                energy: Math.min(100, (state.energy ?? 80) + 10),
+                affinity: (state.affinity ?? 0) + 5,
+            })),
+            actionCard('小憩一下', '快速恢复能量，适合专注间隙。', '已经安排好休息时间。', (state) => ({
+                energy: Math.min(100, (state.energy ?? 80) + 30),
+                lastTickAt: Date.now(),
+            })),
+        ));
+    },
+};
+
+// ============ Settings ============
+export const settingsTab = {
+    render(root, {
+        getSettings,
+        setSettings,
+        announce,
+        dataExport,
+        dataImport,
+        aiStatus,
+        aiConfigure,
+        aiTest,
+        updateStatus,
+        updateCheck,
+        updateInstall,
+        onUpdateStatus,
+    }) {
+        const settings = getSettings().settings || {};
+        root.appendChild(panelHeader('偏好', '房间设置', '所有修改都会立即保存，并同步到桌面宠物。'));
+
+        const persist = async (control, key, value, label) => {
+            control.disabled = true;
+            control.setAttribute('aria-busy', 'true');
+            try {
+                const result = await setSettings({ settings: { [key]: value } });
+                announce(`${label}已更新。`);
+                return result.settings?.[key] ?? value;
+            } catch {
+                announce(`${label}保存失败，请稍后再试。`, 'error');
+                return settings[key];
+            } finally {
+                control.disabled = false;
+                control.removeAttribute('aria-busy');
+            }
+        };
+
+        const slider = (label, key, min, max, step) => {
+            const id = `setting-${key}`;
+            const initial = Number(settings[key] ?? 0);
+            const output = el('output', { class: 'setting-value', for: id }, `${Math.round(initial * 100)}%`);
+            const input = el('input', {
+                id,
+                type: 'range',
+                min,
+                max,
+                step,
+                value: initial,
+                oninput: (event) => { output.value = `${Math.round(Number(event.target.value) * 100)}%`; },
+                onchange: async (event) => {
+                    const saved = await persist(event.target, key, Number(event.target.value), label);
+                    event.target.value = saved;
+                    output.value = `${Math.round(Number(saved) * 100)}%`;
+                },
+            });
+            return el('div', { class: 'toggle-row slider-row' },
+                el('label', { class: 'setting-label', for: id }, label),
+                el('div', { class: 'slider-control' }, output, input),
+            );
+        };
+
+        const toggle = (label, key) => {
+            const id = `setting-${key}`;
+            const labelId = `${id}-label`;
+            let current = !!settings[key];
+            const stateCopy = el('span', { class: 'switch-copy' }, current ? '已开启' : '已关闭');
+            let button;
+            button = el('button', {
+                id,
+                class: `switch ${current ? 'on' : ''}`,
+                type: 'button',
+                role: 'switch',
+                'aria-checked': String(current),
+                'aria-labelledby': labelId,
+                onclick: async () => {
+                    const saved = !!(await persist(button, key, !current, label));
+                    current = saved;
+                    button.classList.toggle('on', current);
+                    button.setAttribute('aria-checked', String(current));
+                    stateCopy.textContent = current ? '已开启' : '已关闭';
+                },
+            }, el('span', { class: 'switch-knob', 'aria-hidden': 'true' }));
+            return el('div', { class: 'toggle-row' },
+                el('span', { class: 'setting-label', id: labelId }, label),
+                el('div', { class: 'switch-control' }, stateCopy, button),
+            );
+        };
+
+        const select = (label, key, options) => {
+            const id = `setting-${key}`;
+            const control = el('select', {
+                id,
+                onchange: async (event) => {
+                    const saved = await persist(event.target, key, event.target.value, label);
+                    event.target.value = saved;
+                },
+            }, ...options.map((option) => el('option', {
+                value: option.value,
+                selected: settings[key] === option.value,
+            }, option.label)));
+            return el('div', { class: 'toggle-row select-row' },
+                el('label', { class: 'setting-label', for: id }, label),
+                control,
+            );
+        };
+
+        const card = (title, description, ...rows) => el('section', { class: 'card settings-card' },
+            el('div', { class: 'settings-card-head' }, el('h3', {}, title), el('p', {}, description)),
+            ...rows,
+        );
+
+        const updateBadge = el('span', { class: 'update-status', 'data-state': 'loading' }, '正在读取…');
+        const updateDetail = el('p', { class: 'update-detail' }, '正在检查此版本的更新能力。');
+        const updateVersion = el('span', { class: 'update-version' }, '当前版本 —');
+        const updateProgress = el('progress', { class: 'update-progress', max: 100, value: 0 });
+        const updateProgressCopy = el('span', { class: 'update-progress-copy' }, '准备下载');
+        const updateProgressRow = el('div', { class: 'update-progress-row', hidden: true },
+            updateProgress,
+            updateProgressCopy,
+        );
+        let latestUpdateStatus = null;
+        let updateCheckButton;
+        let updateInstallButton;
+
+        const unavailableCopy = {
+            'development': '开发模式不会连接发布服务器。安装正式签名版后可使用自动更新。',
+            'portable': '便携版不会自修改，请下载新版便携包手动替换。',
+            'missing-feed': '此构建未配置可信发布源，更新检查保持关闭。',
+            'unsupported-platform': '当前系统暂不支持自动更新。',
+        };
+
+        const paintUpdateStatus = (status) => {
+            latestUpdateStatus = status;
+            let state = 'idle';
+            let label = '等待检查';
+            let detail = '自动更新已准备好。';
+            if (!status || status.ok === false) {
+                state = 'error';
+                label = '状态不可用';
+                detail = status?.error?.message || '无法读取更新状态。';
+            } else if (!status.supported) {
+                state = 'local';
+                label = status.reason === 'portable' ? '便携版' : '当前不可用';
+                detail = unavailableCopy[status.reason] || '此版本不支持自动更新。';
+            } else if (status.state === 'checking') {
+                state = 'loading';
+                label = '正在检查';
+                detail = '正在通过签名发布源检查新版本。';
+            } else if (status.state === 'up-to-date') {
+                state = 'ready';
+                label = '已是最新版';
+                detail = '当前安装包已是发布源提供的最新版本。';
+            } else if (status.state === 'available' || status.state === 'downloading') {
+                state = 'loading';
+                label = status.availableVersion ? `发现 ${status.availableVersion}` : '发现新版本';
+                detail = '正在后台下载，安装前会验证 Windows 代码签名。';
+            } else if (status.state === 'downloaded') {
+                state = 'ready';
+                label = '可以安装';
+                detail = '更新已下载并通过验证，可立即重启完成安装。';
+            } else if (status.state === 'error') {
+                state = 'error';
+                label = '检查失败';
+                detail = status.error?.message || '更新服务暂时不可用，请稍后重试。';
+            }
+
+            updateBadge.dataset.state = state;
+            updateBadge.textContent = label;
+            updateDetail.textContent = detail;
+            updateVersion.textContent = `当前版本 ${status?.currentVersion || '—'} · ${status?.channel === 'beta' ? 'Beta 通道' : '稳定通道'}`;
+            const progressVisible = ['available', 'downloading', 'downloaded'].includes(status?.state);
+            const progress = Number.isFinite(status?.progress) ? status.progress : 0;
+            updateProgressRow.hidden = !progressVisible;
+            updateProgress.value = progress;
+            updateProgressCopy.textContent = status?.state === 'downloaded' ? '下载完成' : `${Math.round(progress)}%`;
+            if (updateCheckButton) {
+                updateCheckButton.disabled = !status?.supported || ['checking', 'downloading', 'downloaded'].includes(status?.state);
+                updateCheckButton.textContent = status?.state === 'checking'
+                    ? '正在检查…'
+                    : (['available', 'downloading'].includes(status?.state) ? '下载中…' : '立即检查');
+            }
+            if (updateInstallButton) {
+                updateInstallButton.hidden = status?.state !== 'downloaded';
+                updateInstallButton.disabled = status?.state !== 'downloaded';
+            }
+        };
+
+        updateCheckButton = el('button', {
+            class: 'data-action secondary',
+            type: 'button',
+            onclick: async () => {
+                updateCheckButton.disabled = true;
+                updateCheckButton.setAttribute('aria-busy', 'true');
+                try {
+                    const result = await updateCheck();
+                    if (!result?.ok) throw new Error(result?.error?.message || '检查更新失败');
+                    paintUpdateStatus(result);
+                    announce(result.supported ? '更新检查已启动。' : '此版本未启用自动更新。');
+                } catch (error) {
+                    announce(error?.message || '检查更新失败，请稍后再试。', 'error');
+                } finally {
+                    updateCheckButton.removeAttribute('aria-busy');
+                    paintUpdateStatus(latestUpdateStatus);
+                }
+            },
+        }, '立即检查');
+
+        updateInstallButton = el('button', {
+            class: 'data-action primary',
+            type: 'button',
+            hidden: true,
+            disabled: true,
+            onclick: async () => {
+                updateInstallButton.disabled = true;
+                try {
+                    const result = await updateInstall();
+                    if (!result?.ok) throw new Error(result?.error?.message || '更新尚未准备好');
+                    announce('正在重启并安装更新。');
+                } catch (error) {
+                    announce(error?.message || '无法开始安装，请稍后再试。', 'error');
+                    paintUpdateStatus(latestUpdateStatus);
+                }
+            },
+        }, '重启并安装');
+
+        const updateCard = card('应用更新', '正式安装版通过签名发布源获取更新，便携版保持手动升级。',
+            el('div', { class: 'update-overview' },
+                el('div', {}, updateBadge, updateDetail),
+                updateVersion,
+            ),
+            updateProgressRow,
+            toggle('自动检查并下载', 'updateAutoCheck'),
+            el('div', { class: 'update-actions', role: 'group', 'aria-label': '应用更新操作' },
+                updateCheckButton,
+                updateInstallButton,
+            ),
+        );
+        updateCard.classList.add('update-card');
+
+        const unsubscribeUpdate = typeof onUpdateStatus === 'function'
+            ? onUpdateStatus(paintUpdateStatus)
+            : () => {};
+        Promise.resolve(typeof updateStatus === 'function' ? updateStatus() : null)
+            .then(paintUpdateStatus)
+            .catch(() => paintUpdateStatus(null));
+
+        const backendSelect = el('select', { id: 'ai-backend' },
+            el('option', { value: 'local-template', selected: settings.aiBackend !== 'openai-compatible' }, '本地对话（不联网）'),
+            el('option', { value: 'openai-compatible', selected: settings.aiBackend === 'openai-compatible' }, 'OpenAI 兼容接口'),
+        );
+        const baseUrlInput = el('input', {
+            id: 'ai-base-url',
+            type: 'url',
+            value: settings.aiBaseUrl || '',
+            placeholder: 'https://api.example.com',
+            autocomplete: 'off',
+            spellcheck: false,
+        });
+        const modelInput = el('input', {
+            id: 'ai-model',
+            type: 'text',
+            value: settings.aiModel || '',
+            placeholder: '服务商提供的模型 ID',
+            autocomplete: 'off',
+            spellcheck: false,
+        });
+        const apiKeyInput = el('input', {
+            id: 'ai-api-key',
+            type: 'password',
+            value: '',
+            placeholder: '留空则保留已保存的密钥',
+            autocomplete: 'new-password',
+            spellcheck: false,
+        });
+        const statusBadge = el('span', { class: 'ai-status', 'data-state': 'loading' }, '正在检查…');
+        const statusDetail = el('p', { class: 'ai-status-detail' }, '正在读取系统安全存储状态。');
+        const remoteFields = el('div', { class: 'ai-fields' },
+            el('label', { class: 'ai-field ai-field-wide', for: 'ai-base-url' },
+                el('span', {}, '服务地址'),
+                baseUrlInput,
+                el('small', {}, '仅允许 HTTPS；本机 localhost / 127.0.0.1 可使用 HTTP。')),
+            el('label', { class: 'ai-field', for: 'ai-model' },
+                el('span', {}, '模型 ID'),
+                modelInput),
+            el('label', { class: 'ai-field', for: 'ai-api-key' },
+                el('span', {}, 'API 密钥'),
+                apiKeyInput),
+        );
+
+        let latestAiStatus = null;
+        let testButton;
+        const paintAiStatus = (status) => {
+            latestAiStatus = status?.ok ? status : null;
+            let state = 'local';
+            let label = '本地模式';
+            let detail = '本地对话库不会发送网络请求。';
+            if (!status?.ok) {
+                state = 'error';
+                label = '状态不可用';
+                detail = status?.error?.message || '无法读取 AI 配置状态。';
+            } else if (status.backend === 'openai-compatible' && status.configured) {
+                state = 'ready';
+                label = '已安全配置';
+                detail = status.loopback
+                    ? '正在使用本机兼容服务；密钥可以留空。'
+                    : '密钥已由系统安全存储加密，页面无法读取。';
+            } else if (status.backend === 'openai-compatible') {
+                state = 'warning';
+                label = status.credentialUnreadable ? '密钥需重新输入' : '配置未完成';
+                detail = !status.encryptionAvailable && !status.loopback
+                    ? '系统安全存储不可用，暂时不能启用远程 HTTPS 服务。'
+                    : '填写服务地址、模型 ID 和远程服务密钥后保存。';
+            }
+            statusBadge.dataset.state = state;
+            statusBadge.textContent = label;
+            statusDetail.textContent = detail;
+            if (testButton) testButton.disabled = !(status?.ok && status.configured);
+        };
+
+        const syncAiMode = () => {
+            const remote = backendSelect.value === 'openai-compatible';
+            remoteFields.hidden = !remote;
+            if (testButton) testButton.hidden = !remote;
+        };
+        backendSelect.addEventListener('change', syncAiMode);
+
+        let saveAiButton;
+        saveAiButton = el('button', {
+            class: 'data-action primary',
+            type: 'button',
+            onclick: () => runAsync(saveAiButton, async () => {
+                const payload = {
+                    backend: backendSelect.value,
+                    baseUrl: backendSelect.value === 'openai-compatible' ? baseUrlInput.value : '',
+                    model: backendSelect.value === 'openai-compatible' ? modelInput.value : '',
+                };
+                if (apiKeyInput.value.trim()) payload.apiKey = apiKeyInput.value;
+                const result = await aiConfigure(payload);
+                apiKeyInput.value = '';
+                if (!result?.ok) throw new Error(result?.error?.message || 'AI 配置保存失败');
+                paintAiStatus(result);
+                return result;
+            }, {
+                announce,
+                success: () => backendSelect.value === 'openai-compatible' ? '远程 AI 配置已安全保存。' : '已切换到本地对话。',
+                failure: (error) => error?.message || 'AI 配置保存失败。',
+            }),
+        }, '保存配置');
+
+        testButton = el('button', {
+            class: 'data-action secondary',
+            type: 'button',
+            disabled: true,
+            onclick: () => runAsync(testButton, async () => {
+                const result = await aiTest();
+                if (!result?.ok) throw new Error(result?.error?.message || '连接测试失败');
+                return result;
+            }, {
+                announce,
+                success: '连接测试通过，服务响应正常。',
+                failure: (error) => error?.message || '连接测试失败。',
+            }),
+        }, '测试连接');
+
+        let clearAiButton;
+        clearAiButton = el('button', {
+            class: 'data-action ghost',
+            type: 'button',
+            onclick: () => runAsync(clearAiButton, async () => {
+                const result = await aiConfigure({
+                    backend: 'local-template',
+                    baseUrl: '',
+                    model: '',
+                    clearKey: true,
+                });
+                if (!result?.ok) throw new Error(result?.error?.message || '远程配置清除失败');
+                backendSelect.value = 'local-template';
+                baseUrlInput.value = '';
+                modelInput.value = '';
+                apiKeyInput.value = '';
+                paintAiStatus(result);
+                syncAiMode();
+                return result;
+            }, {
+                announce,
+                success: '远程配置和密钥已清除。',
+                failure: (error) => error?.message || '远程配置清除失败。',
+            }),
+        }, '清除远程配置');
+
+        const aiCard = card('AI 对话', '默认使用本地对话库；只有主动启用后才会连接兼容服务。',
+            el('div', { class: 'ai-status-row' },
+                el('div', {}, statusBadge, statusDetail),
+                el('label', { class: 'ai-mode', for: 'ai-backend' }, el('span', {}, '对话来源'), backendSelect)),
+            remoteFields,
+            el('p', { class: 'ai-privacy' }, '密钥只在提交时进入内存，随后由 Windows 安全存储加密；不会写入普通设置、备份文件或页面缓存。'),
+            el('div', { class: 'ai-actions', role: 'group', 'aria-label': 'AI 配置操作' }, clearAiButton, testButton, saveAiButton),
+        );
+        aiCard.classList.add('ai-card');
+        syncAiMode();
+        Promise.resolve(aiStatus()).then(paintAiStatus).catch(() => paintAiStatus(null));
+
+        let exportButton;
+        exportButton = el('button', {
+            class: 'data-action secondary',
+            type: 'button',
+            onclick: () => runAsync(exportButton, dataExport, {
+                announce,
+                success: (result) => result?.canceled
+                    ? '已取消导出。'
+                    : `数据已导出到 ${result?.fileName || '备份文件'}。`,
+            }),
+        }, '导出数据');
+
+        let importButton;
+        importButton = el('button', {
+            class: 'data-action primary',
+            type: 'button',
+            onclick: () => runAsync(importButton, dataImport, {
+                announce,
+                success: (result) => result?.canceled
+                    ? '已取消导入。'
+                    : `已从 ${result?.fileName || '备份文件'} 恢复数据。`,
+            }),
+        }, '导入备份');
+
+        const dataCard = card('数据与备份', '将八个数据域保存为一个可迁移的 JSON 备份。',
+            el('div', { class: 'data-safety' },
+                el('div', { class: 'data-safety-copy' },
+                    el('strong', {}, '本地、安全、可恢复'),
+                    el('p', {}, '导入前会校验文件格式、字段类型和大小，并先保留当前数据的滚动备份。'),
+                ),
+                el('div', { class: 'data-actions', role: 'group', 'aria-label': '数据备份操作' },
+                    exportButton,
+                    importButton,
+                ),
+            ));
+        dataCard.classList.add('data-card');
+
+        root.appendChild(el('div', { class: 'settings-grid' },
+            card('声音', '控制提示音与互动音效。',
+                slider('音量', 'volume', 0, 1, 0.05),
+                toggle('静音', 'mute')),
+            card('勿扰', '减少工作或休息时的打断。',
+                toggle('手动勿扰', 'dndManual'),
+                toggle('自动检测', 'dndAutoEnabled')),
+            card('健康提醒', '按需启用周期性轻提醒。',
+                toggle('喝水提醒', 'waterEnabled'),
+                toggle('久坐提醒', 'sitEnabled'),
+                toggle('眼睛休息', 'eyeEnabled')),
+            card('行为', '调整宠物主动互动的频率。',
+                select('活跃程度', 'autonomyLevel', [
+                    { value: 'low', label: '安静' },
+                    { value: 'normal', label: '正常' },
+                    { value: 'high', label: '活跃' },
+                ]),
+                toggle('显示未完成动作', 'showUnfinishedActions')),
+            card('系统', '控制启动方式和显示器偏好。',
+                toggle('开机启动', 'autostart'),
+                select('多显示器', 'multiDisplayTarget', [
+                    { value: 'primary', label: '主显示器' },
+                    { value: 'cursor', label: '跟随光标' },
+                ])),
+            updateCard,
+            aiCard,
+            dataCard,
+        ));
+        return unsubscribeUpdate;
+    },
+};

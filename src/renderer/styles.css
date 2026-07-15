@@ -1,0 +1,381 @@
+/* ================================================================
+   Date Night Girl — Renderer Styles
+   12-state animated desktop pet
+   ================================================================ */
+
+:root {
+    --pet-accent:      #FF6B9D;   /* main accent (love, work) */
+    --pet-accent-2:    #FFB3C8;   /* secondary */
+    --pet-bubble-bg:   rgba(255, 255, 255, 0.94);
+    --pet-bubble-fg:   #2B1F1A;
+    --pet-z-color:     rgba(255, 255, 255, 0.75);
+    --pet-heart:       #FF6B9D;
+    --pet-key:         #6B8CFF;
+    --pet-morning:     #FFE4A0;
+    --pet-night:       #4A4E7C;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    cursor: default;
+}
+
+body { background-color: rgba(0, 0, 0, 0); }
+
+#pet {
+    position: absolute;
+    width: 320px;
+    height: 360px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    transform-origin: bottom center;
+    outline: none;
+    pointer-events: auto;
+}
+
+#pet::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    width: 184px;
+    height: 12px;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.9), 0 0 14px rgba(255, 107, 157, 0.45);
+    transition: opacity 160ms ease;
+    pointer-events: none;
+}
+
+#pet:focus-visible::after {
+    opacity: 1;
+}
+
+.fx-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.pet-sprite {
+    position: relative;
+    z-index: 2;
+    width: auto;
+    height: 220px;
+    max-width: 220px;
+    object-fit: contain;
+    pointer-events: none;
+    -webkit-user-drag: none;
+    display: block;
+    image-rendering: -webkit-optimize-contrast;
+    transform-origin: bottom center;
+    transition: transform 0.18s cubic-bezier(.2,.8,.2,1);
+}
+
+/* ============ Cross-fade transitions (opacity only — no transform to avoid clash with breath/blink) ============ */
+#pet.leaving .pet-sprite,
+#pet.leaving .fx-layer {
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+#pet.entering .pet-sprite,
+#pet.entering .fx-layer {
+    opacity: 1;
+    transition: opacity 180ms ease;
+}
+
+/* ============ Breathing (opacity only — no transform to avoid clashing with sprite position) ============ */
+#pet.breathing-on .pet-sprite {
+    animation: breath 3s ease-in-out infinite;
+    will-change: opacity;
+}
+@keyframes breath {
+    0%, 100% { opacity: 0.94; }
+    50%      { opacity: 1.0;  }
+}
+
+/* ============ Idle blink ============ */
+#pet.blinking .pet-sprite {
+    animation: blink 140ms ease-in-out;
+}
+@keyframes blink {
+    0%, 100% { transform: scaleY(1); }
+    50%      { transform: scaleY(0.05); }
+}
+
+/* ============ Missing-art placeholder ============ */
+.pet-sprite.sprite-missing {
+    outline: 2px dashed rgba(255, 107, 157, 0.6);
+    outline-offset: -8px;
+}
+#pet[data-missing]::before {
+    content: '新';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--pet-accent);
+    color: #fff;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
+/* ============ State-specific tweaks ============ */
+#pet.state-peek .pet-sprite {
+    transform: rotate(-8deg);
+    transform-origin: 70% 20%;
+    transition: transform 220ms ease;
+}
+#pet.state-yawn .pet-sprite {
+    animation: yawn-pulse 1.1s ease;
+}
+@keyframes yawn-pulse {
+    0%, 100% { transform: scaleX(1)    scaleY(1); }
+    40%      { transform: scaleX(1.06) scaleY(0.96); }
+    70%      { transform: scaleX(0.98) scaleY(1.04); }
+}
+#pet.state-work .pet-sprite {
+    animation: work-tap 0.6s ease-in-out infinite;
+}
+@keyframes work-tap {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-1.5px); }
+}
+#pet.state-cheer .pet-sprite {
+    animation: cheer-spin 0.6s ease;
+}
+@keyframes cheer-spin {
+    0%   { transform: scale(1)    rotate(0); }
+    40%  { transform: scale(1.08) rotate(-3deg); }
+    100% { transform: scale(1)    rotate(0); }
+}
+#pet.state-sleep .pet-sprite {
+    filter: brightness(0.96) saturate(0.95);
+}
+
+/* ============ Speech bubble (regular) ============ */
+.bubble {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translate(-50%, 4px) scale(0.7);
+    background: var(--pet-bubble-bg);
+    color: var(--pet-bubble-fg);
+    border-radius: 14px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    font-weight: 500;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    transition: opacity 0.22s cubic-bezier(.2,.8,.2,1), transform 0.22s cubic-bezier(.2,.8,.2,1);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 3;
+}
+
+.bubble.visible {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+}
+
+.bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    margin-left: -6px;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--pet-bubble-bg);
+}
+
+.bubble.mood-morning { background: var(--pet-morning); }
+.bubble.mood-morning::after { border-top-color: var(--pet-morning); }
+.bubble.mood-night   { background: var(--pet-night); color: #fff; }
+.bubble.mood-night::after   { border-top-color: var(--pet-night); }
+.bubble.mood-love    { background: var(--pet-heart); color: #fff; }
+.bubble.mood-love::after    { border-top-color: var(--pet-heart); }
+
+/* ============ Time-of-day bubble ============ */
+.time-bubble {
+    position: absolute;
+    top: 56px;
+    left: 50%;
+    transform: translate(-50%, 0) scale(0.9);
+    background: var(--pet-morning);
+    color: #2B1F1A;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    z-index: 3;
+}
+.time-bubble.visible {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+}
+.time-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    margin-left: -5px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--pet-morning);
+}
+
+/* ============ Right-click context menu ============ */
+#pet-context-menu {
+    position: fixed;
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
+    padding: 6px 0;
+    min-width: 140px;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    font-size: 13px;
+    color: #2B1F1A;
+    z-index: 9999;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+#pet-context-menu .ctx-group {
+    padding: 4px 14px 2px;
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+#pet-context-menu .ctx-item {
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+#pet-context-menu .ctx-item:hover { background: #F3D7C1; }
+#pet-context-menu .ctx-item .key {
+    color: #999;
+    font-size: 11px;
+    font-family: 'Consolas', monospace;
+}
+#pet-context-menu .ctx-quit   { color: #B33A3A; }
+#pet-context-menu .ctx-sep    { height: 1px; background: rgba(0,0,0,0.08); margin: 4px 0; }
+#pet-context-menu .ctx-danger { color: #B33A3A; }
+
+#pet-context-menu .ctx-item input[type=range] { width: 110px; }
+#pet-context-menu .ctx-item select { padding: 2px; border-radius: 4px; }
+
+/* ============ Popover (in-window floating panels) ============ */
+#pet-popover {
+    animation: popover-in 0.18s ease-out;
+    line-height: 1.45;
+}
+@keyframes popover-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+#pet-popover input[type=text],
+#pet-popover input:not([type]),
+#pet-popover input[type=range] {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 13px;
+}
+#pet-popover button {
+    background: var(--pet-accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    transition: background 0.15s;
+}
+#pet-popover button:hover { background: #FF5588; }
+#pet-popover button:focus-visible,
+#pet-popover input:focus-visible,
+#pet-popover select:focus-visible,
+#pet-context-menu input:focus-visible,
+#pet-context-menu select:focus-visible {
+    outline: 3px solid rgba(107, 140, 255, 0.72);
+    outline-offset: 2px;
+}
+#pet-popover select {
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 12px;
+}
+
+/* ============ Todo popover rows ============ */
+.todo-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-size: 13px;
+}
+.todo-row:last-child { border-bottom: none; }
+.todo-row input[type=checkbox] { transform: scale(1.1); }
+.todo-row .todo-prio {
+    font-size: 10px;
+    background: rgba(255, 107, 157, 0.15);
+    color: #B33A6A;
+    border-radius: 8px;
+    padding: 1px 6px;
+}
+.todo-row .todo-prio[data-p="2"] { background: rgba(255, 193, 7, 0.18); color: #B58700; }
+.todo-row .todo-prio[data-p="3"] { background: rgba(244, 67, 54, 0.15); color: #B33A3A; }
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

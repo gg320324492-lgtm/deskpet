@@ -1,0 +1,92 @@
+name: Signed Windows release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag matching package.json (for example v1.0.0)
+        required: true
+        type: string
+      channel:
+        description: Update channel
+        required: true
+        default: stable
+        type: choice
+        options:
+          - stable
+          - beta
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    environment: production
+    timeout-minutes: 45
+    env:
+      RELEASE_PROVIDER: github
+      RELEASE_CHANNEL: ${{ inputs.channel || (contains(github.ref_name, '-beta') && 'beta') || 'stable' }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      NPM_CONFIG_FUND: 'false'
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run quality gates
+        run: |
+          npm test
+          npm run manifest:check
+          npm audit --audit-level=high
+
+      - name: Build and verify signed release
+        run: npm run release:win
+
+      - name: Preserve release artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: DateNightGirl-${{ env.RELEASE_TAG }}-windows
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
+            dist/beta.yml
+            dist/release-checksums.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $files = Get-ChildItem -LiteralPath dist -File | Where-Object {
+            $_.Name -match '\.exe$' -or
+            $_.Name -match '\.exe\.blockmap$' -or
+            $_.Name -in @('latest.yml', 'beta.yml', 'release-checksums.sha256')
+          }
+          $flags = @('--verify-tag', '--generate-notes', '--title', "Date Night Girl $env:RELEASE_TAG")
+          if ($env:RELEASE_CHANNEL -eq 'beta') { $flags += '--prerelease' }
+          gh release create $env:RELEASE_TAG $files.FullName @flags

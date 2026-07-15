@@ -1,0 +1,24 @@
+node_modules/
+dist/
+output/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.pyc
+__pycache__/
+
+# Local environment and Windows code-signing credentials
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+
+# Duplicate source-image imports and stray PID-named Electron logs
+/[0-9]*
