@@ -63,7 +63,6 @@ export class Interaction {
         this._root = rootEl;
         this._sm = stateMachine;
         this._idle = idleWatcher;
-        this._showUnfinished = !!options.showUnfinished;
         this._actionHandlers = options.actionHandlers || {};
         this._extraMenuGroups = options.extraMenuGroups || [];
 
@@ -86,8 +85,6 @@ export class Interaction {
     setExtraMenuGroups(groups) {
         this._extraMenuGroups = Array.isArray(groups) ? groups : [];
     }
-
-    setShowUnfinished(flag) { this._showUnfinished = !!flag; }
 
     onUserInput(fn) { this._userInputListeners.add(fn); return () => this._userInputListeners.delete(fn); }
     _notifyUser() { for (const f of this._userInputListeners) { try { f(); } catch (_) {} } }
@@ -222,7 +219,7 @@ export class Interaction {
             this._sm.transitionTo(STATES.PEEK);
             this._scheduleReturn(STATES.PEEK);
         } else {
-            if (this._showUnfinished && spriteLoader.hasImage(STATES.LAND)) {
+            if (spriteLoader.hasImage(STATES.LAND)) {
                 this._sm.transitionTo(STATES.LAND);
                 this._scheduleReturn(STATES.LAND);
             } else {
@@ -308,11 +305,9 @@ export class Interaction {
         menu.setAttribute('role', 'menu');
         menu.setAttribute('aria-label', '\u684c\u5ba0\u64cd\u4f5c');
 
-        // 1. State-derived menu groups (pre-existing 12 + 6 placeholders that have art)
+        // 1. State-derived menu groups (all completed states with available art)
         const stateHtml = MENU_GROUPS.map(g => {
-            const items = g.items.filter(it =>
-                this._showUnfinished ? true : spriteLoader.hasImage(it.id)
-            );
+            const items = g.items.filter(it => spriteLoader.hasImage(it.id));
             if (!items.length) return '';
             return this._renderGroup(g.label, items.map(i => ({
                 type: 'state',

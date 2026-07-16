@@ -6,6 +6,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 
 import {
     STATES,
@@ -13,13 +14,42 @@ import {
     TEMPORARY_STATES,
     TEMP_DURATIONS,
     ALLOWED,
+    stateEntry,
 } from '../src/renderer/state-catalog.mjs';
 import { PetStateMachine } from '../src/renderer/state-machine.js';
 
-test('all 18 states registered (12 stable + 6 MVP placeholders)', () => {
+test('all 18 completed states remain registered', () => {
     assert.equal(ALL_STATES.length, 18);
     assert.ok(ALL_STATES.includes(STATES.IDLE));
-    assert.ok(ALL_STATES.includes(STATES.LAND));   // placeholder
+    assert.ok(ALL_STATES.includes(STATES.LAND));
+});
+
+test('completed generated sprites are enabled and mapped', () => {
+    const generated = [
+        [STATES.WAVE, '14_wave.png'],
+        [STATES.DRINK, '09_drink.png'],
+        [STATES.RUN, '10_run.png'],
+        [STATES.LAND, '11_land.png'],
+        [STATES.ANGRY, '12_angry.png'],
+        [STATES.STRETCH, '13_stretch.png'],
+    ];
+    for (const [state, filename] of generated) {
+        const entry = stateEntry(state);
+        assert.equal(entry.hasSprite, true);
+        assert.deepEqual(entry.sources, { v2: filename, v1: null });
+    }
+});
+
+test('all 18 states ship an independent processed sprite', () => {
+    for (const state of ALL_STATES) {
+        const entry = stateEntry(state);
+        assert.equal(entry.hasSprite, true, `${state} should be enabled`);
+        assert.equal(
+            existsSync(new URL(`../assets/processed/${entry.sprite}`, import.meta.url)),
+            true,
+            `${entry.sprite} should exist`,
+        );
+    }
 });
 
 test('temporary states and durations match', () => {
@@ -74,7 +104,7 @@ test('unknown state rejected by transitionTo', () => {
     assert.equal(sm.transitionTo('not-a-state'), false);
 });
 
-test('LAND placeholder accessible & only transitions to IDLE/SIT', () => {
+test('LAND is accessible and only transitions to IDLE/SIT', () => {
     const sm = new PetStateMachine(STATES.IDLE);
     assert.ok(ALLOWED[STATES.IDLE].has(STATES.LAND));
     sm._state = STATES.LAND;

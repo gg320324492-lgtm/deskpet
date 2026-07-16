@@ -453,6 +453,18 @@ button.tile.interactive.active {
     box-shadow: 0 8px 20px rgba(255, 225, 238, 0.16);
 }
 
+.sleepwear-swatch {
+    background:
+        linear-gradient(90deg, transparent 45%, #fff5df 45% 52%, transparent 52%),
+        linear-gradient(160deg, #cbb7e9, #9277bd 76%);
+    box-shadow: 0 8px 20px rgba(179, 148, 224, 0.24);
+}
+
+.outfit-description {
+    max-width: 16ch;
+    color: var(--room-subtle);
+}
+
 .locked-swatch {
     border-style: dashed;
     background: rgba(255, 255, 255, 0.06);

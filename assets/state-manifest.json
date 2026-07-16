@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-15T11:53:15.772Z",
+  "generatedAt": "2026-07-16T11:59:13.810Z",
   "source": "state-catalog.mjs",
   "states": [
     {
@@ -224,7 +224,7 @@
       "catalogKey": "WAVE",
       "sprite": "wave.png",
       "fallbackSprite": "cheer.png",
-      "hasSprite": false,
+      "hasSprite": true,
       "category": "temporary",
       "defaultDuration": 1500,
       "cssClass": "state-wave",
@@ -232,14 +232,17 @@
       "bubbleKey": null,
       "transitionGroup": null,
       "menuGroup": "互动",
-      "sources": null
+      "sources": {
+        "v2": "14_wave.png",
+        "v1": null
+      }
     },
     {
       "key": "drink",
       "catalogKey": "DRINK",
       "sprite": "drink.png",
       "fallbackSprite": "eat.png",
-      "hasSprite": false,
+      "hasSprite": true,
       "category": "temporary",
       "defaultDuration": 2000,
       "cssClass": "state-drink",
@@ -247,14 +250,17 @@
       "bubbleKey": null,
       "transitionGroup": null,
       "menuGroup": "互动",
-      "sources": null
+      "sources": {
+        "v2": "09_drink.png",
+        "v1": null
+      }
     },
     {
       "key": "run",
       "catalogKey": "RUN",
       "sprite": "run.png",
       "fallbackSprite": "walk.png",
-      "hasSprite": false,
+      "hasSprite": true,
       "category": "action",
       "defaultDuration": 2000,
       "cssClass": "state-run",
@@ -262,14 +268,17 @@
       "bubbleKey": null,
       "transitionGroup": null,
       "menuGroup": "行为",
-      "sources": null
+      "sources": {
+        "v2": "10_run.png",
+        "v1": null
+      }
     },
     {
       "key": "land",
       "catalogKey": "LAND",
       "sprite": "land.png",
       "fallbackSprite": "sit.png",
-      "hasSprite": false,
+      "hasSprite": true,
       "category": "temporary",
       "defaultDuration": 1500,
       "cssClass": "state-land",
@@ -277,14 +286,17 @@
       "bubbleKey": null,
       "transitionGroup": null,
       "menuGroup": null,
-      "sources": null
+      "sources": {
+        "v2": "11_land.png",
+        "v1": null
+      }
     },
     {
       "key": "angry",
       "catalogKey": "ANGRY",
       "sprite": "angry.png",
       "fallbackSprite": "surprise.png",
-      "hasSprite": false,
+      "hasSprite": true,
       "category": "temporary",
       "defaultDuration": 1500,
       "cssClass": "state-angry",
@@ -292,14 +304,17 @@
       "bubbleKey": null,
       "transitionGroup": null,
       "menuGroup": "表情",
-      "sources": null
+      "sources": {
+        "v2": "12_angry.png",
+        "v1": null
+      }
     },
     {
       "key": "stretch",
       "catalogKey": "STRETCH",
       "sprite": "stretch.png",
       "fallbackSprite": "yawn.png",
-      "hasSprite": false,
+      "hasSprite": true,
       "category": "temporary",
       "defaultDuration": 2500,
       "cssClass": "state-stretch",
@@ -307,7 +322,10 @@
       "bubbleKey": null,
       "transitionGroup": null,
       "menuGroup": "互动",
-      "sources": null
+      "sources": {
+        "v2": "13_stretch.png",
+        "v1": null
+      }
     }
   ]
 }
