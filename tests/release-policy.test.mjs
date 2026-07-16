@@ -5,8 +5,36 @@ import { readFileSync } from 'node:fs';
 import { createReleaseConfiguration, safeReleaseSummary } from '../scripts/release-policy.mjs';
 
 const packageJson = { version: '1.2.3' };
+const qualityWorkflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
 const releaseWorkflow = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
 const signatureVerifier = readFileSync(new URL('../scripts/verify-signatures.ps1', import.meta.url), 'utf8');
+
+test('GitHub workflows pin Node 24 actions to immutable commits', () => {
+    const expectedPins = [
+        'actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0',
+        'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020',
+    ];
+
+    for (const workflow of [qualityWorkflow, releaseWorkflow]) {
+        for (const pin of expectedPins) assert.match(workflow, new RegExp(pin));
+        assert.doesNotMatch(workflow, /uses:\s+actions\/[\w-]+@v\d+/);
+    }
+    assert.match(
+        releaseWorkflow,
+        /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/,
+    );
+});
+
+test('quality workflow validates pull requests with read-only permissions', () => {
+    assert.match(qualityWorkflow, /\n  pull_request:\s*\n/);
+    assert.match(qualityWorkflow, /\n  push:\s*\n\s+branches:\s*\n\s+- main/);
+    assert.match(qualityWorkflow, /permissions:\s*\n\s+contents: read/);
+    assert.match(qualityWorkflow, /run: npm ci/);
+    assert.match(qualityWorkflow, /run: npm test/);
+    assert.match(qualityWorkflow, /run: npm run manifest:check/);
+    assert.match(qualityWorkflow, /run: npm audit --audit-level=high/);
+    assert.doesNotMatch(qualityWorkflow, /secrets\.|contents: write|environment:/);
+});
 
 test('GitHub release configuration is public, signed and secret-free', () => {
     const secret = 'base64-private-certificate';
