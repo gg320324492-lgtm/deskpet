@@ -2,6 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
 
@@ -53,4 +54,21 @@ test('Windows release artifacts use stable update-safe names', () => {
         packageJson.build.portable.artifactName,
         '${productName}-Portable-${version}.${ext}',
     );
+    assert.equal(packageJson.build.nsis.runAfterFinish, false);
+    assert.equal(packageJson.build.nsis.include, 'build/installer.nsh');
+});
+
+test('Windows installer can close tray-resident builds during an upgrade', () => {
+    const installerInclude = fs.readFileSync(
+        path.join(__dirname, '..', packageJson.build.nsis.include),
+        'utf8',
+    );
+
+    assert.match(installerInclude, /!macro customCheckAppRunning/);
+    assert.match(installerInclude, /nsProcess::CloseProcess/);
+    assert.match(installerInclude, /taskkill\.exe.*\/F.*\/T.*\/IM/);
+    assert.ok(installerInclude.indexOf('nsProcess::CloseProcess') < installerInclude.indexOf('taskkill.exe'));
+    assert.match(installerInclude, /!macro customInstall/);
+    assert.match(installerInclude, /CreateShortCut "\$newStartMenuLink" "\$appExe"/);
+    assert.match(installerInclude, /\$PROFILE\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs/);
 });

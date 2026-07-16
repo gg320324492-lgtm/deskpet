@@ -22,6 +22,7 @@ import {
     STATE_CLASSES,
 } from './state-catalog.mjs';
 import { spriteLoader } from './sprite-loader.js';
+import { attachMenuKeyboardNavigation, clampMenuPosition } from './menu-layout.mjs';
 
 const DRAG_THRESHOLD     = 5;
 const CLICK_DOUBLE_MS    = 300;
@@ -304,6 +305,8 @@ export class Interaction {
 
         const menu = document.createElement('div');
         menu.id = 'pet-context-menu';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('aria-label', '\u684c\u5ba0\u64cd\u4f5c');
 
         // 1. State-derived menu groups (pre-existing 12 + 6 placeholders that have art)
         const stateHtml = MENU_GROUPS.map(g => {
@@ -326,13 +329,25 @@ export class Interaction {
 
         menu.innerHTML = stateHtml + extraHtml + `
             <div class="ctx-sep"></div>
-            <div class="ctx-item ctx-quit" data-act="quit">
+            <div class="ctx-item ctx-quit" data-act="quit" role="menuitem" tabindex="-1">
                 <span>退出</span><span class="key">Esc×2</span>
             </div>
         `;
         menu.style.left = x + 'px';
         menu.style.top  = y + 'px';
         document.body.appendChild(menu);
+
+        const rect = menu.getBoundingClientRect();
+        const position = clampMenuPosition({
+            x,
+            y,
+            menuWidth: rect.width,
+            menuHeight: rect.height,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+        });
+        menu.style.left = `${position.left}px`;
+        menu.style.top = `${position.top}px`;
 
         // Removing the menu must also restore mouse-ignore: while the menu is
         // open the hit-test keeps the window clickable (see bootstrap
@@ -341,7 +356,10 @@ export class Interaction {
         const closeMenu = () => {
             menu.remove();
             try { window.petAPI.setIgnoreMouse(true); } catch (_) {}
+            try { this._root.focus({ preventScroll: true }); } catch (_) {}
         };
+
+        attachMenuKeyboardNavigation({ menu, onEscape: closeMenu });
 
         menu.addEventListener('click', (ev) => {
             const item = ev.target.closest('.ctx-item');
@@ -380,7 +398,7 @@ export class Interaction {
                 ? `data-state="${i.stateId}"`
                 : `data-act="${i.id}"` + (i.payload ? ` data-payload='${encodeURIComponent(JSON.stringify(i.payload))}'` : '');
             const key = i.key ? `<span class="key">${i.key.toUpperCase()}</span>` : (i.shortcut ? `<span class="key">${i.shortcut}</span>` : '');
-            return `<div class="ctx-item${i.danger ? ' ctx-danger' : ''}" ${payload}>
+            return `<div class="ctx-item${i.danger ? ' ctx-danger' : ''}" ${payload} role="menuitem" tabindex="-1">
                         <span>${i.label}</span>${key}
                     </div>`;
         }).join('');
