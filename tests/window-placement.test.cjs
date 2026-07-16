@@ -5,6 +5,8 @@ const assert = require('node:assert/strict');
 
 const {
     clampWindowBounds,
+    displayTargetForId,
+    isDisplayTarget,
     resolveStartupBounds,
     selectTargetDisplay,
     serializeWindowPosition,
@@ -34,6 +36,18 @@ test('cursor target selects the display containing the cursor, including negativ
         cursorPoint: { x: -900, y: 400 },
         target: 'primary',
     }).id, 1);
+});
+
+test('a named display target selects its matching monitor and validates only safe ids', () => {
+    assert.equal(selectTargetDisplay({
+        displays,
+        primaryDisplay: primary,
+        cursorPoint: { x: 600, y: 400 },
+        target: displayTargetForId(2),
+    }).id, 2);
+    assert.equal(isDisplayTarget('display:2'), true);
+    assert.equal(isDisplayTarget('display:second monitor'), false);
+    assert.equal(isDisplayTarget('not-a-target'), false);
 });
 
 test('first launch uses the selected display work-area origin and safe default margins', () => {

@@ -47,6 +47,8 @@ const roomAPI = {
     updateCheck: ()       => ipcRenderer.invoke('update:check'),
     updateInstall: ()     => ipcRenderer.invoke('update:install'),
     onUpdateStatus: (handler) => subscribe('update:onstatus', handler),
+    windowStatus: ()       => ipcRenderer.invoke('window:status'),
+    windowAction: (action) => ipcRenderer.invoke('window:action', action),
 };
 
 const petAPI = {

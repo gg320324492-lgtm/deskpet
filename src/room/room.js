@@ -68,6 +68,8 @@ async function main() {
         updateCheck: () => window.petAPI.updateCheck(),
         updateInstall: () => window.petAPI.updateInstall(),
         onUpdateStatus: (handler) => window.petAPI.onUpdateStatus(handler),
+        windowStatus: () => window.petAPI.windowStatus(),
+        windowAction: (action) => window.petAPI.windowAction(action),
     };
     const tabButtons = [...document.querySelectorAll('[role="tab"]')];
     const panels = [...document.querySelectorAll('[role="tabpanel"]')];

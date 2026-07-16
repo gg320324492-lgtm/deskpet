@@ -18,6 +18,9 @@ const {
     setIgnoreMouseEvents,
     dragBy,
     moveTo,
+    movePetToCursorDisplay,
+    resetPetWindowPosition,
+    getPetWindowStatus,
     toggleWindow,
     setDisplayTarget,
     flushPetWindowPosition,
@@ -128,6 +131,13 @@ onFrom('quit-app', ['pet'], () => {
 });
 
 handleFrom('get-initial-state', ['pet'], () => rendererState);
+
+handleFrom('window:status', ['room'], () => getPetWindowStatus());
+handleFrom('window:action', ['room'], (_event, action) => {
+    if (action === 'move-to-cursor') return { ok: movePetToCursorDisplay() };
+    if (action === 'reset-position') return { ok: resetPetWindowPosition() };
+    throw new Error('Unsupported window action');
+});
 
 // === Storage IPC ===
 

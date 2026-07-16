@@ -9,7 +9,9 @@ const { lockDownWebContents } = require('./security');
 const {
     clampWindowBounds,
     defaultWindowBounds,
+    displayTargetForId,
     displayForSavedPosition,
+    isDisplayTarget,
     resolveStartupBounds,
     selectTargetDisplay,
     serializeWindowPosition,
@@ -138,7 +140,7 @@ function moveTo(x, y) {
 }
 
 function setDisplayTarget(target) {
-    if (!['primary', 'cursor'].includes(target)) return false;
+    if (!isDisplayTarget(target)) return false;
     const changed = placementSettings.multiDisplayTarget !== target;
     placementSettings.multiDisplayTarget = target;
     if (!changed || !petWindow || petWindow.isDestroyed()) return changed;
@@ -149,6 +151,48 @@ function setDisplayTarget(target) {
     petWindow.setBounds(bounds);
     schedulePositionSave();
     return true;
+}
+
+function movePetToCursorDisplay() {
+    if (!petWindow || petWindow.isDestroyed()) return false;
+    const snapshot = displaySnapshot();
+    const display = selectTargetDisplay({ ...snapshot, target: 'cursor' });
+    petWindow.setBounds(defaultWindowBounds(display, PET_WIDTH, PET_HEIGHT));
+    schedulePositionSave();
+    return true;
+}
+
+function resetPetWindowPosition() {
+    if (!petWindow || petWindow.isDestroyed()) return false;
+    const snapshot = displaySnapshot();
+    const display = selectTargetDisplay({ ...snapshot, target: placementSettings.multiDisplayTarget });
+    petWindow.setBounds(defaultWindowBounds(display, PET_WIDTH, PET_HEIGHT));
+    schedulePositionSave();
+    return true;
+}
+
+function getPetWindowStatus() {
+    const snapshot = displaySnapshot();
+    const primaryId = String(snapshot.primaryDisplay?.id ?? '');
+    const displays = snapshot.displays.map((display, index) => ({
+        id: String(display.id),
+        label: String(display.label || `显示器 ${index + 1}`),
+        primary: String(display.id) === primaryId,
+        workArea: { ...display.workArea },
+    }));
+    if (!petWindow || petWindow.isDestroyed()) {
+        return { available: false, target: placementSettings.multiDisplayTarget || 'primary', displays };
+    }
+    const bounds = petWindow.getBounds();
+    const display = screen.getDisplayMatching(bounds);
+    return {
+        available: true,
+        target: placementSettings.multiDisplayTarget || 'primary',
+        displayId: String(display.id),
+        displayTarget: displayTargetForId(display.id),
+        bounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+        displays,
+    };
 }
 
 function ensurePetWindowVisible() {
@@ -255,11 +299,14 @@ module.exports = {
     createPetWindow,
     ensurePetWindowVisible,
     flushPetWindowPosition,
+    getPetWindowStatus,
     getPetWindow,
     setDisplayTarget,
     setIgnoreMouseEvents,
     dragBy,
     moveTo,
+    movePetToCursorDisplay,
+    resetPetWindowPosition,
     showWindow,
     hideWindow,
     toggleWindow,

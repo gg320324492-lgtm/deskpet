@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.6 - 2026-07-17
+
+### Added
+
+- Added a Desktop Control card in room settings showing the companion's current
+  monitor and position, with one-click actions to move it to the cursor screen
+  or restore a safe default position.
+- Multi-display startup can now be pinned to any currently recognised display,
+  in addition to the primary-display and cursor-display choices.
+- The Do Not Disturb card now explains whether manual or scheduled DND is active
+  and shows the next scheduled start or end time.
+
+### Improved
+
+- Desktop control actions persist their resulting safe positions automatically.
+- Settings are responsive across desktop and narrow layouts, with touch-friendly
+  recovery buttons.
+
 ## 1.0.5 - 2026-07-17
 
 ### Added

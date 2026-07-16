@@ -116,4 +116,6 @@ test('older settings receive nullable persisted pet window coordinates', () => {
     }));
     assert.throws(() => validateDomainPatch('settings', { petWindowX: 'left' }), /number or null/);
     assert.throws(() => validateDomainPatch('settings', { petDisplayId: 'x'.repeat(65) }), /up to 64/);
+    assert.doesNotThrow(() => validateDomainPatch('settings', { multiDisplayTarget: 'display:246873' }));
+    assert.throws(() => validateDomainPatch('settings', { multiDisplayTarget: 'display:unsafe id' }), /display id/);
 });

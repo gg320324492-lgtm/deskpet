@@ -23,6 +23,16 @@ function displayId(display) {
     return display?.id == null ? '' : String(display.id);
 }
 
+function displayTargetForId(id) {
+    const value = String(id ?? '').trim();
+    return value ? `display:${value}` : 'primary';
+}
+
+function isDisplayTarget(target) {
+    return target === 'primary' || target === 'cursor'
+        || (typeof target === 'string' && /^display:[A-Za-z0-9_.-]{1,64}$/.test(target));
+}
+
 function selectTargetDisplay({ displays, primaryDisplay, cursorPoint, target = 'primary' }) {
     const available = Array.isArray(displays) ? displays.filter(Boolean) : [];
     if (!available.length && primaryDisplay) available.push(primaryDisplay);
@@ -36,6 +46,10 @@ function selectTargetDisplay({ displays, primaryDisplay, cursorPoint, target = '
 
     if (target === 'cursor') {
         return available.find((display) => pointInside(cursorPoint, display)) || primary;
+    }
+    if (typeof target === 'string' && target.startsWith('display:')) {
+        const targetId = target.slice('display:'.length);
+        return available.find((display) => displayId(display) === targetId) || primary;
     }
     return primary;
 }
@@ -126,6 +140,8 @@ module.exports = {
     clampWindowBounds,
     defaultWindowBounds,
     displayForSavedPosition,
+    displayTargetForId,
+    isDisplayTarget,
     resolveStartupBounds,
     selectTargetDisplay,
     serializeWindowPosition,

@@ -1,6 +1,7 @@
 /** Five accessible client-side panels for the character room. */
 import { ACHIEVEMENTS } from '../renderer/achievements.js';
 import { OUTFITS } from '../renderer/wardrobe.js';
+import { getDndScheduleStatus } from './dnd-schedule-status.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -265,6 +266,8 @@ export const settingsTab = {
         updateCheck,
         updateInstall,
         onUpdateStatus,
+        windowStatus,
+        windowAction,
     }) {
         const settings = getSettings().settings || {};
         root.appendChild(panelHeader('偏好', '房间设置', '所有修改都会立即保存，并同步到桌面宠物。'));
@@ -363,6 +366,17 @@ export const settingsTab = {
             value: hour,
             label: `${String(hour).padStart(2, '0')}:00`,
         }));
+
+        const dndBadge = el('span', { class: 'control-status', 'data-state': 'loading' }, '正在读取…');
+        const dndDetail = el('p', { class: 'control-status-detail' }, '正在计算勿扰状态。');
+        const paintDndStatus = () => {
+            const status = getDndScheduleStatus(getSettings().settings || {});
+            dndBadge.dataset.state = status.tone;
+            dndBadge.textContent = status.label;
+            dndDetail.textContent = status.detail;
+        };
+        paintDndStatus();
+        const dndStatusTimer = setInterval(paintDndStatus, 30_000);
 
         const updateBadge = el('span', { class: 'update-status', 'data-state': 'loading' }, '正在读取…');
         const updateDetail = el('p', { class: 'update-detail' }, '正在检查此版本的更新能力。');
@@ -491,6 +505,74 @@ export const settingsTab = {
             ),
         );
         updateCard.classList.add('update-card');
+
+        const displayTarget = el('select', { id: 'setting-multi-display-target' },
+            el('option', { value: 'primary' }, '主显示器'),
+            el('option', { value: 'cursor' }, '跟随光标'));
+        const desktopBadge = el('span', { class: 'control-status', 'data-state': 'loading' }, '正在读取…');
+        const desktopDetail = el('p', { class: 'control-status-detail' }, '正在读取桌面窗口位置。');
+        const renderDisplayOptions = (status) => {
+            for (const option of [...displayTarget.querySelectorAll('option[data-display]')]) option.remove();
+            for (const display of status?.displays || []) {
+                const label = `${display.label}${display.primary ? ' · 主屏' : ''}`;
+                displayTarget.appendChild(el('option', { value: `display:${display.id}`, 'data-display': 'true' }, label));
+            }
+            const value = getSettings().settings?.multiDisplayTarget || 'primary';
+            if (!displayTarget.querySelector(`option[value="${CSS.escape(value)}"]`)) {
+                displayTarget.appendChild(el('option', { value }, `已保存的显示器 (${value.replace('display:', '')})`));
+            }
+            displayTarget.value = value;
+        };
+        const paintDesktopStatus = (status) => {
+            renderDisplayOptions(status);
+            if (!status?.available) {
+                desktopBadge.dataset.state = 'warning';
+                desktopBadge.textContent = '桌宠未运行';
+                desktopDetail.textContent = '桌面宠物窗口尚未就绪，请稍后重试。';
+                return;
+            }
+            const current = status.displays?.find((display) => display.id === status.displayId);
+            desktopBadge.dataset.state = 'active';
+            desktopBadge.textContent = current?.label || '当前显示器';
+            desktopDetail.textContent = `当前位置 ${status.bounds.x} × ${status.bounds.y} · 可随时移回当前屏幕或恢复默认位置。`;
+        };
+        const refreshDesktopStatus = async () => {
+            try {
+                paintDesktopStatus(await windowStatus());
+            } catch {
+                paintDesktopStatus(null);
+            }
+        };
+        displayTarget.addEventListener('change', async (event) => {
+            const saved = await persist(displayTarget, 'multiDisplayTarget', event.target.value, '显示器偏好');
+            displayTarget.value = saved;
+            refreshDesktopStatus();
+        });
+        const cursorButton = el('button', {
+            class: 'data-action secondary', type: 'button',
+            onclick: () => runAsync(cursorButton, async () => {
+                const result = await windowAction('move-to-cursor');
+                if (!result?.ok) throw new Error('桌宠窗口尚未就绪');
+                await refreshDesktopStatus();
+            }, { announce, success: '已移到光标所在屏幕。', failure: (error) => error?.message || '移动失败，请稍后重试。' }),
+        }, '移到当前屏幕');
+        const resetButton = el('button', {
+            class: 'data-action primary', type: 'button',
+            onclick: () => runAsync(resetButton, async () => {
+                const result = await windowAction('reset-position');
+                if (!result?.ok) throw new Error('桌宠窗口尚未就绪');
+                await refreshDesktopStatus();
+            }, { announce, success: '已恢复默认位置。', failure: (error) => error?.message || '恢复失败，请稍后重试。' }),
+        }, '恢复默认位置');
+        const desktopCard = card('桌面控制', '查看桌宠所在显示器，一键恢复到可见、安全的位置。',
+            el('div', { class: 'control-overview' }, el('div', {}, desktopBadge, desktopDetail)),
+            el('div', { class: 'toggle-row select-row' },
+                el('label', { class: 'setting-label', for: 'setting-multi-display-target' }, '启动显示器'),
+                displayTarget),
+            el('div', { class: 'control-actions', role: 'group', 'aria-label': '桌面窗口控制' }, cursorButton, resetButton));
+        desktopCard.classList.add('desktop-card');
+        const desktopStatusTimer = setInterval(refreshDesktopStatus, 15_000);
+        refreshDesktopStatus();
 
         const unsubscribeUpdate = typeof onUpdateStatus === 'function'
             ? onUpdateStatus(paintUpdateStatus)
@@ -697,6 +779,7 @@ export const settingsTab = {
                 slider('音量', 'volume', 0, 1, 0.05),
                 toggle('静音', 'mute')),
             card('勿扰', '手动开启，或在每天指定时段自动静音并抑制提醒。',
+                el('div', { class: 'control-overview dnd-overview' }, el('div', {}, dndBadge, dndDetail)),
                 toggle('手动勿扰', 'dndManual'),
                 toggle('定时勿扰', 'dndAutoEnabled'),
                 select('开始时间', 'dndHoursStart', hourOptions, { numeric: true }),
@@ -711,16 +794,16 @@ export const settingsTab = {
                     { value: 'normal', label: '正常' },
                     { value: 'high', label: '活跃' },
                 ])),
-            card('系统', '控制启动方式和显示器偏好。',
-                toggle('开机启动', 'autostart'),
-                select('多显示器', 'multiDisplayTarget', [
-                    { value: 'primary', label: '主显示器' },
-                    { value: 'cursor', label: '跟随光标' },
-                ])),
+            card('系统', '控制启动方式。', toggle('开机启动', 'autostart')),
+            desktopCard,
             updateCard,
             aiCard,
             dataCard,
         ));
-        return unsubscribeUpdate;
+        return () => {
+            unsubscribeUpdate();
+            clearInterval(dndStatusTimer);
+            clearInterval(desktopStatusTimer);
+        };
     },
 };

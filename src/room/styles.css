@@ -544,7 +544,8 @@ button:disabled {
 
 .data-card,
 .ai-card,
-.update-card {
+.update-card,
+.desktop-card {
     grid-column: 1 / -1;
 }
 
@@ -574,6 +575,57 @@ button:disabled {
     justify-content: space-between;
     gap: 24px;
     padding: 16px 0 8px;
+}
+
+.control-overview {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 15px 0 9px;
+}
+
+.dnd-overview {
+    padding-top: 13px;
+}
+
+.control-status {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    border: 1px solid var(--room-border);
+    border-radius: 999px;
+    background: var(--room-panel);
+    color: var(--room-muted);
+    font-size: 12px;
+    font-weight: 800;
+    padding: 3px 10px;
+}
+
+.control-status[data-state="active"] {
+    border-color: rgba(121, 214, 173, 0.42);
+    background: rgba(121, 214, 173, 0.1);
+    color: #b9f1d2;
+}
+
+.control-status[data-state="warning"] {
+    border-color: rgba(255, 190, 112, 0.42);
+    background: rgba(255, 190, 112, 0.1);
+    color: #ffd6a1;
+}
+
+.control-status-detail {
+    margin-top: 8px;
+    color: var(--room-muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.control-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 14px;
 }
 
 .update-status {
@@ -1086,6 +1138,10 @@ select {
         align-self: flex-start;
     }
 
+    .control-actions {
+        width: 100%;
+    }
+
     .update-actions {
         display: grid;
         grid-template-columns: 1fr;
@@ -1170,6 +1226,10 @@ select {
 
     .data-action {
         flex: 1 1 0;
+    }
+
+    .control-actions .data-action {
+        flex: 1 1 160px;
     }
 }
 

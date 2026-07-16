@@ -133,6 +133,12 @@ function isPlainRecord(value) {
     return proto === Object.prototype || proto === null;
 }
 
+function assertDisplayTarget(value) {
+    if (value === 'primary' || value === 'cursor') return;
+    if (typeof value === 'string' && /^display:[A-Za-z0-9_.-]{1,64}$/.test(value)) return;
+    throw new TypeError('settings.multiDisplayTarget must be primary, cursor, or a display id');
+}
+
 function assertPlainRecord(value, name) {
     if (!isPlainRecord(value)) throw new TypeError(`${name} must be a plain object`);
     return value;
@@ -311,7 +317,7 @@ const FIELD_VALIDATORS = {
         size: (v) => assertNumber(v, 'settings.size', { min: 0.5, max: 2 }),
         outfit: (v) => assertString(v, 'settings.outfit', 64, { allowEmpty: false }),
         autostart: (v) => assertBoolean(v, 'settings.autostart'),
-        multiDisplayTarget: (v) => assertEnum(v, ['primary', 'cursor'], 'settings.multiDisplayTarget'),
+        multiDisplayTarget: (v) => assertDisplayTarget(v),
         petWindowX: (v) => assertNullableNumber(v, 'settings.petWindowX', { min: -100_000, max: 100_000, integer: true }),
         petWindowY: (v) => assertNullableNumber(v, 'settings.petWindowY', { min: -100_000, max: 100_000, integer: true }),
         petDisplayId: (v) => assertString(v, 'settings.petDisplayId', 64),
