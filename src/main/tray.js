@@ -119,6 +119,17 @@ function buildMenu(sendState, withShowUnfinished = false) {
         { label: '开始番茄钟',  click: () => sendState('__cmd:pomodoro:start') },
         { label: '今日待办',    click: () => sendState('__cmd:room:open:todos') },
         { label: '角色状态',    click: () => sendState('__cmd:room:open:stats') },
+        {
+            label: '快捷场景',
+            submenu: [
+                { label: '自由陪伴', click: () => sendState('__cmd:scene:manual') },
+                { label: '专注工作', click: () => sendState('__cmd:scene:focus') },
+                { label: '轻松陪伴', click: () => sendState('__cmd:scene:relaxed') },
+                { label: '深夜休息', click: () => sendState('__cmd:scene:night') },
+                { type: 'separator' },
+                { label: '打开场景设置', click: () => sendState('__cmd:room:open:settings') },
+            ],
+        },
         { type: 'separator' },
         { label: '勿扰模式 (DND)', click: () => sendState('__cmd:dnd:toggle') },
         { type: 'separator' },

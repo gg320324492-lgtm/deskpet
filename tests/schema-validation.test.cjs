@@ -119,3 +119,23 @@ test('older settings receive nullable persisted pet window coordinates', () => {
     assert.doesNotThrow(() => validateDomainPatch('settings', { multiDisplayTarget: 'display:246873' }));
     assert.throws(() => validateDomainPatch('settings', { multiDisplayTarget: 'display:unsafe id' }), /display id/);
 });
+
+test('scene settings migrate safely and validate their supported values', () => {
+    const normalized = sanitizeDomain('settings', { volume: 0.5 });
+    assert.equal(normalized.sceneMode, 'manual');
+    assert.equal(normalized.sceneAutoEnabled, false);
+    assert.equal(normalized.sceneAutoPreset, 'focus');
+    assert.equal(normalized.sceneAutoStart, 9);
+    assert.equal(normalized.sceneAutoEnd, 18);
+
+    assert.doesNotThrow(() => validateDomainPatch('settings', {
+        sceneMode: 'night',
+        sceneAutoEnabled: true,
+        sceneAutoPreset: 'relaxed',
+        sceneAutoStart: 22,
+        sceneAutoEnd: 7,
+    }));
+    assert.throws(() => validateDomainPatch('settings', { sceneMode: 'party' }), /unsupported value/);
+    assert.throws(() => validateDomainPatch('settings', { sceneAutoPreset: 'manual' }), /unsupported value/);
+    assert.throws(() => validateDomainPatch('settings', { sceneAutoStart: 24 }), /allowed range/);
+});

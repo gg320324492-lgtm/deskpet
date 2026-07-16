@@ -30,6 +30,11 @@ const DOMAIN_DEFAULTS = Object.freeze({
         dndAutoEnabled: false,
         dndHoursStart: 22,
         dndHoursEnd:   7,
+        sceneMode: 'manual',
+        sceneAutoEnabled: false,
+        sceneAutoPreset: 'focus',
+        sceneAutoStart: 9,
+        sceneAutoEnd: 18,
         size: 1.0,
         outfit: 'default',
         autostart: false,
@@ -115,6 +120,11 @@ const _MIGRATIONS = {
             if (!('aiBaseUrl' in data)) data.aiBaseUrl = '';
             if (!('aiModel' in data)) data.aiModel = '';
             if (!('updateAutoCheck' in data)) data.updateAutoCheck = true;
+            if (!('sceneMode' in data)) data.sceneMode = 'manual';
+            if (!('sceneAutoEnabled' in data)) data.sceneAutoEnabled = false;
+            if (!('sceneAutoPreset' in data)) data.sceneAutoPreset = 'focus';
+            if (!('sceneAutoStart' in data)) data.sceneAutoStart = 9;
+            if (!('sceneAutoEnd' in data)) data.sceneAutoEnd = 18;
             return data;
         },
     ],
@@ -314,6 +324,11 @@ const FIELD_VALIDATORS = {
         dndAutoEnabled: (v) => assertBoolean(v, 'settings.dndAutoEnabled'),
         dndHoursStart: (v) => assertNumber(v, 'settings.dndHoursStart', { min: 0, max: 23, integer: true }),
         dndHoursEnd: (v) => assertNumber(v, 'settings.dndHoursEnd', { min: 0, max: 23, integer: true }),
+        sceneMode: (v) => assertEnum(v, ['manual', 'focus', 'relaxed', 'night'], 'settings.sceneMode'),
+        sceneAutoEnabled: (v) => assertBoolean(v, 'settings.sceneAutoEnabled'),
+        sceneAutoPreset: (v) => assertEnum(v, ['focus', 'relaxed', 'night'], 'settings.sceneAutoPreset'),
+        sceneAutoStart: (v) => assertNumber(v, 'settings.sceneAutoStart', { min: 0, max: 23, integer: true }),
+        sceneAutoEnd: (v) => assertNumber(v, 'settings.sceneAutoEnd', { min: 0, max: 23, integer: true }),
         size: (v) => assertNumber(v, 'settings.size', { min: 0.5, max: 2 }),
         outfit: (v) => assertString(v, 'settings.outfit', 64, { allowEmpty: false }),
         autostart: (v) => assertBoolean(v, 'settings.autostart'),

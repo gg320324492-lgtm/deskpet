@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.7 - 2026-07-17
+
+### Added
+
+- Added runtime-only companion scenes: Free Companion, Focus Work, Relaxed
+  Companion and Night Rest. Each scene temporarily adjusts activity and, where
+  appropriate, Do Not Disturb without overwriting the user's saved preferences.
+- Added scheduled scene switching with daytime and overnight time ranges.
+- Added a responsive Scene Companion card in room settings, including live
+  current-state feedback and one-click preset selection.
+- Added a Quick Scenes submenu in the system tray for instant scene changes.
+
+### Compatibility
+
+- Existing settings receive safe scene defaults automatically and need no reset.
+
 ## 1.0.6 - 2026-07-17
 
 ### Added

@@ -2,6 +2,7 @@
 import { ACHIEVEMENTS } from '../renderer/achievements.js';
 import { OUTFITS } from '../renderer/wardrobe.js';
 import { getDndScheduleStatus } from './dnd-schedule-status.js';
+import { SCENES, getSceneStatus } from '../renderer/scene-controller.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -377,6 +378,59 @@ export const settingsTab = {
         };
         paintDndStatus();
         const dndStatusTimer = setInterval(paintDndStatus, 30_000);
+
+        const sceneBadge = el('span', { class: 'control-status', 'data-state': 'loading' }, '正在读取…');
+        const sceneDetail = el('p', { class: 'control-status-detail' }, '正在计算场景状态。');
+        const sceneButtons = new Map();
+        const paintSceneStatus = () => {
+            const current = getSettings().settings || {};
+            const status = getSceneStatus(current);
+            sceneBadge.dataset.state = status.active ? 'active' : 'idle';
+            sceneBadge.textContent = status.scheduled ? `定时中 · ${status.label}` : status.label;
+            sceneDetail.textContent = status.active
+                ? `${status.label}正在以临时叠加的方式调整互动与勿扰，不会改写你的手动偏好。`
+                : '目前按你的常规偏好陪伴；选择一个场景可快速切换状态。';
+            for (const [id, button] of sceneButtons) {
+                const selected = id === status.id;
+                button.classList.toggle('active', selected);
+                button.setAttribute('aria-pressed', String(selected));
+            }
+        };
+        const sceneStatusTimer = setInterval(paintSceneStatus, 30_000);
+
+        const scenePicker = el('div', { class: 'scene-picker', role: 'group', 'aria-label': '选择陪伴场景' });
+        for (const scene of Object.values(SCENES)) {
+            const button = el('button', {
+                class: 'scene-choice',
+                type: 'button',
+                'aria-pressed': 'false',
+                onclick: async () => {
+                    const saved = await persist(button, 'sceneMode', scene.id, '陪伴场景');
+                    if (saved === scene.id) paintSceneStatus();
+                },
+            },
+                el('strong', {}, scene.label),
+                el('small', {}, scene.id === 'manual'
+                    ? '沿用当前偏好'
+                    : scene.dnd ? '安静 · 勿扰' : '更主动互动'),
+            );
+            sceneButtons.set(scene.id, button);
+            scenePicker.appendChild(button);
+        }
+        const sceneCard = card('场景化陪伴', '为当前状态一键切换陪伴方式；场景只在运行时生效，不会覆盖原有设置。',
+            el('div', { class: 'control-overview scene-overview' }, el('div', {}, sceneBadge, sceneDetail)),
+            scenePicker,
+            toggle('定时切换场景', 'sceneAutoEnabled'),
+            select('定时场景', 'sceneAutoPreset', [
+                { value: 'focus', label: '专注工作' },
+                { value: 'relaxed', label: '轻松陪伴' },
+                { value: 'night', label: '深夜休息' },
+            ]),
+            select('开始时间', 'sceneAutoStart', hourOptions, { numeric: true }),
+            select('结束时间', 'sceneAutoEnd', hourOptions, { numeric: true }),
+        );
+        sceneCard.classList.add('scene-card');
+        paintSceneStatus();
 
         const updateBadge = el('span', { class: 'update-status', 'data-state': 'loading' }, '正在读取…');
         const updateDetail = el('p', { class: 'update-detail' }, '正在检查此版本的更新能力。');
@@ -784,6 +838,7 @@ export const settingsTab = {
                 toggle('定时勿扰', 'dndAutoEnabled'),
                 select('开始时间', 'dndHoursStart', hourOptions, { numeric: true }),
                 select('结束时间', 'dndHoursEnd', hourOptions, { numeric: true })),
+            sceneCard,
             card('健康提醒', '按需启用周期性轻提醒。',
                 toggle('喝水提醒', 'waterEnabled'),
                 toggle('久坐提醒', 'sitEnabled'),
@@ -803,6 +858,7 @@ export const settingsTab = {
         return () => {
             unsubscribeUpdate();
             clearInterval(dndStatusTimer);
+            clearInterval(sceneStatusTimer);
             clearInterval(desktopStatusTimer);
         };
     },

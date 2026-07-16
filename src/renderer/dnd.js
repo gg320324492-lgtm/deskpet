@@ -44,6 +44,7 @@ export class DndController {
         this._initialized = false;
         this._manualActive = false;
         this._scheduledActive = false;
+        this._sceneActive = false;
         this._effective = false;
     }
 
@@ -72,6 +73,7 @@ export class DndController {
             manual: this._manualActive,
             auto: !!settings.dndAutoEnabled,
             scheduled: this._scheduledActive,
+            scene: this._sceneActive,
             effective: this._effective,
             startHour: settings.dndHoursStart,
             endHour: settings.dndHoursEnd,
@@ -83,7 +85,7 @@ export class DndController {
         this.syncFromSettings({ autoEnabled: !!flag, source: 'settings' });
     }
 
-    syncFromSettings({ notify = true, source = 'settings', autoEnabled } = {}) {
+    syncFromSettings({ notify = true, source = 'settings', autoEnabled, sceneActive = this._sceneActive } = {}) {
         const settings = this._settings();
         const manual = !!settings.dndManual;
         const auto = autoEnabled ?? !!settings.dndAutoEnabled;
@@ -95,7 +97,7 @@ export class DndController {
 
         if (auto && this._started) this._ensureScheduleTimer();
         else this._clearScheduleTimer();
-        this._applyEffective({ manual, scheduled, notify, source });
+        this._applyEffective({ manual, scheduled, scene: !!sceneActive, notify, source });
         return this.snapshot();
     }
 
@@ -121,11 +123,12 @@ export class DndController {
         this._scheduleTimer = null;
     }
 
-    _applyEffective({ manual, scheduled, notify, source }) {
-        const nextEffective = manual || scheduled;
+    _applyEffective({ manual, scheduled, scene, notify, source }) {
+        const nextEffective = manual || scheduled || scene;
         const changed = !this._initialized || nextEffective !== this._effective;
         this._manualActive = manual;
         this._scheduledActive = scheduled;
+        this._sceneActive = scene;
         this._effective = nextEffective;
 
         if (changed) {
@@ -133,7 +136,7 @@ export class DndController {
             else this._off();
         }
         if (this._initialized && changed && notify) {
-            this._onChange({ manual, scheduled, effective: nextEffective, source });
+            this._onChange({ manual, scheduled, scene, effective: nextEffective, source });
         }
         this._initialized = true;
     }

@@ -40,6 +40,7 @@ import { PomodoroTimer } from './pomodoro.js';
 import { ReminderEngine } from './reminders.js';
 import { TodoList } from './todo.js';
 import { DndController } from './dnd.js';
+import { SceneController } from './scene-controller.js';
 import { SoundManager } from './sound.js';
 import { Dialogue } from './dialogue.js';
 import { MoodEngine } from './mood.js';
@@ -217,6 +218,17 @@ async function main() {
     });
     dnd.start();
 
+    const scene = new SceneController({
+        getSettings: () => ({ settings: cache.get('settings') || {} }),
+        onChange: (status, { notify }) => {
+            const settings = cache.get('settings') || {};
+            arbiter.setEnabled((status.autonomyLevel || settings.autonomyLevel) !== 'low');
+            dnd.syncFromSettings({ sceneActive: status.dnd, source: 'scene', notify: false });
+            if (notify) animator.setBubbleText(`已切换到${status.label}`);
+        },
+    });
+    scene.start();
+
     // 12. Right-click menu — extra groups filled in
     const extraGroups = buildExtraMenuGroups({ pomodoro, todoList, reminders, dnd });
 
@@ -239,7 +251,7 @@ async function main() {
     // 15. Tray / main process event routes
     window.petAPI.onStateFromTray((state) => sm.transitionTo(state));
     window.petAPI.onTrayCommand((cmd) => handleTrayCommand(cmd, {
-        pomodoro, todoList, reminders, dnd, sm, animator, popover, getSettings, setSettings, allSettings, cache,
+        pomodoro, todoList, reminders, dnd, scene, sm, animator, popover, getSettings, setSettings, allSettings, cache,
     }));
     window.petAPI.onVisibility((visible) => {
         if (visible && sm.state === STATES.SLEEP) {
@@ -260,7 +272,7 @@ async function main() {
     window.petAPI.onStorageChange(async ({ domain, data }) => {
         cache.set(domain, data);
         if (domain === 'settings') {
-            applyLiveSettings(data, { interaction, arbiter, dnd });
+            applyLiveSettings(data, { interaction, arbiter, dnd, scene });
             syncAiBackend(aiChat).catch(() => {});
             if (Object.hasOwn(data, 'outfit')) {
                 await wardrobe.loadActive();
@@ -341,7 +353,7 @@ async function main() {
 
     // Debug handle
     window.__sm = sm;
-    window.__pet = { animator, idleWatcher, interaction, popover, pomodoro, reminders, todoList, dnd, sound, dialogue, mood, affinity, achievements, memory, wardrobe, cache };
+    window.__pet = { animator, idleWatcher, interaction, popover, pomodoro, reminders, todoList, dnd, scene, sound, dialogue, mood, affinity, achievements, memory, wardrobe, cache };
     console.log('[pet] Date Night Girl v2 ready (18 states + mood + affinity + achievements + room).');
 }
 
@@ -356,11 +368,14 @@ function applySettingsToStorageShape(allSettings) {
     }
 }
 
-function applyLiveSettings(settings, { interaction, arbiter, dnd }) {
-    if ('autonomyLevel' in settings) arbiter.setEnabled(settings.autonomyLevel !== 'low');
-    if (['dndManual', 'dndAutoEnabled', 'dndHoursStart', 'dndHoursEnd']
+function applyLiveSettings(settings, { interaction, arbiter, dnd, scene }) {
+    const sceneStatus = scene?.sync({ notify: false });
+    if ('autonomyLevel' in settings || sceneStatus) {
+        arbiter.setEnabled((sceneStatus?.autonomyLevel || settings.autonomyLevel) !== 'low');
+    }
+    if (['dndManual', 'dndAutoEnabled', 'dndHoursStart', 'dndHoursEnd', 'sceneMode', 'sceneAutoEnabled', 'sceneAutoPreset', 'sceneAutoStart', 'sceneAutoEnd']
         .some((key) => Object.hasOwn(settings, key))) {
-        dnd.syncFromSettings();
+        dnd.syncFromSettings({ sceneActive: !!sceneStatus?.dnd, notify: false });
     }
 }
 
@@ -641,6 +656,8 @@ function handleTrayCommand(cmd, refs) {
         window.petAPI.openRoom({ tab: requestedTab });
     } else if (parts[0] === 'dnd' && parts[1] === 'toggle') {
         refs.dnd.toggle();
+    } else if (parts[0] === 'scene' && ['manual', 'focus', 'relaxed', 'night'].includes(parts[1])) {
+        refs.setSettings({ settings: { sceneMode: parts[1] } });
     }
 }
 

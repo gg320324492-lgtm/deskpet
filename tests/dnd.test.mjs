@@ -71,6 +71,7 @@ test('startup applies scheduled DND without rewriting or announcing the manual f
         manual: false,
         auto: true,
         scheduled: true,
+        scene: false,
         effective: true,
         startHour: 22,
         endHour: 7,
@@ -96,6 +97,7 @@ test('schedule transitions update effective DND while preserving manual intent',
     assert.deepEqual(ctx.changes.at(-1), {
         manual: false,
         scheduled: false,
+        scene: false,
         effective: false,
         source: 'schedule',
     });

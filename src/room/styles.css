@@ -545,8 +545,86 @@ button:disabled {
 .data-card,
 .ai-card,
 .update-card,
-.desktop-card {
+.desktop-card,
+.scene-card {
     grid-column: 1 / -1;
+}
+
+.scene-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.scene-card::after {
+    content: '';
+    position: absolute;
+    top: -84px;
+    right: 12%;
+    width: 150px;
+    height: 150px;
+    border: 1px solid rgba(255, 138, 179, 0.14);
+    border-radius: 50%;
+    box-shadow: 0 0 0 24px rgba(143, 179, 255, 0.025), 0 0 0 52px rgba(121, 214, 173, 0.018);
+    pointer-events: none;
+}
+
+.scene-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.scene-overview {
+    padding-bottom: 4px;
+}
+
+.scene-picker {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+    padding: 13px 0 16px;
+}
+
+.scene-choice {
+    min-height: 78px;
+    border: 1px solid var(--room-border);
+    border-radius: 13px;
+    background: rgba(17, 19, 29, 0.3);
+    color: var(--room-text);
+    cursor: pointer;
+    padding: 12px 11px;
+    text-align: left;
+    transition: transform 180ms ease-out, border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.scene-choice strong,
+.scene-choice small {
+    display: block;
+}
+
+.scene-choice strong {
+    font-size: 14px;
+}
+
+.scene-choice small {
+    margin-top: 5px;
+    color: var(--room-subtle);
+    font-size: 11px;
+}
+
+.scene-choice:hover {
+    border-color: rgba(255, 138, 179, 0.46);
+    background: var(--room-card-hover);
+    transform: translateY(-2px);
+}
+
+.scene-choice.active {
+    border-color: var(--room-accent);
+    background: linear-gradient(145deg, rgba(199, 53, 107, 0.2), rgba(143, 179, 255, 0.1));
+    box-shadow: 0 10px 25px rgba(199, 53, 107, 0.14), inset 0 0 0 1px rgba(255, 138, 179, 0.15);
+}
+
+.scene-choice.active small {
+    color: #ffd4e5;
 }
 
 .update-card {
@@ -1104,6 +1182,10 @@ select {
 
     .settings-grid {
         grid-template-columns: 1fr;
+    }
+
+    .scene-picker {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .data-safety {
