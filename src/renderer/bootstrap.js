@@ -207,8 +207,11 @@ async function main() {
         behaviorArbiter: arbiter,
         sound,                     // Phase 3: mute sound under DND
         reminders,
-        onChange: ({ dndManual }) => {
-            animator.setBubbleText(dndManual ? '进入勿扰模式' : '已退出勿扰');
+        onChange: ({ manual, scheduled, effective }) => {
+            const message = effective
+                ? (scheduled && !manual ? '已进入定时勿扰' : '进入勿扰模式')
+                : '已退出勿扰';
+            animator.setBubbleText(message);
             setTimeout(() => sm.transitionTo(STATES.IDLE), 1500);
         },
     });
@@ -355,7 +358,10 @@ function applySettingsToStorageShape(allSettings) {
 
 function applyLiveSettings(settings, { interaction, arbiter, dnd }) {
     if ('autonomyLevel' in settings) arbiter.setEnabled(settings.autonomyLevel !== 'low');
-    if ('dndAutoEnabled' in settings) dnd.setAutoEnabled(settings.dndAutoEnabled);
+    if (['dndManual', 'dndAutoEnabled', 'dndHoursStart', 'dndHoursEnd']
+        .some((key) => Object.hasOwn(settings, key))) {
+        dnd.syncFromSettings();
+    }
 }
 
 async function syncAiBackend(aiChat) {

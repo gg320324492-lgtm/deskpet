@@ -1,74 +1,141 @@
 /**
- * src/renderer/dnd.js
+ * Manual and scheduled Do Not Disturb controller.
  *
- * DND mode controller.  Two flavors:
- *   - manual    : user toggled via tray menu / hotkey / right-click menu.
- *                 Always reliable.
- *   - auto      : best-effort detection via fullscreen + simple process-name
- *                 allowlist.  Documented as heuristic; games in exclusive
- *                 fullscreen may not be detected.
- *
- * Suppresses (via arbiter):
- *   - Random ambient bubbles
- *   - Reminder audio
- *   - Reminder toast popups (manual reminders still allowed)
- *
- * Clicks on the pet still register.
+ * Manual intent is persisted in settings.dndManual. Scheduled DND is derived
+ * from settings.dndAutoEnabled and the [start, end) hour range; it is never
+ * written back into the manual flag.
  */
 
-const HOTKEY_DEFAULT = 'Ctrl+Shift+D';
+const SCHEDULE_INTERVAL_MS = 30_000;
 
-// Heuristic process-name allowlist. Localized matching; case-insensitive.
-const FULLSCREEN_APPS = [
-    'powerpnt',          // PowerPoint
-    'keynote',
-    'impress',           // LibreOffice Impress
-    'steam',
-    'discord',
-    'obs64', 'obs32',    // OBS Studio
-    'code',              // VS Code presentation mode (full window)
-];
+export function isWithinDndHours(date, startHour, endHour) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
+    if (!Number.isInteger(startHour) || startHour < 0 || startHour > 23) return false;
+    if (!Number.isInteger(endHour) || endHour < 0 || endHour > 23) return false;
+    if (startHour === endHour) return false;
 
+    const hour = date.getHours();
+    if (startHour < endHour) return hour >= startHour && hour < endHour;
+    return hour >= startHour || hour < endHour;
+}
 export class DndController {
-    constructor({ getSettings, setSettings, behaviorArbiter, sound, reminders, onChange }) {
+    constructor({
+        getSettings,
+        setSettings,
+        behaviorArbiter,
+        sound,
+        reminders,
+        onChange,
+        now = () => new Date(),
+        setIntervalFn = (callback, delay) => globalThis.setInterval(callback, delay),
+        clearIntervalFn = (timer) => globalThis.clearInterval(timer),
+    }) {
         this._getSettings = getSettings;
         this._setSettings = setSettings;
         this._arbiter = behaviorArbiter;
-        this._sound    = sound;
+        this._sound = sound;
         this._reminders = reminders;
-        this._onChange  = onChange || (() => {});
-        this._autoProbe = null;
+        this._onChange = onChange || (() => {});
+        this._now = now;
+        this._setInterval = setIntervalFn;
+        this._clearInterval = clearIntervalFn;
+        this._scheduleTimer = null;
+        this._started = false;
+        this._initialized = false;
+        this._manualActive = false;
+        this._scheduledActive = false;
+        this._effective = false;
     }
 
     start() {
-        const settings = this._getSettings().settings;
-        if (settings.dndManual) this._on();
-        if (settings.dndAutoEnabled) this._startAutoProbe();
+        if (this._started) return;
+        this._started = true;
+        this.syncFromSettings({ notify: false, source: 'startup' });
+    }
+
+    stop() {
+        this._started = false;
+        this._clearScheduleTimer();
     }
 
     async toggle() {
-        const cur = this._getSettings().settings.dndManual;
-        const next = !cur;
-        await this._setSettings({ settings: { ...this._getSettings().settings, dndManual: next } });
-        if (next) this._on(); else this._off();
-        this._onChange({ dndManual: next });
+        const settings = this._settings();
+        const next = !settings.dndManual;
+        await this._setSettings({ settings: { dndManual: next } });
+        this.syncFromSettings({ source: 'manual' });
         return next;
     }
 
     snapshot() {
-        const settings = this._getSettings().settings;
+        const settings = this._settings();
         return {
-            manual: !!settings.dndManual,
-            auto:   !!settings.dndAutoEnabled,
-            effective: !!settings.dndManual,
+            manual: this._manualActive,
+            auto: !!settings.dndAutoEnabled,
+            scheduled: this._scheduledActive,
+            effective: this._effective,
+            startHour: settings.dndHoursStart,
+            endHour: settings.dndHoursEnd,
         };
     }
 
+    /** Apply settings that have already been persisted by the room or menu. */
     setAutoEnabled(flag) {
-        const settings = this._getSettings().settings;
-        this._setSettings({ settings: { ...settings, dndAutoEnabled: !!flag } });
-        if (flag) this._startAutoProbe();
-        else this._stopAutoProbe();
+        this.syncFromSettings({ autoEnabled: !!flag, source: 'settings' });
+    }
+
+    syncFromSettings({ notify = true, source = 'settings', autoEnabled } = {}) {
+        const settings = this._settings();
+        const manual = !!settings.dndManual;
+        const auto = autoEnabled ?? !!settings.dndAutoEnabled;
+        const scheduled = auto && isWithinDndHours(
+            this._now(),
+            settings.dndHoursStart,
+            settings.dndHoursEnd,
+        );
+
+        if (auto && this._started) this._ensureScheduleTimer();
+        else this._clearScheduleTimer();
+        this._applyEffective({ manual, scheduled, notify, source });
+        return this.snapshot();
+    }
+
+    refreshSchedule() {
+        return this.syncFromSettings({ source: 'schedule' });
+    }
+
+    _settings() {
+        return this._getSettings()?.settings || {};
+    }
+
+    _ensureScheduleTimer() {
+        if (this._scheduleTimer != null) return;
+        this._scheduleTimer = this._setInterval(
+            () => this.refreshSchedule(),
+            SCHEDULE_INTERVAL_MS,
+        );
+    }
+
+    _clearScheduleTimer() {
+        if (this._scheduleTimer == null) return;
+        this._clearInterval(this._scheduleTimer);
+        this._scheduleTimer = null;
+    }
+
+    _applyEffective({ manual, scheduled, notify, source }) {
+        const nextEffective = manual || scheduled;
+        const changed = !this._initialized || nextEffective !== this._effective;
+        this._manualActive = manual;
+        this._scheduledActive = scheduled;
+        this._effective = nextEffective;
+
+        if (changed) {
+            if (nextEffective) this._on();
+            else this._off();
+        }
+        if (this._initialized && changed && notify) {
+            this._onChange({ manual, scheduled, effective: nextEffective, source });
+        }
+        this._initialized = true;
     }
 
     _on() {
@@ -76,48 +143,10 @@ export class DndController {
         this._sound?.setMute(true);
         this._reminders?.setDnd(true);
     }
+
     _off() {
         this._arbiter.setDndHolding(false);
         this._sound?.setMute(false);
         this._reminders?.setDnd(false);
-    }
-
-    _startAutoProbe() {
-        if (this._autoProbe) return;
-        // We don't have a guaranteed foreground-window API in the renderer
-        // without a native addon; rely on user toggle as primary signal and
-        // a coarse "first launch fullscreen" check via main when available.
-        this._autoProbe = setInterval(() => {
-            // Defer to behavior-arbiter timeout + watch a flag set by main
-            // (see main.js sending `dnd:auto` on fullscreen events).
-        }, 60_000);
-        // Best-effort: ask main whether any fullscreen presentation app is foreground.
-        try {
-            window.petAPI.getDisplayBounds().then(b => {
-                const fullscreen = b.monitors?.some(m => {
-                    const ag = m; // rough probe
-                    return ag && ag._fullscreen;
-                });
-                // The main process is the authoritative source; this is just
-                // a placeholder for renderer-side heuristics.
-                if (fullscreen) this.onExternalFullscreen(true);
-            });
-        } catch (_) { /* ignore */ }
-    }
-
-    _stopAutoProbe() {
-        if (this._autoProbe) clearInterval(this._autoProbe);
-        this._autoProbe = null;
-    }
-
-    /** Called by main process when foreground fullscreen app is detected. */
-    onExternalFullscreen(detected) {
-        if (!this._getSettings().settings.dndAutoEnabled) return;
-        if (detected !== this._getSettings().settings.dndManual) {
-            if (detected) this._on();
-            else this._off();
-            this._setSettings({ settings: { ...this._getSettings().settings, dndManual: detected } });
-            this._onChange({ dndManual: detected });
-        }
     }
 }

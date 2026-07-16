@@ -34,6 +34,9 @@ const DOMAIN_DEFAULTS = Object.freeze({
         outfit: 'default',
         autostart: false,
         multiDisplayTarget: 'primary',
+        petWindowX: null,
+        petWindowY: null,
+        petDisplayId: '',
         onboardingDone: false,
         preferredName: '',
         aiBackend: 'local-template',
@@ -105,6 +108,9 @@ const _MIGRATIONS = {
     settings: [
         (data) => {
             if (!('multiDisplayTarget' in data)) data.multiDisplayTarget = 'primary';
+            if (!('petWindowX' in data)) data.petWindowX = null;
+            if (!('petWindowY' in data)) data.petWindowY = null;
+            if (!('petDisplayId' in data)) data.petDisplayId = '';
             if (!('aiBackend' in data)) data.aiBackend = 'local-template';
             if (!('aiBaseUrl' in data)) data.aiBaseUrl = '';
             if (!('aiModel' in data)) data.aiModel = '';
@@ -160,6 +166,12 @@ function assertNumber(value, name, { min = 0, max = Number.MAX_SAFE_INTEGER, int
     if (!Number.isFinite(value) || value < min || value > max || (integer && !Number.isInteger(value))) {
         throw new RangeError(`${name} is outside its allowed range`);
     }
+}
+
+function assertNullableNumber(value, name, options) {
+    if (value === null) return;
+    if (typeof value !== 'number') throw new TypeError(`${name} must be a number or null`);
+    assertNumber(value, name, options);
 }
 
 function assertEnum(value, allowed, name) {
@@ -300,6 +312,9 @@ const FIELD_VALIDATORS = {
         outfit: (v) => assertString(v, 'settings.outfit', 64, { allowEmpty: false }),
         autostart: (v) => assertBoolean(v, 'settings.autostart'),
         multiDisplayTarget: (v) => assertEnum(v, ['primary', 'cursor'], 'settings.multiDisplayTarget'),
+        petWindowX: (v) => assertNullableNumber(v, 'settings.petWindowX', { min: -100_000, max: 100_000, integer: true }),
+        petWindowY: (v) => assertNullableNumber(v, 'settings.petWindowY', { min: -100_000, max: 100_000, integer: true }),
+        petDisplayId: (v) => assertString(v, 'settings.petDisplayId', 64),
         onboardingDone: (v) => assertBoolean(v, 'settings.onboardingDone'),
         preferredName: (v) => assertString(v, 'settings.preferredName', 80),
         aiBackend: (v) => assertEnum(v, ['local-template', 'openai-compatible'], 'settings.aiBackend'),

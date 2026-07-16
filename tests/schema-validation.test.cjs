@@ -98,3 +98,22 @@ test('older backups receive defaults for newly added AI settings', () => {
     assert.equal(parsed.data.settings.aiModel, '');
     assert.equal(parsed.data.settings.updateAutoCheck, true);
 });
+
+test('older settings receive nullable persisted pet window coordinates', () => {
+    const normalized = sanitizeDomain('settings', {
+        volume: 0.5,
+        multiDisplayTarget: 'cursor',
+    });
+
+    assert.equal(normalized.petWindowX, null);
+    assert.equal(normalized.petWindowY, null);
+    assert.equal(normalized.petDisplayId, '');
+
+    assert.doesNotThrow(() => validateDomainPatch('settings', {
+        petWindowX: -1600,
+        petWindowY: 240,
+        petDisplayId: '246873',
+    }));
+    assert.throws(() => validateDomainPatch('settings', { petWindowX: 'left' }), /number or null/);
+    assert.throws(() => validateDomainPatch('settings', { petDisplayId: 'x'.repeat(65) }), /up to 64/);
+});

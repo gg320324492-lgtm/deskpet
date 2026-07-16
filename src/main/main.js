@@ -19,6 +19,8 @@ const {
     dragBy,
     moveTo,
     toggleWindow,
+    setDisplayTarget,
+    flushPetWindowPosition,
 } = require('./window');
 const { createTray } = require('./tray');
 const { storage } = require('./storage');
@@ -242,7 +244,10 @@ storage.on('change', ({ domain, data }) => {
     for (const win of targets) {
         win.webContents.send('storage:onchanged', { domain, data });
     }
-    if (domain === 'settings') updateService?.setAutoCheck(data.updateAutoCheck !== false);
+    if (domain === 'settings') {
+        updateService?.setAutoCheck(data.updateAutoCheck !== false);
+        setDisplayTarget(data.multiDisplayTarget);
+    }
 });
 
 // === Display / multi-monitor ===
@@ -297,7 +302,10 @@ app.whenReady().then(async () => {
     });
     updateService.start();
 
-    createPetWindow();
+    createPetWindow({
+        settings: storage.get('settings'),
+        persistPosition: (patch) => storage.set('settings', patch),
+    });
 
     // 托盘菜单选择状态时通过 broadcastState 通知渲染进程
     createTray(async (stateOrCmd) => {
@@ -325,6 +333,8 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
     global.appIsQuitting = true;
+    flushPetWindowPosition();
+    storage.flushAll();
 });
 
 app.on('will-quit', () => {

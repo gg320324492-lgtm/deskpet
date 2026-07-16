@@ -336,12 +336,13 @@ export const settingsTab = {
             );
         };
 
-        const select = (label, key, options) => {
+        const select = (label, key, options, { numeric = false } = {}) => {
             const id = `setting-${key}`;
             const control = el('select', {
                 id,
                 onchange: async (event) => {
-                    const saved = await persist(event.target, key, event.target.value, label);
+                    const value = numeric ? Number(event.target.value) : event.target.value;
+                    const saved = await persist(event.target, key, value, label);
                     event.target.value = saved;
                 },
             }, ...options.map((option) => el('option', {
@@ -358,6 +359,10 @@ export const settingsTab = {
             el('div', { class: 'settings-card-head' }, el('h3', {}, title), el('p', {}, description)),
             ...rows,
         );
+        const hourOptions = Array.from({ length: 24 }, (_, hour) => ({
+            value: hour,
+            label: `${String(hour).padStart(2, '0')}:00`,
+        }));
 
         const updateBadge = el('span', { class: 'update-status', 'data-state': 'loading' }, '正在读取…');
         const updateDetail = el('p', { class: 'update-detail' }, '正在检查此版本的更新能力。');
@@ -691,9 +696,11 @@ export const settingsTab = {
             card('声音', '控制提示音与互动音效。',
                 slider('音量', 'volume', 0, 1, 0.05),
                 toggle('静音', 'mute')),
-            card('勿扰', '减少工作或休息时的打断。',
+            card('勿扰', '手动开启，或在每天指定时段自动静音并抑制提醒。',
                 toggle('手动勿扰', 'dndManual'),
-                toggle('自动检测', 'dndAutoEnabled')),
+                toggle('定时勿扰', 'dndAutoEnabled'),
+                select('开始时间', 'dndHoursStart', hourOptions, { numeric: true }),
+                select('结束时间', 'dndHoursEnd', hourOptions, { numeric: true })),
             card('健康提醒', '按需启用周期性轻提醒。',
                 toggle('喝水提醒', 'waterEnabled'),
                 toggle('久坐提醒', 'sitEnabled'),
