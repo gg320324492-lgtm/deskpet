@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Desktop pet context menu review</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="../../src/renderer/styles.css">
+    <style>
+        html,
+        body {
+            width: 100%;
+            min-height: 100%;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 18% 22%, rgba(255, 220, 188, 0.82), transparent 32%),
+                radial-gradient(circle at 78% 76%, rgba(94, 126, 94, 0.82), transparent 36%),
+                linear-gradient(145deg, #34473b, #866f5d 54%, #27382f);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,.18) 1px, transparent 1px);
+            background-size: 12px 12px;
+            opacity: .55;
+        }
+
+        #pet-context-menu {
+            left: 6px;
+            top: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div id="pet-context-menu" role="menu" aria-label="桌宠操作">
+        <div class="ctx-group">常用</div>
+        <div class="ctx-item" role="menuitem" tabindex="0"><span>待机</span><span class="key">1</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>坐下</span><span class="key">3</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>睡觉</span><span class="key">5</span></div>
+        <div class="ctx-group">互动</div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>打个招呼</span><span class="key">👋</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>问她一句话</span><span class="key">💬</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>喂食</span><span class="key">🍰</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>随机动作</span><span class="key">🎲</span></div>
+        <div class="ctx-group">效率</div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>开始番茄钟</span><span class="key">⏱</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>今日待办</span><span class="key">☐</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>提醒我喝水</span><span class="key">💧</span></div>
+        <div class="ctx-group">角色</div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>打开角色房间</span><span class="key">🏠</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>查看成就</span><span class="key">🏆</span></div>
+        <div class="ctx-group">设置</div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>进入勿扰</span><span class="key">🌙</span></div>
+        <div class="ctx-item" role="menuitem" tabindex="-1"><span>偏好设置</span><span class="key">⚙</span></div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item ctx-quit" role="menuitem" tabindex="-1"><span>退出</span><span class="key">Esc×2</span></div>
+    </div>
+    <script type="module">
+        import { attachMenuKeyboardNavigation } from '../../src/renderer/menu-layout.mjs';
+
+        attachMenuKeyboardNavigation({ menu: document.getElementById('pet-context-menu') });
+    </script>
+</body>
+</html>

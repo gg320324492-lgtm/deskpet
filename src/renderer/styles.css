@@ -275,11 +275,16 @@ body { background-color: rgba(0, 0, 0, 0); }
     z-index: 9999;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+    max-height: calc(100vh - 12px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(107, 74, 61, 0.42) transparent;
 }
 #pet-context-menu .ctx-group {
     padding: 4px 14px 2px;
     font-size: 11px;
-    color: #888;
+    color: #6B5E58;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -293,8 +298,13 @@ body { background-color: rgba(0, 0, 0, 0); }
     gap: 12px;
 }
 #pet-context-menu .ctx-item:hover { background: #F3D7C1; }
+#pet-context-menu .ctx-item:focus-visible {
+    outline: 2px solid #9D4164;
+    outline-offset: -2px;
+    background: #FBE8EF;
+}
 #pet-context-menu .ctx-item .key {
-    color: #999;
+    color: #6B5E58;
     font-size: 11px;
     font-family: 'Consolas', monospace;
 }
