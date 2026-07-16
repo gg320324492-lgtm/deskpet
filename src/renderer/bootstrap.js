@@ -130,15 +130,17 @@ async function main() {
     // 2. Load sprites (after catalog presence)
     await spriteLoader.preload();
     // Apply the active outfit setting after sprites load
-    wardrobe.loadActive();
+    await wardrobe.loadActive();
 
     // 3. Init state machine
     const initial = await window.petAPI.getInitialState();
     const sm = new PetStateMachine(
         Object.values(STATES).includes(initial) ? initial : STATES.IDLE
     );
-    // Feed state changes into the AI chat context. (Must be after `sm` exists.)
+    // Feed state changes into the AI chat context and matching sound cue.
+    // (Must be after `sm` exists.)
     sm.onChange((next) => aiChat.noteState(next));
+    sm.onChange((next) => sound.playForState(next));
 
     // 4. Animator
     const animator = new Animator(root, sm);
@@ -168,6 +170,7 @@ async function main() {
             // Pick a more conversational line for the kind of reminder
             const line = dialogue.reminder(info.id);
             if (line) animator.setBubbleText(line);
+            sound.play(info.id === 'water' ? 'water' : 'chime');
             window.dispatchEvent(new CustomEvent('reminder:fire', { detail: info }));
         },
         popover,
@@ -218,7 +221,6 @@ async function main() {
     const interaction = new Interaction(root, sm, idleWatcher, {
         actionHandlers: buildActionHandlers({ pomodoro, todoList, reminders, dnd, popover, animator, getSettings, setSettings, allSettings, cache, root, wardrobe, aiChat, sm, dialogue, mood, memory }),
         extraMenuGroups: extraGroups,
-        showUnfinished: !!(cache.get('settings')?.showUnfinishedActions),
     });
 
     // Sync state class
@@ -252,11 +254,15 @@ async function main() {
     setTimeout(() => maybeGreet(animator, () => lastGreeting, (p) => lastGreeting = p), 3000);
 
     // 18. React to external storage changes
-    window.petAPI.onStorageChange(({ domain, data }) => {
+    window.petAPI.onStorageChange(async ({ domain, data }) => {
         cache.set(domain, data);
         if (domain === 'settings') {
             applyLiveSettings(data, { interaction, arbiter, dnd });
             syncAiBackend(aiChat).catch(() => {});
+            if (Object.hasOwn(data, 'outfit')) {
+                await wardrobe.loadActive();
+                animator.renderCurrent();
+            }
         }
     });
 
@@ -269,8 +275,6 @@ async function main() {
     mood.start();
 
     // 21. Persona event hooks
-    achievements.unlock(ACHIEVEMENTS.FIRST_BOOT.id, { source: 'boot' });
-
     let clickCount = 0;
     interaction.onUserInput(async () => {
         clickCount++;
@@ -282,18 +286,40 @@ async function main() {
         affinity.bump(0.5, 'click').catch(() => {});
     });
 
+    let previousPomodoroPhase = pomodoro.snapshot().phase;
+    let pomodoroFocusActive = false;
     pomodoro.onChange(() => {
         const snap = pomodoro.snapshot();
-        if (snap.phase === 'work' && snap.remainingMs > 0) mood.onPomodoroStart().catch(() => {});
-        if (snap.phase === 'idle')  mood.onPomodoroEnd().catch(() => {});
+        if (snap.phase === previousPomodoroPhase) return;
+
+        if (snap.phase === 'work') {
+            sound.play('pomodoroStart');
+            if (!pomodoroFocusActive) mood.onPomodoroStart().catch(() => {});
+            pomodoroFocusActive = true;
+        }
+        if (snap.phase === 'rest' || snap.phase === 'longRest') {
+            sound.play('pomodoroEnd');
+            if (pomodoroFocusActive) mood.onPomodoroEnd().catch(() => {});
+            pomodoroFocusActive = false;
+        }
+        if (snap.phase === 'idle') {
+            if (previousPomodoroPhase === 'rest' || previousPomodoroPhase === 'longRest') {
+                sound.play('pomodoroEnd');
+            }
+            if (pomodoroFocusActive) mood.onPomodoroEnd().catch(() => {});
+            pomodoroFocusActive = false;
+        }
+        previousPomodoroPhase = snap.phase;
     });
 
     // Todo completion side-effects (CHEER + return-to-IDLE) are handled in the
     // TodoList onAfterChange hook wired above.
 
     achievements.onUnlock((info) => {
+        sound.play('chime');
         animator.setBubbleText(`🏆 ${info.label}`);
     });
+    achievements.unlock(ACHIEVEMENTS.FIRST_BOOT.id, { source: 'boot' });
 
     // Greet on first launch (use S.NICKNAME template) and run onboarding wizard
     if (!cache.get('settings')?.onboardingDone) {
@@ -328,7 +354,6 @@ function applySettingsToStorageShape(allSettings) {
 }
 
 function applyLiveSettings(settings, { interaction, arbiter, dnd }) {
-    if ('showUnfinishedActions' in settings) interaction.setShowUnfinished(settings.showUnfinishedActions);
     if ('autonomyLevel' in settings) arbiter.setEnabled(settings.autonomyLevel !== 'low');
     if ('dndAutoEnabled' in settings) dnd.setAutoEnabled(settings.dndAutoEnabled);
 }
@@ -569,10 +594,6 @@ function openSettingsPopover({ cache, setSettings, popover, root }) {
                 </select>
             </label>
             <label style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <span>显示未完成动作</span>
-                <input id="set-unfin" type="checkbox" ${settings.showUnfinishedActions ? 'checked' : ''}/>
-            </label>
-            <label style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                 <span>开机启动</span>
                 <input id="set-auto2" type="checkbox" ${settings.autostart ? 'checked' : ''}/>
             </label>
@@ -597,7 +618,6 @@ function openSettingsPopover({ cache, setSettings, popover, root }) {
             ...settings,
             volume:  Number(host.querySelector('#set-vol').value),
             autonomyLevel: host.querySelector('#set-auto').value,
-            showUnfinishedActions: host.querySelector('#set-unfin').checked,
             autostart: actualAutostart,
         };
         await setSettings({ settings: newSettings });

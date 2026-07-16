@@ -32,7 +32,6 @@ const DOMAIN_DEFAULTS = Object.freeze({
         dndHoursEnd:   7,
         size: 1.0,
         outfit: 'default',
-        showUnfinishedActions: false,
         autostart: false,
         multiDisplayTarget: 'primary',
         onboardingDone: false,
@@ -106,7 +105,6 @@ const _MIGRATIONS = {
     settings: [
         (data) => {
             if (!('multiDisplayTarget' in data)) data.multiDisplayTarget = 'primary';
-            if (!('showUnfinishedActions' in data)) data.showUnfinishedActions = false;
             if (!('aiBackend' in data)) data.aiBackend = 'local-template';
             if (!('aiBaseUrl' in data)) data.aiBaseUrl = '';
             if (!('aiModel' in data)) data.aiModel = '';
@@ -300,7 +298,6 @@ const FIELD_VALIDATORS = {
         dndHoursEnd: (v) => assertNumber(v, 'settings.dndHoursEnd', { min: 0, max: 23, integer: true }),
         size: (v) => assertNumber(v, 'settings.size', { min: 0.5, max: 2 }),
         outfit: (v) => assertString(v, 'settings.outfit', 64, { allowEmpty: false }),
-        showUnfinishedActions: (v) => assertBoolean(v, 'settings.showUnfinishedActions'),
         autostart: (v) => assertBoolean(v, 'settings.autostart'),
         multiDisplayTarget: (v) => assertEnum(v, ['primary', 'cursor'], 'settings.multiDisplayTarget'),
         onboardingDone: (v) => assertBoolean(v, 'settings.onboardingDone'),

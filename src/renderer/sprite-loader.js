@@ -2,10 +2,8 @@
  * sprite-loader.js
  *
  * Preload every catalog sprite into <img> objects and build per-state
- * 128x128 alpha masks used for hit-testing.  When a catalog entry declares
- * `hasSprite: false`, the loader pulls its `fallbackSprite` and marks the
- * entry so the renderer can show a "新" badge and skip it in the menu
- * (unless the user enables "show unfinished actions" in settings).
+ * 128x128 alpha masks used for hit-testing. Alternate outfits are resolved
+ * per state, with a default-sprite fallback when a pack is still incomplete.
  *
  * Only one image is loaded per unique filename — both `love` and `drink`
  * for example may resolve to the same source if drink had a fallback that
@@ -20,6 +18,12 @@ import {
     stateEntry,
 } from './state-catalog.mjs';
 
+export function spriteCandidates(outfit, spriteName) {
+    const defaultUrl = `../../assets/processed/${spriteName}`;
+    if (!outfit || outfit === 'default') return [defaultUrl];
+    return [`../../assets/outfits/${outfit}/${spriteName}`, defaultUrl];
+}
+
 class SpriteLoader {
     constructor() {
         this._images        = new Map();   // state id -> <img>
@@ -29,29 +33,20 @@ class SpriteLoader {
         this._maskW = 128;
         this._maskH = 128;
         this._outfit = 'default';
-        this._cacheByOutfit = new Map();  // outfit -> Map(stateId -> <img>)
         this._ready = null;
     }
 
-    setOutfit(name) {
-        if (this._outfit === name) return false;
-        this._outfit = name || 'default';
-        this._images = this._cacheByOutfit.get(this._outfit) || new Map();
-        // If we already preloaded before outfit change, masks need rebuild.
-        // Easiest path: re-preload.  When outfit assets don't exist, the
-        // loader falls back to default for any missing files.
-        if (this._ready) {
-            this._ready = null;
-            this.preload();
-        }
+    async setOutfit(name) {
+        const next = name || 'default';
+        if (this._outfit === next) return false;
+        this._outfit = next;
+        this._images = new Map();
+        this._masks = new Map();
+        this._missing = new Set();
+        this._fallbackFor = new Map();
+        this._ready = null;
+        await this.preload();
         return true;
-    }
-
-    /** Compute the URL prefix for the active outfit. */
-    _base() {
-        return this._outfit === 'default'
-            ? '../../assets/processed'
-            : `../../assets/outfits/${this._outfit}`;
     }
 
     async preload() {
@@ -62,26 +57,26 @@ class SpriteLoader {
             const has = hasSprite(stateId);
             const spriteName = has ? resolveSprite(stateId) : resolveFallbackSprite(stateId);
             if (!spriteName) return;
-            const url = `${this._base()}/${spriteName}`;
+            let img = null;
+            for (const url of spriteCandidates(this._outfit, spriteName)) {
+                img = urlCache.get(url) || null;
+                if (img) break;
 
-            let img = urlCache.get(url);
-            if (!img) {
-                img = new Image();
-                img.src = url;
+                const candidate = new Image();
+                candidate.src = url;
                 try {
                     await new Promise((res, rej) => {
-                        img.onload  = res;
-                        img.onerror = () => rej(new Error(`load failed: ${img.src}`));
+                        candidate.onload = res;
+                        candidate.onerror = () => rej(new Error(`load failed: ${candidate.src}`));
                     });
-                    urlCache.set(url, img);
-                } catch (err) {
-                    // Outfit may be missing some files — silently no-op so
-                    // the pet can keep showing the default.  Until we
-                    // implement a per-file fallback chain, the visible sprite
-                    // remains the last-loaded or default.
-                    return;
+                    img = candidate;
+                    urlCache.set(url, candidate);
+                    break;
+                } catch (_) {
+                    img = null;
                 }
             }
+            if (!img) return;
 
             this._images.set(stateId, img);
             this._buildMask(stateId, img);
@@ -96,7 +91,6 @@ class SpriteLoader {
         });
 
         await Promise.all(tasks);
-        this._cacheByOutfit.set(this._outfit, this._images);
         this._ready = Promise.resolve(this);
         return this;
     }

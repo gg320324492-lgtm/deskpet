@@ -3,11 +3,10 @@
  *
  * SSOT (single source of truth) for every pet state.
  *
- * - 12 existing shipped states (hasSprite: true): every behaviour v1.x has.
- * - 6 placeholder states (hasSprite: false): registered for the §15 MVP list
- *   so the rest of the system (menu, keybinds, transitions, arbiter) can wire
- *   around them.  They render via fallbackSprite + a "新" badge until art
- *   arrives; see sprite-loader.js.
+ * - 12 original shipped states from v1.x.
+ * - 6 completed v2 states with generated, identity-matched sprite art.
+ * All 18 states retain fallbackSprite metadata so future outfit packs can
+ * recover gracefully from an incomplete asset set.
  *
  * This file is consumed by:
  *   - state-machine.js (STATES / TEMP_DURATIONS / ALLOWED via `transitions`)
@@ -244,13 +243,13 @@ const _CATALOG = Object.freeze({
         transitions: ['IDLE'],
     },
 
-    // ─── 6 placeholder states from §15 MVP ────────────────────────────────────
+    // ─── 6 completed v2 states ────────────────────────────────────────────────
     WAVE: {
         id: 'wave',
         sprite: 'wave.png',
         fallbackSprite: 'cheer.png',   // fall back to standing spin/cheer pose
-        hasSprite: false,
-        sources: null,
+        hasSprite: true,
+        sources: { v2: '14_wave.png', v1: null },
         category: 'temporary',
         cssClass: 'state-wave',
         menuGroup: '互动',
@@ -267,8 +266,8 @@ const _CATALOG = Object.freeze({
         id: 'drink',
         sprite: 'drink.png',
         fallbackSprite: 'eat.png',     // mouth-open pose is closest analog
-        hasSprite: false,
-        sources: null,
+        hasSprite: true,
+        sources: { v2: '09_drink.png', v1: null },
         category: 'temporary',
         cssClass: 'state-drink',
         menuGroup: '互动',
@@ -285,8 +284,8 @@ const _CATALOG = Object.freeze({
         id: 'run',
         sprite: 'run.png',
         fallbackSprite: 'walk.png',    // jog uses walk sprite until art arrives
-        hasSprite: false,
-        sources: null,
+        hasSprite: true,
+        sources: { v2: '10_run.png', v1: null },
         category: 'action',
         cssClass: 'state-run',
         menuGroup: '行为',
@@ -302,8 +301,8 @@ const _CATALOG = Object.freeze({
         id: 'land',
         sprite: 'land.png',
         fallbackSprite: 'sit.png',     // post-landing settles into sit pose
-        hasSprite: false,
-        sources: null,
+        hasSprite: true,
+        sources: { v2: '11_land.png', v1: null },
         category: 'temporary',
         cssClass: 'state-land',
         menuGroup: null,               // not in menu — triggered on drop
@@ -320,8 +319,8 @@ const _CATALOG = Object.freeze({
         id: 'angry',
         sprite: 'angry.png',
         fallbackSprite: 'surprise.png',// closest wide-mouth / shocked pose
-        hasSprite: false,
-        sources: null,
+        hasSprite: true,
+        sources: { v2: '12_angry.png', v1: null },
         category: 'temporary',
         cssClass: 'state-angry',
         menuGroup: '表情',
@@ -338,8 +337,8 @@ const _CATALOG = Object.freeze({
         id: 'stretch',
         sprite: 'stretch.png',
         fallbackSprite: 'yawn.png',    // yawn pose is the closest "stretch" analog
-        hasSprite: false,
-        sources: null,
+        hasSprite: true,
+        sources: { v2: '13_stretch.png', v1: null },
         category: 'temporary',
         cssClass: 'state-stretch',
         menuGroup: '互动',
@@ -441,7 +440,7 @@ for (const key of STATE_KEYS) {
         _menuGroupsMap.set(g, []);
         _menuOrder.push(g);
     }
-    if (!_CATALOG[key].hasSprite) continue;   // do not show missing-art states (Phase 6 toggle re-shows them)
+    if (!_CATALOG[key].hasSprite) continue;   // keep future incomplete states out of the menu
     _menuGroupsMap.get(g).push({
         id: _CATALOG[key].id,
         key: _CATALOG[key].key,

@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -56,6 +57,8 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "assets" / "raw"
 RAW_V2_DIR = ROOT / "assets" / "raw_v2"
 OUTPUT_DIR = ROOT / "assets" / "processed"
+RAW_OUTFITS_DIR = ROOT / "assets" / "raw_outfits"
+OUTFITS_DIR = ROOT / "assets" / "outfits"
 MANIFEST_PATH = ROOT / "assets" / "state-manifest.json"
 
 # Sprite output size (px). Width auto-derived from aspect ratio.
@@ -189,13 +192,19 @@ def resize_to_height(rgba: Image.Image, target_h: int) -> Image.Image:
 
 
 # ============ Main processing ============
-def process_one(state: str, sources: tuple, use_rembg: bool = True) -> tuple[str, str, tuple[int, int], str]:
+def process_one(
+    state: str,
+    sources: tuple,
+    use_rembg: bool = True,
+    source_path: Path | None = None,
+    output_dir: Path = OUTPUT_DIR,
+) -> tuple[str, str, tuple[int, int], str]:
     """Process a single state. Returns (state, output_filename, size, source_tag)."""
     v2_name, v1_name = sources
-    src_path = None
-    source_tag = ""
+    src_path = source_path
+    source_tag = "outfit" if source_path else ""
 
-    if v2_name:
+    if src_path is None and v2_name:
         candidate = RAW_V2_DIR / v2_name
         if candidate.exists():
             src_path = candidate
@@ -216,7 +225,11 @@ def process_one(state: str, sources: tuple, use_rembg: bool = True) -> tuple[str
     img = Image.open(src_path).convert("RGBA")
 
     # Background removal
-    if use_rembg:
+    alpha_min, _alpha_max = img.getchannel("A").getextrema()
+    if alpha_min < 255:
+        print("alpha source ...", end=" ", flush=True)
+        cut = img
+    elif use_rembg:
         print("rembg ...", end=" ", flush=True)
         try:
             cut = _rembg_remove(img)
@@ -235,7 +248,7 @@ def process_one(state: str, sources: tuple, use_rembg: bool = True) -> tuple[str
     cut = resize_to_height(cut, TARGET_HEIGHT)
 
     # Save
-    out_path = OUTPUT_DIR / f"{state}.png"
+    out_path = output_dir / f"{state}.png"
     cut.save(out_path, "PNG", optimize=True)
     print(f"-> {out_path.name} {cut.size}")
     return state, out_path.name, cut.size, source_tag
@@ -246,9 +259,18 @@ def main() -> int:
     parser.add_argument("--no-rembg", action="store_true", help="Skip rembg (faster, lower quality)")
     parser.add_argument("--force-legacy", action="store_true",
                         help="Ignore state-manifest.json and use the built-in map")
+    parser.add_argument("--state", action="append", default=[],
+                        help="Process only this state ID (repeatable)")
+    parser.add_argument("--outfit",
+                        help="Process assets/raw_outfits/<name> into assets/outfits/<name>")
     args = parser.parse_args()
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    outfit_name = (args.outfit or "").strip().lower()
+    if outfit_name and not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,39}", outfit_name):
+        parser.error("--outfit must use 1-40 lowercase letters, digits, dashes or underscores")
+
+    output_dir = OUTFITS_DIR / outfit_name if outfit_name else OUTPUT_DIR
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Resolve state source mapping: manifest first; legacy only as safety net
     # when the manifest is unavailable, --force-legacy is set, or the manifest
@@ -261,13 +283,40 @@ def main() -> int:
     # (see scripts/gen_state_manifest.mjs).  Placeholder states without
     # `sources` are filtered out in load_manifest_state_sources().
     state_sources = {k: v for k, v in state_sources.items() if v[0] or v[1]}
+    requested = {state.strip().lower() for state in args.state if state.strip()}
+    known_states = set(state_sources)
+    outfit_sources = {}
+    if outfit_name:
+        source_dir = RAW_OUTFITS_DIR / outfit_name
+        if not source_dir.is_dir():
+            parser.error(f"outfit source directory does not exist: {source_dir}")
+        outfit_sources = {
+            path.stem.lower(): path
+            for path in source_dir.glob("*.png")
+            if path.stem.lower() in known_states
+        }
+        if requested:
+            missing = requested.difference(outfit_sources)
+            if missing:
+                parser.error(f"outfit source missing for state(s): {', '.join(sorted(missing))}")
+        else:
+            requested = set(outfit_sources)
+
+    if requested:
+        unknown = requested.difference(known_states)
+        if unknown:
+            parser.error(f"unknown or sourceless state(s): {', '.join(sorted(unknown))}")
+        state_sources = {k: v for k, v in state_sources.items() if k in requested}
 
     print("=" * 72)
     print("Date Night Girl Asset Preprocessor")
     print("=" * 72)
     print(f"  v2 source : {RAW_V2_DIR}")
     print(f"  v1 source : {RAW_DIR}")
-    print(f"  output    : {OUTPUT_DIR}")
+    if outfit_name:
+        print(f"  outfit    : {outfit_name}")
+        print(f"  source    : {RAW_OUTFITS_DIR / outfit_name}")
+    print(f"  output    : {output_dir}")
     print(f"  manifest  : {MANIFEST_PATH}{'(ignored by --force-legacy)' if args.force_legacy else ''}")
     print(f"  size      : height={TARGET_HEIGHT}px, padded {TRANSPARENT_PAD}px")
     print(f"  rembg     : {'disabled (white-pixel fallback)' if args.no_rembg else 'enabled (u2net)'}")
@@ -277,7 +326,13 @@ def main() -> int:
     results = []
     for state in state_sources:
         try:
-            r = process_one(state, sources=state_sources[state], use_rembg=not args.no_rembg)
+            r = process_one(
+                state,
+                sources=state_sources[state],
+                use_rembg=not args.no_rembg,
+                source_path=outfit_sources.get(state),
+                output_dir=output_dir,
+            )
             results.append(r)
         except Exception as e:
             print(f"\n[ERROR] {state}: {e}", file=sys.stderr)

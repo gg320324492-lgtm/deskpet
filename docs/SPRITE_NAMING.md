@@ -11,7 +11,7 @@ assets/processed/
   idle.png
   walk.png
   sit.png
-  ...共 12 个已有状态 + 新增 6 个占位
+  ...共 18 个完整状态
 ```
 
 服装目录下同样命名（结构镜像 processed）：
@@ -20,7 +20,7 @@ assets/processed/
 assets/outfits/<outfit-name>/
   idle.png
   walk.png
-  ...12 张各对应一个状态
+  ...18 张各对应一个状态
 ```
 
 ## 输入源命名（preprocess 阶段）

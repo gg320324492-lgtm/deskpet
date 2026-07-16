@@ -1,17 +1,28 @@
 # Outfit assets
 
-Outfits are alternate sprite sets. The default outfit maps to `assets/processed/`.
+Outfits are alternate sprite sets. The default outfit maps to
+`assets/processed/`. The bundled `sleepwear` pack includes all 18 states:
+`idle`, `walk`, `sit`, `eat`, `think`, `cheer`, `surprise`, `sleep`, `yawn`,
+`love`, `work`, `peek`, `wave`, `drink`, `run`, `land`, `angry`, and `stretch`.
+Incomplete custom packs still fall back to their matching default sprites at runtime.
 
-To add a new outfit, create a folder here with the same sprite filenames
-as in the default outfit and toggle via wardrobe.js:
+To add a new outfit, place transparent source PNGs under
+`assets/raw_outfits/<outfit-name>/`, using state IDs as filenames:
 
-    assets/outfits/<outfit-name>/
-        idle.png
-        walk.png
-        ...etc
+```text
+assets/raw_outfits/<outfit-name>/
+  idle.png
+  walk.png
+  sit.png
+  ...
+```
 
-Each PNG must be 220px tall, transparent background, processed the same
-way as defaults. The simplest way: run preprocess on a separate
-`raw/outfits/<name>/` source set, then point wardrobe.js at the output.
+Process the whole pack, or selected states:
 
-Until art lands, wardrobe.js keeps the default "default" outfit active.
+```shell
+python scripts/preprocess_assets.py --outfit <outfit-name>
+python scripts/preprocess_assets.py --outfit <outfit-name> --state idle
+```
+
+Processed files are written to `assets/outfits/<outfit-name>/`. Add the pack's
+metadata to `OUTFITS` in `src/renderer/wardrobe.js` to expose it in the UI.

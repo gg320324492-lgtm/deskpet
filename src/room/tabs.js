@@ -1,5 +1,6 @@
 /** Five accessible client-side panels for the character room. */
 import { ACHIEVEMENTS } from '../renderer/achievements.js';
+import { OUTFITS } from '../renderer/wardrobe.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -163,26 +164,37 @@ export const achievementsTab = {
 export const outfitsTab = {
     render(root, { getSettings, setSettings, announce }) {
         const active = getSettings().settings?.outfit || 'default';
-        root.appendChild(panelHeader('衣橱', '服装搭配', '已上线服装可以立即换装，其余位置会在新素材到达后开放。'));
+        root.appendChild(panelHeader('衣橱', '服装搭配', '服装可以即时切换；薰衣草睡衣已覆盖全部 18 个动作。'));
 
-        let defaultTile;
-        defaultTile = el('button', {
-            class: `tile outfit-tile interactive ${active === 'default' ? 'active' : ''}`,
-            type: 'button',
-            'aria-pressed': String(active === 'default'),
-            onclick: () => runAsync(defaultTile, async () => {
-                await setSettings({ settings: { outfit: 'default' } });
-                defaultTile.classList.add('active');
-                defaultTile.setAttribute('aria-pressed', 'true');
-                document.dispatchEvent(new CustomEvent('wardrobe:change', { detail: 'default' }));
-            }, { announce, success: '已换上默认白裙。' }),
-        },
-            el('span', { class: 'outfit-swatch default-swatch', 'aria-hidden': 'true' }),
-            el('strong', {}, '默认白裙'),
-            el('small', {}, active === 'default' ? '当前穿着' : '点击换装'),
-        );
+        const outfitTiles = OUTFITS.map((outfit) => {
+            let button;
+            button = el('button', {
+                class: `tile outfit-tile interactive ${active === outfit.id ? 'active' : ''}`,
+                type: 'button',
+                'aria-pressed': String(active === outfit.id),
+                onclick: () => runAsync(button, async () => {
+                    await setSettings({ settings: { outfit: outfit.id } });
+                    for (const tile of root.querySelectorAll('button.outfit-tile')) {
+                        const selected = tile === button;
+                        tile.classList.toggle('active', selected);
+                        tile.setAttribute('aria-pressed', String(selected));
+                        const status = tile.querySelector('[data-outfit-status]');
+                        if (status) status.textContent = selected ? '当前穿着' : '点击换装';
+                    }
+                }, { announce, success: `已换上${outfit.label}。` }),
+            },
+                el('span', { class: `outfit-swatch ${outfit.swatchClass}`, 'aria-hidden': 'true' }),
+                el('strong', {}, outfit.label),
+                el('small', { 'data-outfit-status': '' }, active === outfit.id ? '当前穿着' : '点击换装'),
+                el('small', { class: 'outfit-description' },
+                    outfit.completedStates
+                        ? `${outfit.description} · ${outfit.completedStates.length}/18 个动作`
+                        : outfit.description),
+            );
+            return button;
+        });
 
-        const placeholders = ['樱花', '夜色', '果茶', '运动', '睡衣', '学生'].map((name) =>
+        const placeholders = ['樱花', '夜色', '运动', '学生'].map((name) =>
             el('article', { class: 'tile outfit-tile locked', 'aria-disabled': 'true' },
                 el('span', { class: 'outfit-swatch locked-swatch', 'aria-hidden': 'true' }),
                 el('strong', {}, name),
@@ -190,9 +202,9 @@ export const outfitsTab = {
             ),
         );
 
-        root.appendChild(el('div', { class: 'tile-grid outfit-grid' }, defaultTile, ...placeholders));
+        root.appendChild(el('div', { class: 'tile-grid outfit-grid' }, ...outfitTiles, ...placeholders));
         root.appendChild(el('p', { class: 'room-note' },
-            '新增服装时，将同名状态 PNG 放入 assets/outfits/<名称>，重新启动应用即可加载。'));
+            '薰衣草睡衣已覆盖全部动作；换装无需重启应用。'));
     },
 };
 
@@ -691,8 +703,7 @@ export const settingsTab = {
                     { value: 'low', label: '安静' },
                     { value: 'normal', label: '正常' },
                     { value: 'high', label: '活跃' },
-                ]),
-                toggle('显示未完成动作', 'showUnfinishedActions')),
+                ])),
             card('系统', '控制启动方式和显示器偏好。',
                 toggle('开机启动', 'autostart'),
                 select('多显示器', 'multiDisplayTarget', [
