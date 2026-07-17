@@ -9,6 +9,7 @@ import { TIME_BLOCKS, timeBlockLabel } from '../renderer/time-blocks.js';
 import { buildDayCloseout, dayCloseoutPatch } from '../renderer/day-closeout.js';
 import { buildTomorrowStart, canPlanTomorrow, returnToInboxPatch, tomorrowPlanPatch } from '../renderer/tomorrow-start.js';
 import { beginTodayPatch, buildTodayStart, nextOpenTimeBlock } from '../renderer/today-start.js';
+import { archiveTaskPatch, restoreTaskPatch, staleTasks } from '../renderer/task-triage.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -444,6 +445,8 @@ export const feedTab = {
         const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
+        const archivedTasks = allTodos.filter((item) => todoBucket(item) === 'archive');
+        const stale = staleTasks({ todos: allTodos });
         const dayCloseout = buildDayCloseout({ todos: allTodos });
         const tomorrowStart = buildTomorrowStart({ todos: allTodos });
         const todayStart = buildTodayStart({ todos: allTodos });
@@ -487,6 +490,8 @@ export const feedTab = {
             return applyTodoPatch(task.id, tomorrowPlanPatch(role));
         };
         const returnTomorrowTask = (task) => applyTodoPatch(task.id, returnToInboxPatch());
+        const archiveTask = (task) => applyTodoPatch(task.id, archiveTaskPatch());
+        const restoreTask = (task) => applyTodoPatch(task.id, restoreTaskPatch());
         const startCarriedFocus = async (task) => {
             const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
             if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
@@ -741,6 +746,36 @@ export const feedTab = {
                 el('div', { class: 'tomorrow-candidates-head' }, el('h4', {}, '从收件箱慢慢挑'), el('small', {}, inboxTasks.length ? `展示前 ${Math.min(4, inboxTasks.length)} 件` : '暂时没有收件箱任务')),
                 inboxCandidates.length ? el('div', { class: 'tomorrow-candidate-list' }, ...inboxCandidates) : el('p', { class: 'tomorrow-candidates-empty' }, '不用填满。明天也可以从一件空白开始。'),
             ),
+        ));
+        const triageRow = (task, archived = false) => {
+            if (archived) {
+                let restoreButton;
+                restoreButton = el('button', {
+                    class: 'triage-action', type: 'button',
+                    onclick: () => runAsync(restoreButton, () => restoreTask(task), { announce, success: '已恢复到收件箱。' }),
+                }, '恢复到收件箱');
+                return el('article', { class: 'triage-row' }, el('strong', {}, task.title), restoreButton);
+            }
+            let first;
+            first = el('button', {
+                class: 'triage-action', type: 'button',
+                onclick: () => runAsync(first, () => archived ? restoreTask(task) : placeTodo(task, 'today'), {
+                    announce, success: archived ? '已恢复到收件箱。' : '已放到今天。',
+                }),
+            }, '放到今天');
+            let second;
+            second = el('button', {
+                class: 'triage-action archive', type: 'button',
+                onclick: () => runAsync(second, () => archiveTask(task), {
+                    announce, success: '已归档，可随时恢复。',
+                }),
+            }, '归档');
+            return el('article', { class: 'triage-row' }, el('strong', {}, task.title), el('div', {}, first, second));
+        };
+        if (stale.length || archivedTasks.length) root.appendChild(el('section', { class: 'card triage-card' },
+            el('div', { class: 'triage-head' }, el('div', {}, el('span', {}, 'TASK RESET'), el('h3', {}, '回看一下，不必硬扛')), el('small', {}, '不删除数据')),
+            stale.length ? el('div', { class: 'triage-list' }, ...stale.slice(0, 4).map((task) => triageRow(task))) : el('p', { class: 'triage-empty' }, '没有久留任务。'),
+            archivedTasks.length ? el('details', { class: 'triage-archive' }, el('summary', {}, `已归档 ${archivedTasks.length} 件`), el('div', { class: 'triage-list' }, ...archivedTasks.slice(0, 6).map((task) => triageRow(task, true)))) : null,
         ));
         root.appendChild(el('section', { class: 'card todo-board-card' },
             el('div', { class: 'todo-board-head' },

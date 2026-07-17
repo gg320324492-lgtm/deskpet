@@ -12,7 +12,7 @@
  */
 
 const REPEAT_DEFAULT = 'none';
-const TODO_BUCKETS = new Set(['inbox', 'today', 'later']);
+const TODO_BUCKETS = new Set(['inbox', 'today', 'later', 'archive']);
 
 function localDateKey(value = new Date()) {
     const date = value instanceof Date ? value : new Date(value);

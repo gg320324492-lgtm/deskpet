@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.6 - 2026-07-17
+
+### Added
+
+- Added a local task reset card for open inbox or Later tasks that have waited
+  seven days or longer.
+- Added reversible local task archiving: archive a task to hide it from daily
+  lanes, then restore it to the inbox whenever it becomes relevant again.
+
 ## 1.1.5 - 2026-07-17
 
 ### Added

@@ -244,7 +244,7 @@ function validateTodoItem(item, index = 0) {
     if (Object.hasOwn(item, 'priority')) assertEnum(item.priority, [1, 2, 3], `${name}.priority`);
     if (Object.hasOwn(item, 'dueAt')) assertOptionalDateTime(item.dueAt, `${name}.dueAt`);
     if (Object.hasOwn(item, 'repeat')) assertEnum(item.repeat, ['none', 'daily', 'weekly'], `${name}.repeat`);
-    if (Object.hasOwn(item, 'bucket')) assertEnum(item.bucket, ['inbox', 'today', 'later'], `${name}.bucket`);
+    if (Object.hasOwn(item, 'bucket')) assertEnum(item.bucket, ['inbox', 'today', 'later', 'archive'], `${name}.bucket`);
     if (Object.hasOwn(item, 'timeBlock')) assertEnum(item.timeBlock, ['', 'morning', 'afternoon', 'evening'], `${name}.timeBlock`);
     if (Object.hasOwn(item, 'tomorrowPlan')) assertEnum(item.tomorrowPlan, ['', 'important', 'doable'], `${name}.tomorrowPlan`);
     if (Object.hasOwn(item, 'completed')) assertBoolean(item.completed, `${name}.completed`);
