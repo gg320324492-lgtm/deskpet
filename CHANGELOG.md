@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.8 - 2026-07-17
+
+### Added
+
+- Added a compact task editor for updating a title, optional next step, and
+  task location without rebuilding the task.
+- Notes are local-only, safely bounded, shown in task search, and preserved
+  when recurring tasks are queued again.
+
 ## 1.1.7 - 2026-07-17
 
 ### Added

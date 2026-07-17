@@ -11,6 +11,7 @@ import { buildTomorrowStart, canPlanTomorrow, returnToInboxPatch, tomorrowPlanPa
 import { beginTodayPatch, buildTodayStart, nextOpenTimeBlock } from '../renderer/today-start.js';
 import { archiveTaskPatch, restoreTaskPatch, staleTasks } from '../renderer/task-triage.js';
 import { searchTasks } from '../renderer/task-search.js';
+import { taskEditorPatch } from '../renderer/task-editor.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -81,6 +82,7 @@ function makeInboxTodo(title) {
     return {
         id: `t${Date.now()}${Math.random().toString(36).slice(2, 7)}`,
         title: String(title || '').trim().slice(0, 120),
+        note: '',
         priority: 1,
         dueAt: null,
         repeat: 'none',
@@ -518,6 +520,54 @@ export const feedTab = {
             await setSettings({ rhythm: { ...rhythm, reflections } });
             refreshCurrent();
         };
+        const openTaskEditor = (task) => {
+            const titleInput = el('input', {
+                class: 'task-editor-input', id: 'task-editor-title', type: 'text', maxlength: 120,
+                value: task.title || '', 'aria-label': '任务标题',
+            });
+            const noteInput = el('textarea', {
+                class: 'task-editor-note', maxlength: 240, rows: 3,
+                placeholder: '例如：先找三份参考资料', 'aria-label': '下一步（可选）', value: task.note || '',
+            });
+            const bucketInput = el('select', { class: 'task-editor-location', 'aria-label': '任务位置', value: todoBucket(task) },
+                el('option', { value: 'inbox' }, '收件箱'),
+                el('option', { value: 'today' }, '今天'),
+                el('option', { value: 'later' }, '稍后'),
+                el('option', { value: 'archive' }, '归档'),
+            );
+            bucketInput.value = todoBucket(task);
+            const close = () => backdrop.remove();
+            let saveButton;
+            const form = el('form', {
+                class: 'task-editor-form',
+                onsubmit: (event) => {
+                    event.preventDefault();
+                    runAsync(saveButton, () => applyTodoPatch(task.id, taskEditorPatch({
+                        task, title: titleInput.value, note: noteInput.value, bucket: bucketInput.value,
+                    })), { announce, success: '任务已轻轻更新。', failure: (error) => error?.message || '无法保存任务。' });
+                },
+            },
+            el('div', { class: 'task-editor-head' },
+                el('div', {}, el('span', {}, 'TASK NOTE'), el('h3', {}, '把这件事改得刚刚好')),
+                el('button', { class: 'task-editor-close', type: 'button', 'aria-label': '关闭编辑', onclick: close }, '×'),
+            ),
+            el('label', { class: 'task-editor-label', for: 'task-editor-title' }, '任务标题'),
+            titleInput,
+            el('label', { class: 'task-editor-label', for: 'task-editor-note' }, '下一步（可选）'),
+            noteInput,
+            el('label', { class: 'task-editor-label' }, '放在哪里', bucketInput),
+            el('p', { class: 'task-editor-hint' }, '调整位置不会删除任务；放到今天会保留为今天可做的一件事。'),
+            el('div', { class: 'task-editor-actions' },
+                el('button', { class: 'task-editor-cancel', type: 'button', onclick: close }, '先不改'),
+                saveButton = el('button', { class: 'task-editor-save', type: 'submit' }, '保存修改'),
+            ));
+            const backdrop = el('div', { class: 'task-editor-backdrop', role: 'presentation' }, form);
+            backdrop.addEventListener('click', (event) => { if (event.target === backdrop) close(); });
+            backdrop.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+            root.appendChild(backdrop);
+            titleInput.focus();
+            titleInput.select();
+        };
         const laneRow = (task, lane) => {
             const actions = [];
             let completeButton;
@@ -564,10 +614,14 @@ export const feedTab = {
                 ...TIME_BLOCKS.map((block) => el('option', { value: block.id }, block.label)));
                 actions.push(timeSelect);
             }
+            const editButton = el('button', {
+                class: 'todo-lane-button todo-edit-button', type: 'button', onclick: () => openTaskEditor(task),
+            }, '编辑');
+            actions.push(editButton);
             return el('article', { class: `todo-board-row lane-${lane}` },
                 el('div', { class: 'todo-board-copy' },
                     el('strong', {}, task.title),
-                    el('small', {}, task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
+                    el('small', {}, task.note ? `下一步 · ${task.note}` : task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
                 ),
                 el('div', { class: 'todo-board-actions' }, ...actions),
             );
@@ -753,13 +807,14 @@ export const feedTab = {
             ),
         ));
         const triageRow = (task, archived = false) => {
+            const editButton = el('button', { class: 'triage-action edit', type: 'button', onclick: () => openTaskEditor(task) }, '编辑');
             if (archived) {
                 let restoreButton;
                 restoreButton = el('button', {
                     class: 'triage-action', type: 'button',
                     onclick: () => runAsync(restoreButton, () => restoreTask(task), { announce, success: '已恢复到收件箱。' }),
                 }, '恢复到收件箱');
-                return el('article', { class: 'triage-row' }, el('strong', {}, task.title), restoreButton);
+                return el('article', { class: 'triage-row' }, el('strong', {}, task.title), el('div', {}, restoreButton, editButton));
             }
             let first;
             first = el('button', {
@@ -775,7 +830,7 @@ export const feedTab = {
                     announce, success: '已归档，可随时恢复。',
                 }),
             }, '归档');
-            return el('article', { class: 'triage-row' }, el('strong', {}, task.title), el('div', {}, first, second));
+            return el('article', { class: 'triage-row' }, el('strong', {}, task.title), el('div', {}, first, second, editButton));
         };
         if (stale.length || archivedTasks.length) root.appendChild(el('section', { class: 'card triage-card' },
             el('div', { class: 'triage-head' }, el('div', {}, el('span', {}, 'TASK RESET'), el('h3', {}, '回看一下，不必硬扛')), el('small', {}, '不删除数据')),
@@ -821,9 +876,13 @@ export const feedTab = {
                         onclick: () => runAsync(action, () => placeTodo(task, 'today'), { announce, success: '已放到今天。' }),
                     }, '放到今天');
                 }
+                const editButton = el('button', { class: 'task-search-action edit', type: 'button', onclick: () => openTaskEditor(task) }, '编辑');
                 searchResults.appendChild(el('article', { class: `task-search-row in-${bucket}` },
-                    el('div', { class: 'task-search-copy' }, el('strong', {}, task.title), el('span', {}, locationLabel[bucket])),
-                    action,
+                    el('div', { class: 'task-search-copy' },
+                        el('strong', {}, task.title),
+                        el('span', {}, task.note ? `${locationLabel[bucket]} · 下一步：${task.note}` : locationLabel[bucket]),
+                    ),
+                    el('div', { class: 'task-search-actions' }, action, editButton),
                 ));
             });
             if (results.length > 8) searchResults.appendChild(el('p', { class: 'task-search-more' }, `已显示前 8 项，共 ${results.length} 项。`));

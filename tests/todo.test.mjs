@@ -40,3 +40,15 @@ test('today tasks can carry an optional soft time block', () => {
     assert.equal(list.snapshot().today[0].id, task.id);
     assert.equal(list.snapshot().today[0].timeBlock, 'afternoon');
 });
+
+test('a repeating task keeps its optional next step when queued again', () => {
+    let settings = { todos: { items: [] } };
+    const list = new TodoList({
+        getSettings: () => settings,
+        setSettings: (patch) => { settings = { ...settings, ...patch }; },
+    });
+    const task = list.add({ title: '复习资料', note: '先打开上次的提纲', repeat: 'daily' });
+    assert.equal(list.complete(task.id), true);
+    const next = settings.todos.items.find((item) => item.id !== task.id);
+    assert.equal(next.note, '先打开上次的提纲');
+});
