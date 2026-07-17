@@ -5,6 +5,7 @@ import { getDndScheduleStatus } from './dnd-schedule-status.js';
 import { SCENES, getSceneStatus } from '../renderer/scene-controller.js';
 import { buildRhythmSummary, buildWeeklyReview, formatRhythmEvent, formatRhythmTime } from '../renderer/rhythm.js';
 import { todoBucket } from '../renderer/todo.js';
+import { TIME_BLOCKS, timeBlockLabel } from '../renderer/time-blocks.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -79,6 +80,7 @@ function makeInboxTodo(title) {
         dueAt: null,
         repeat: 'none',
         bucket: 'inbox',
+        timeBlock: '',
         completed: false,
         doneAt: null,
         createdAt: Date.now(),
@@ -418,6 +420,7 @@ export const feedTab = {
         const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
+        const nextTimeBlock = TIME_BLOCKS.find((block) => !todayTasks.some((task) => task.timeBlock === block.id)) || TIME_BLOCKS[0];
         const applyTodoPatch = async (id, patch) => {
             await setSettings({ todos: {
                 items: allTodos.map((item) => item.id === id ? { ...item, ...patch } : item),
@@ -427,6 +430,7 @@ export const feedTab = {
         const placeTodo = (task, bucket) => applyTodoPatch(task.id, {
             bucket,
             dueAt: bucket === 'today' ? new Date().toISOString() : null,
+            timeBlock: bucket === 'today' ? task.timeBlock || '' : '',
         });
         const completeTodo = async (task) => {
             const now = Date.now();
@@ -471,6 +475,28 @@ export const feedTab = {
                 }, '稍后');
                 actions.push(laterButton);
             }
+            if (lane === 'today') {
+                if (!task.timeBlock) {
+                    let nextBlockButton;
+                    nextBlockButton = el('button', {
+                        class: 'todo-lane-button todo-time-quick', type: 'button',
+                        onclick: () => runAsync(nextBlockButton, () => applyTodoPatch(task.id, { timeBlock: nextTimeBlock.id }), {
+                            announce, success: `已安排到${nextTimeBlock.label}。`,
+                        }),
+                    }, `安排${nextTimeBlock.label}`);
+                    actions.push(nextBlockButton);
+                }
+                const timeSelect = el('select', {
+                    class: 'todo-time-select', 'aria-label': `${task.title} 的时间块`, value: task.timeBlock || '',
+                    onchange: (event) => runAsync(event.target, () => applyTodoPatch(task.id, { timeBlock: event.target.value }), {
+                        announce,
+                        success: () => event.target.value ? `已安排到${timeBlockLabel(event.target.value)}。` : '已移出时间块。',
+                    }),
+                },
+                el('option', { value: '' }, '未安排'),
+                ...TIME_BLOCKS.map((block) => el('option', { value: block.id }, block.label)));
+                actions.push(timeSelect);
+            }
             return el('article', { class: `todo-board-row lane-${lane}` },
                 el('div', { class: 'todo-board-copy' },
                     el('strong', {}, task.title),
@@ -503,6 +529,26 @@ export const feedTab = {
         captureInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); captureButton.click(); }
         });
+        const timeBlockCard = el('section', { class: 'card time-block-card' },
+            el('div', { class: 'time-block-head' },
+                el('div', {}, el('span', { class: 'time-block-kicker' }, 'TODAY, SOFTLY'), el('h3', {}, '今天的三段时间')),
+                el('span', { class: 'time-block-note' }, '不排到分钟'),
+            ),
+            el('p', { class: 'time-block-description' }, '把今天真正想做的事，轻轻放进上午、下午或晚上。没有安排也完全没关系。'),
+            el('div', { class: 'time-block-track' }, ...TIME_BLOCKS.map((block) => {
+                const tasks = todayTasks.filter((task) => task.timeBlock === block.id);
+                return el('article', { class: `time-block-slot ${tasks.length ? 'has-tasks' : ''}` },
+                    el('div', { class: 'time-block-slot-head' },
+                        el('div', {}, el('strong', {}, block.label), el('small', {}, block.range)),
+                        el('span', {}, tasks.length ? `${tasks.length} 件` : '留白'),
+                    ),
+                    tasks.length
+                        ? el('div', { class: 'time-block-task-list' }, ...tasks.slice(0, 3).map((task) => el('span', { class: 'time-block-task' }, task.title)))
+                        : el('p', { class: 'time-block-empty' }, '给自己留一点空白。'),
+                );
+            })),
+        );
+        root.appendChild(timeBlockCard);
         root.appendChild(el('section', { class: 'card todo-board-card' },
             el('div', { class: 'todo-board-head' },
                 el('div', {}, el('span', { class: 'todo-kicker' }, 'TASK INBOX'), el('h3', {}, '先记下，再决定什么时候做')),
@@ -1174,6 +1220,8 @@ export const settingsTab = {
                 toggle('喝水提醒', 'waterEnabled'),
                 toggle('久坐提醒', 'sitEnabled'),
                 toggle('眼睛休息', 'eyeEnabled')),
+            card('日程提醒', '仅在应用运行时，按上午、下午、晚上轻轻提示一次。',
+                toggle('时间块提醒', 'timeBlockRemindersEnabled')),
             card('行为', '调整宠物主动互动的频率。',
                 select('活跃程度', 'autonomyLevel', [
                     { value: 'low', label: '安静' },

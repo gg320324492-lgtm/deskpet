@@ -8,7 +8,7 @@
  *
  * Item shape:
  *   { id, title, priority: 1|2|3, dueAt, repeat: 'none'|'daily'|'weekly',
- *     bucket: 'inbox'|'today'|'later', completed, doneAt, createdAt }
+ *     bucket: 'inbox'|'today'|'later', timeBlock: '', completed, doneAt, createdAt }
  */
 
 const REPEAT_DEFAULT = 'none';
@@ -57,7 +57,7 @@ export class TodoList {
         };
     }
 
-    add({ title, priority = 1, dueAt = null, repeat = REPEAT_DEFAULT, bucket = 'inbox' }) {
+    add({ title, priority = 1, dueAt = null, repeat = REPEAT_DEFAULT, bucket = 'inbox', timeBlock = '' }) {
         const item = {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: String(title || '').trim().slice(0, 120),
@@ -65,6 +65,7 @@ export class TodoList {
             dueAt: dueAt || null,
             repeat,
             bucket: TODO_BUCKETS.has(bucket) ? bucket : 'inbox',
+            timeBlock: ['morning', 'afternoon', 'evening'].includes(timeBlock) ? timeBlock : '',
             completed: false,
             doneAt: null,
             createdAt: Date.now(),
@@ -87,7 +88,11 @@ export class TodoList {
         if (!TODO_BUCKETS.has(bucket)) return false;
         const items = this._getSettings().todos?.items || [];
         if (!items.some((item) => item.id === id && !item.completed)) return false;
-        this.update(id, { bucket, dueAt: bucket === 'today' ? new Date().toISOString() : null });
+        this.update(id, {
+            bucket,
+            dueAt: bucket === 'today' ? new Date().toISOString() : null,
+            timeBlock: bucket === 'today' ? (items.find((item) => item.id === id)?.timeBlock || '') : '',
+        });
         return true;
     }
 
@@ -129,6 +134,7 @@ export class TodoList {
             dueAt: due.toISOString(),
             repeat,
             bucket: 'later',
+            timeBlock: '',
             completed: false,
             doneAt: null,
             createdAt: Date.now(),

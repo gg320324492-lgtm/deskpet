@@ -50,6 +50,7 @@ test('collection sanitization keeps valid records and normalizes optional fields
         dueAt: null,
         repeat: 'none',
         bucket: 'inbox',
+        timeBlock: '',
         completed: false,
         doneAt: null,
         createdAt: 0,
@@ -66,6 +67,9 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
     }), /unsupported value/);
     assert.throws(() => validateDomainPatch('todos', {
         items: [{ id: 't1', title: '错误收件箱', bucket: 'someday' }],
+    }), /unsupported value/);
+    assert.throws(() => validateDomainPatch('todos', {
+        items: [{ id: 't1', title: '错误时间块', timeBlock: 'midnight' }],
     }), /unsupported value/);
 });
 
@@ -114,6 +118,7 @@ test('older backups receive defaults for newly added AI settings', () => {
     assert.equal(parsed.data.settings.aiBaseUrl, '');
     assert.equal(parsed.data.settings.aiModel, '');
     assert.equal(parsed.data.settings.updateAutoCheck, true);
+    assert.equal(parsed.data.settings.timeBlockRemindersEnabled, true);
 });
 
 test('older settings receive nullable persisted pet window coordinates', () => {

@@ -29,3 +29,14 @@ test('due items automatically surface today while future due items stay later', 
     assert.equal(todoBucket({ id: 'now', completed: false, dueAt: now, bucket: 'later' }), 'today');
     assert.equal(todoBucket({ id: 'later', completed: false, dueAt: tomorrow.toISOString(), bucket: 'today' }), 'later');
 });
+
+test('today tasks can carry an optional soft time block', () => {
+    let settings = { todos: { items: [] } };
+    const list = new TodoList({
+        getSettings: () => settings,
+        setSettings: (patch) => { settings = { ...settings, ...patch }; },
+    });
+    const task = list.add({ title: '整理下午的资料', bucket: 'today', timeBlock: 'afternoon' });
+    assert.equal(list.snapshot().today[0].id, task.id);
+    assert.equal(list.snapshot().today[0].timeBlock, 'afternoon');
+});

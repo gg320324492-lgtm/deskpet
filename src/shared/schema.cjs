@@ -49,6 +49,7 @@ const DOMAIN_DEFAULTS = Object.freeze({
         aiBaseUrl: '',
         aiModel: '',
         updateAutoCheck: true,
+        timeBlockRemindersEnabled: true,
     }),
 
     mood: Object.freeze({
@@ -128,6 +129,7 @@ const _MIGRATIONS = {
             if (!('aiBaseUrl' in data)) data.aiBaseUrl = '';
             if (!('aiModel' in data)) data.aiModel = '';
             if (!('updateAutoCheck' in data)) data.updateAutoCheck = true;
+            if (!('timeBlockRemindersEnabled' in data)) data.timeBlockRemindersEnabled = true;
             if (!('sceneMode' in data)) data.sceneMode = 'manual';
             if (!('sceneAutoEnabled' in data)) data.sceneAutoEnabled = false;
             if (!('sceneAutoPreset' in data)) data.sceneAutoPreset = 'focus';
@@ -236,13 +238,14 @@ function assertJsonValue(value, name, depth = 0) {
 function validateTodoItem(item, index = 0) {
     const name = `todos.items[${index}]`;
     assertPlainRecord(item, name);
-    assertKnownKeys(item, ['id', 'title', 'priority', 'dueAt', 'repeat', 'bucket', 'completed', 'doneAt', 'createdAt'], name);
+    assertKnownKeys(item, ['id', 'title', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'completed', 'doneAt', 'createdAt'], name);
     assertString(item.id, `${name}.id`, 80, { allowEmpty: false });
     assertString(item.title, `${name}.title`, 120, { allowEmpty: false });
     if (Object.hasOwn(item, 'priority')) assertEnum(item.priority, [1, 2, 3], `${name}.priority`);
     if (Object.hasOwn(item, 'dueAt')) assertOptionalDateTime(item.dueAt, `${name}.dueAt`);
     if (Object.hasOwn(item, 'repeat')) assertEnum(item.repeat, ['none', 'daily', 'weekly'], `${name}.repeat`);
     if (Object.hasOwn(item, 'bucket')) assertEnum(item.bucket, ['inbox', 'today', 'later'], `${name}.bucket`);
+    if (Object.hasOwn(item, 'timeBlock')) assertEnum(item.timeBlock, ['', 'morning', 'afternoon', 'evening'], `${name}.timeBlock`);
     if (Object.hasOwn(item, 'completed')) assertBoolean(item.completed, `${name}.completed`);
     if (Object.hasOwn(item, 'doneAt') && item.doneAt !== null) assertNumber(item.doneAt, `${name}.doneAt`, { integer: true });
     if (Object.hasOwn(item, 'createdAt')) assertNumber(item.createdAt, `${name}.createdAt`, { integer: true });
@@ -257,6 +260,7 @@ function normalizeTodoItem(item, index) {
         dueAt: item.dueAt ?? null,
         repeat: item.repeat ?? 'none',
         bucket: item.bucket ?? 'inbox',
+        timeBlock: item.timeBlock ?? '',
         completed: item.completed ?? false,
         doneAt: item.doneAt ?? null,
         createdAt: item.createdAt ?? 0,
@@ -417,6 +421,7 @@ const FIELD_VALIDATORS = {
         aiBaseUrl: (v) => assertString(v, 'settings.aiBaseUrl', 2_048),
         aiModel: (v) => assertString(v, 'settings.aiModel', 120),
         updateAutoCheck: (v) => assertBoolean(v, 'settings.updateAutoCheck'),
+        timeBlockRemindersEnabled: (v) => assertBoolean(v, 'settings.timeBlockRemindersEnabled'),
     },
     mood: {
         mood: (v) => assertNumber(v, 'mood.mood', { min: 0, max: 100 }),

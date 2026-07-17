@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.2 - 2026-07-17
+
+### Added
+
+- Added optional soft time blocks for Today tasks: Morning, Afternoon, and
+  Evening. They deliberately avoid minute-level scheduling and can be cleared
+  at any time.
+- Added a compact three-part day view in the character room, including a
+  one-click action that places an unplanned task into the next open block.
+- Added an on/off local time-block reminder. While the app is running, it can
+  gently surface one matching task per block per day; it never creates network
+  activity or operating-system notifications.
+
+### Improved
+
+- Moving a task back to Later also clears its soft time block, so the day view
+  remains an honest reflection of today's intentions.
+
 ## 1.1.1 - 2026-07-17
 
 ### Added

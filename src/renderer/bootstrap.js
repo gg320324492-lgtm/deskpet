@@ -41,6 +41,7 @@ import { FocusFlow } from './focus-flow.js';
 import { RhythmTracker } from './rhythm.js';
 import { ReminderEngine } from './reminders.js';
 import { TodoList } from './todo.js';
+import { timeBlockForHour, timeBlockLabel } from './time-blocks.js';
 import { DndController } from './dnd.js';
 import { SceneController } from './scene-controller.js';
 import { SoundManager } from './sound.js';
@@ -198,6 +199,7 @@ async function main() {
             }
         },
     });
+    startTimeBlockReminders({ todoList, getSettings, animator });
 
     // 10. Behavior arbiter
     const arbiter = new BehaviorArbiter(sm);
@@ -391,6 +393,23 @@ function applySettingsToStorageShape(allSettings) {
     for (const k of ['settings','mood','todos','pomodoro','reminders','memory','achievements','stats','rhythm']) {
         if (!allSettings[k]) allSettings[k] = {};
     }
+}
+
+function startTimeBlockReminders({ todoList, getSettings, animator }) {
+    let lastNotice = '';
+    const tick = () => {
+        if (!getSettings().settings?.timeBlockRemindersEnabled) return;
+        const slot = timeBlockForHour(new Date().getHours());
+        if (!slot) return;
+        const task = todoList.snapshot().today.find((item) => item.timeBlock === slot);
+        if (!task) return;
+        const key = `${new Date().toDateString()}:${slot}:${task.id}`;
+        if (key === lastNotice) return;
+        lastNotice = key;
+        animator.setBubbleText(`到${timeBlockLabel(slot)}的小时间块啦：${task.title}`);
+    };
+    setTimeout(tick, 6_000);
+    setInterval(tick, 60_000);
 }
 
 function applyLiveSettings(settings, { interaction, arbiter, dnd, scene }) {
