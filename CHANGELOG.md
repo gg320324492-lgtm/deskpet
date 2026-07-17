@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.1 - 2026-07-17
+
+### Added
+
+- Added a local task inbox: quickly capture an item without assigning it to
+  today, then move it to Today or Later only when ready.
+- Added a three-lane task board in the character room, with direct completion,
+  gentle rescheduling, and a focus queue driven only by Today tasks.
+- Added one-click conversion from saved next-week light goals into inbox tasks.
+
+### Improved
+
+- Due dates now surface tasks automatically in Today or Later, while existing
+  undated tasks safely migrate to the inbox.
+
 ## 1.1.0 - 2026-07-17
 
 ### Added

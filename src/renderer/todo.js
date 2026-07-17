@@ -8,10 +8,23 @@
  *
  * Item shape:
  *   { id, title, priority: 1|2|3, dueAt, repeat: 'none'|'daily'|'weekly',
- *     completed, doneAt, createdAt }
+ *     bucket: 'inbox'|'today'|'later', completed, doneAt, createdAt }
  */
 
 const REPEAT_DEFAULT = 'none';
+const TODO_BUCKETS = new Set(['inbox', 'today', 'later']);
+
+function localDateKey(value = new Date()) {
+    const date = value instanceof Date ? value : new Date(value);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function todoBucket(item, today = localDateKey()) {
+    if (!item || item.completed) return 'done';
+    const dueDate = typeof item.dueAt === 'string' ? item.dueAt.slice(0, 10) : '';
+    if (dueDate) return dueDate <= today ? 'today' : 'later';
+    return TODO_BUCKETS.has(item.bucket) ? item.bucket : 'inbox';
+}
 
 export class TodoList {
     constructor({ getSettings, setSettings, onAfterChange }) {
@@ -26,22 +39,32 @@ export class TodoList {
 
     snapshot() {
         const items = this._getSettings().todos?.items || [];
+        const today = localDateKey();
         return {
-            today:    this._filterToday(items),
-            upcoming: this._filterUpcoming(items),
+            inbox:    items.filter((item) => todoBucket(item, today) === 'inbox'),
+            today:    items.filter((item) => todoBucket(item, today) === 'today'),
+            later:    items.filter((item) => todoBucket(item, today) === 'later'),
+            upcoming: items.filter((item) => todoBucket(item, today) === 'later'),
             done:     items.filter(i => i.completed),
             all:      items,
-            count: { total: items.length, done: items.filter(i => i.completed).length, today: this._filterToday(items).length },
+            count: {
+                total: items.length,
+                done: items.filter((item) => item.completed).length,
+                inbox: items.filter((item) => todoBucket(item, today) === 'inbox').length,
+                today: items.filter((item) => todoBucket(item, today) === 'today').length,
+                later: items.filter((item) => todoBucket(item, today) === 'later').length,
+            },
         };
     }
 
-    add({ title, priority = 1, dueAt = null, repeat = REPEAT_DEFAULT }) {
+    add({ title, priority = 1, dueAt = null, repeat = REPEAT_DEFAULT, bucket = 'inbox' }) {
         const item = {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: String(title || '').trim().slice(0, 120),
             priority: Number(priority) || 1,
             dueAt: dueAt || null,
             repeat,
+            bucket: TODO_BUCKETS.has(bucket) ? bucket : 'inbox',
             completed: false,
             doneAt: null,
             createdAt: Date.now(),
@@ -58,6 +81,14 @@ export class TodoList {
             return { ...it, ...patch };
         });
         this._commit(list);
+    }
+
+    move(id, bucket) {
+        if (!TODO_BUCKETS.has(bucket)) return false;
+        const items = this._getSettings().todos?.items || [];
+        if (!items.some((item) => item.id === id && !item.completed)) return false;
+        this.update(id, { bucket, dueAt: bucket === 'today' ? new Date().toISOString() : null });
+        return true;
     }
 
     remove(id) {
@@ -97,6 +128,7 @@ export class TodoList {
             priority: done.priority,
             dueAt: due.toISOString(),
             repeat,
+            bucket: 'later',
             completed: false,
             doneAt: null,
             createdAt: Date.now(),
@@ -108,13 +140,4 @@ export class TodoList {
         this._emit();
     }
 
-    _filterToday(items) {
-        const today = new Date().toISOString().slice(0, 10);
-        return items.filter(i => !i.completed &&
-            (!i.dueAt || i.dueAt.slice(0, 10) <= today));
-    }
-    _filterUpcoming(items) {
-        const today = new Date().toISOString().slice(0, 10);
-        return items.filter(i => !i.completed && i.dueAt && i.dueAt.slice(0,10) > today);
-    }
 }

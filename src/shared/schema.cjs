@@ -236,12 +236,13 @@ function assertJsonValue(value, name, depth = 0) {
 function validateTodoItem(item, index = 0) {
     const name = `todos.items[${index}]`;
     assertPlainRecord(item, name);
-    assertKnownKeys(item, ['id', 'title', 'priority', 'dueAt', 'repeat', 'completed', 'doneAt', 'createdAt'], name);
+    assertKnownKeys(item, ['id', 'title', 'priority', 'dueAt', 'repeat', 'bucket', 'completed', 'doneAt', 'createdAt'], name);
     assertString(item.id, `${name}.id`, 80, { allowEmpty: false });
     assertString(item.title, `${name}.title`, 120, { allowEmpty: false });
     if (Object.hasOwn(item, 'priority')) assertEnum(item.priority, [1, 2, 3], `${name}.priority`);
     if (Object.hasOwn(item, 'dueAt')) assertOptionalDateTime(item.dueAt, `${name}.dueAt`);
     if (Object.hasOwn(item, 'repeat')) assertEnum(item.repeat, ['none', 'daily', 'weekly'], `${name}.repeat`);
+    if (Object.hasOwn(item, 'bucket')) assertEnum(item.bucket, ['inbox', 'today', 'later'], `${name}.bucket`);
     if (Object.hasOwn(item, 'completed')) assertBoolean(item.completed, `${name}.completed`);
     if (Object.hasOwn(item, 'doneAt') && item.doneAt !== null) assertNumber(item.doneAt, `${name}.doneAt`, { integer: true });
     if (Object.hasOwn(item, 'createdAt')) assertNumber(item.createdAt, `${name}.createdAt`, { integer: true });
@@ -255,6 +256,7 @@ function normalizeTodoItem(item, index) {
         priority: item.priority ?? 1,
         dueAt: item.dueAt ?? null,
         repeat: item.repeat ?? 'none',
+        bucket: item.bucket ?? 'inbox',
         completed: item.completed ?? false,
         doneAt: item.doneAt ?? null,
         createdAt: item.createdAt ?? 0,

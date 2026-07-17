@@ -49,6 +49,7 @@ test('collection sanitization keeps valid records and normalizes optional fields
         priority: 2,
         dueAt: null,
         repeat: 'none',
+        bucket: 'inbox',
         completed: false,
         doneAt: null,
         createdAt: 0,
@@ -62,6 +63,9 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
     }), /allowed range/);
     assert.throws(() => validateDomainPatch('reminders', {
         custom: [{ id: 'r1', label: '喝水', kind: 'sometimes' }],
+    }), /unsupported value/);
+    assert.throws(() => validateDomainPatch('todos', {
+        items: [{ id: 't1', title: '错误收件箱', bucket: 'someday' }],
     }), /unsupported value/);
 });
 

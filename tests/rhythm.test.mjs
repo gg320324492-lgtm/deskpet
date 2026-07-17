@@ -7,7 +7,7 @@ test('rhythm summary uses recorded elapsed focus minutes instead of configured P
     const now = new Date(2026, 6, 17, 20, 30, 0);
     const summary = buildRhythmSummary({
         now,
-        todos: [{ id: 'open', title: '明日方案', completed: false, dueAt: null }],
+        todos: [{ id: 'open', title: '明日方案', completed: false, dueAt: null, bucket: 'today' }],
         rhythm: {
             events: [
                 { id: 'a', type: 'focus-complete', at: new Date(2026, 6, 17, 9, 0).valueOf(), title: '写提纲', minutes: 32 },

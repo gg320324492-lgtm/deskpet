@@ -4,6 +4,7 @@ import { OUTFITS } from '../renderer/wardrobe.js';
 import { getDndScheduleStatus } from './dnd-schedule-status.js';
 import { SCENES, getSceneStatus } from '../renderer/scene-controller.js';
 import { buildRhythmSummary, buildWeeklyReview, formatRhythmEvent, formatRhythmTime } from '../renderer/rhythm.js';
+import { todoBucket } from '../renderer/todo.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -70,6 +71,20 @@ function runAsync(button, task, { announce, success, failure }) {
         });
 }
 
+function makeInboxTodo(title) {
+    return {
+        id: `t${Date.now()}${Math.random().toString(36).slice(2, 7)}`,
+        title: String(title || '').trim().slice(0, 120),
+        priority: 1,
+        dueAt: null,
+        repeat: 'none',
+        bucket: 'inbox',
+        completed: false,
+        doneAt: null,
+        createdAt: Date.now(),
+    };
+}
+
 // ============ Stats ============
 export const statsTab = {
     render(root, { getSettings, setSettings, announce }) {
@@ -80,7 +95,7 @@ export const statsTab = {
         const rhythm = getSettings().rhythm || {};
         const rhythmSummary = buildRhythmSummary({ rhythm, todos });
         const weeklyReview = buildWeeklyReview({ rhythm });
-        const nextFocusTask = todos.find((item) => !item.completed && (!item.dueAt || item.dueAt.slice(0, 10) <= new Date().toISOString().slice(0, 10)));
+        const nextFocusTask = todos.find((item) => todoBucket(item) === 'today');
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -241,6 +256,25 @@ export const statsTab = {
                 await setSettings({ rhythm: { ...rhythm, weeklyPlans } });
             }, { announce, success: '下周轻目标已保存。' }),
         }, '保存下周目标');
+        let addWeeklyGoals;
+        addWeeklyGoals = el('button', {
+            class: 'data-action secondary weekly-to-inbox',
+            type: 'button',
+            onclick: () => runAsync(addWeeklyGoals, async () => {
+                const existing = new Set(todos
+                    .filter((item) => !item.completed)
+                    .map((item) => String(item.title || '').trim()));
+                const additions = weeklyReview.goals
+                    .filter((goal) => !existing.has(goal))
+                    .map(makeInboxTodo);
+                if (!additions.length) return 0;
+                await setSettings({ todos: { items: [...todos, ...additions] } });
+                return additions.length;
+            }, {
+                announce,
+                success: (count) => count ? `已将 ${count} 个轻目标放进收件箱。` : '没有新的轻目标需要转成待办。',
+            }),
+        }, '轻目标转待办');
         const weeklyBars = weeklyReview.week.map((day) => el('div', {
             class: `weekly-bar level-${day.level}`,
             title: `${day.weekday}：${day.focusMinutes} 分钟`,
@@ -280,7 +314,8 @@ export const statsTab = {
                     el('h4', {}, '下周轻目标'),
                     el('p', {}, '只留 1–3 件想推进的事；它们是方向，不是必须完成的清单。'),
                 ),
-                el('div', { class: 'weekly-goal-fields' }, ...weeklyGoalInputs, saveWeeklyPlan),
+                el('div', { class: 'weekly-goal-fields' }, ...weeklyGoalInputs,
+                    el('div', { class: 'weekly-goal-actions' }, saveWeeklyPlan, addWeeklyGoals)),
             ),
         ));
     },
@@ -374,13 +409,115 @@ export const outfitsTab = {
 
 // ============ Feed / interaction ============
 export const feedTab = {
-    render(root, { getSettings, setSettings, announce, focusCommand }) {
+    render(root, { getSettings, setSettings, announce, focusCommand, refreshCurrent }) {
         let mood = { ...(getSettings().mood || {}) };
         root.appendChild(panelHeader('陪伴行动', '一起做点什么', '选择一个轻量互动，状态会立即同步到桌面宠物。'));
 
-        const tasks = (getSettings().todos?.items || [])
-            .filter((item) => !item.completed && (!item.dueAt || item.dueAt.slice(0, 10) <= new Date().toISOString().slice(0, 10)))
-            .slice(0, 3);
+        const allTodos = getSettings().todos?.items || [];
+        const rhythm = getSettings().rhythm || {};
+        const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
+        const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
+        const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
+        const applyTodoPatch = async (id, patch) => {
+            await setSettings({ todos: {
+                items: allTodos.map((item) => item.id === id ? { ...item, ...patch } : item),
+            } });
+            refreshCurrent();
+        };
+        const placeTodo = (task, bucket) => applyTodoPatch(task.id, {
+            bucket,
+            dueAt: bucket === 'today' ? new Date().toISOString() : null,
+        });
+        const completeTodo = async (task) => {
+            const now = Date.now();
+            const updated = { ...task, completed: true, doneAt: now };
+            const nextItems = allTodos.map((item) => item.id === task.id ? updated : item);
+            if (task.repeat && task.repeat !== 'none') {
+                const due = new Date(now);
+                due.setDate(due.getDate() + (task.repeat === 'daily' ? 1 : 7));
+                nextItems.push({ ...makeInboxTodo(task.title), dueAt: due.toISOString(), repeat: task.repeat, bucket: 'later' });
+            }
+            const event = {
+                id: `rhythm-${now}-${Math.random().toString(36).slice(2, 8)}`,
+                type: 'task-complete', at: now, title: task.title, taskId: task.id, minutes: 0,
+            };
+            await setSettings({
+                todos: { items: nextItems },
+                rhythm: { ...rhythm, events: [...(rhythm.events || []), event].slice(-360) },
+            });
+            refreshCurrent();
+        };
+        const laneRow = (task, lane) => {
+            const actions = [];
+            let completeButton;
+            completeButton = el('button', {
+                class: 'todo-complete-button', type: 'button',
+                onclick: () => runAsync(completeButton, () => completeTodo(task), { announce, success: `已完成：${task.title}` }),
+            }, '完成');
+            actions.push(completeButton);
+            if (lane !== 'today') {
+                let todayButton;
+                todayButton = el('button', {
+                    class: 'todo-lane-button', type: 'button',
+                    onclick: () => runAsync(todayButton, () => placeTodo(task, 'today'), { announce, success: '已放到今天。' }),
+                }, '放到今天');
+                actions.push(todayButton);
+            }
+            if (lane !== 'later') {
+                let laterButton;
+                laterButton = el('button', {
+                    class: 'todo-lane-button', type: 'button',
+                    onclick: () => runAsync(laterButton, () => placeTodo(task, 'later'), { announce, success: '已放到稍后。' }),
+                }, '稍后');
+                actions.push(laterButton);
+            }
+            return el('article', { class: `todo-board-row lane-${lane}` },
+                el('div', { class: 'todo-board-copy' },
+                    el('strong', {}, task.title),
+                    el('small', {}, task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
+                ),
+                el('div', { class: 'todo-board-actions' }, ...actions),
+            );
+        };
+        const lane = (label, caption, tasks, laneName) => el('section', { class: `todo-lane lane-${laneName}` },
+            el('div', { class: 'todo-lane-head' }, el('div', {}, el('h4', {}, label), el('small', {}, caption)), el('span', {}, String(tasks.length))),
+            tasks.length
+                ? el('div', { class: 'todo-board-list' }, ...tasks.slice(0, 4).map((task) => laneRow(task, laneName)))
+                : el('p', { class: 'todo-lane-empty' }, laneName === 'inbox' ? '先随手记下，之后再决定。' : '这里暂时很安静。'),
+        );
+        const captureInput = el('input', {
+            class: 'todo-capture-input', type: 'text', maxlength: 120,
+            placeholder: '记下一件事，不急着安排…', 'aria-label': '快速收集待办',
+        });
+        let captureButton;
+        const capture = async () => {
+            const todo = makeInboxTodo(captureInput.value);
+            if (!todo.title) throw new Error('先写下一件想记住的事。');
+            await setSettings({ todos: { items: [...allTodos, todo] } });
+            refreshCurrent();
+        };
+        captureButton = el('button', {
+            class: 'action todo-capture-button', type: 'button',
+            onclick: () => runAsync(captureButton, capture, { announce, success: '已收进任务收件箱。', failure: (error) => error.message }),
+        }, '收进来');
+        captureInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') { event.preventDefault(); captureButton.click(); }
+        });
+        root.appendChild(el('section', { class: 'card todo-board-card' },
+            el('div', { class: 'todo-board-head' },
+                el('div', {}, el('span', { class: 'todo-kicker' }, 'TASK INBOX'), el('h3', {}, '先记下，再决定什么时候做')),
+                el('span', { class: 'todo-board-note' }, '不会自动催促'),
+            ),
+            el('p', { class: 'todo-board-description' }, '收件箱是临时停靠处；只有你主动推进或设置日期，任务才会出现在今天。'),
+            el('div', { class: 'todo-capture' }, captureInput, captureButton),
+            el('div', { class: 'todo-lane-grid' },
+                lane('收件箱', '尚未安排', inboxTasks, 'inbox'),
+                lane('今天', '可以开始', todayTasks, 'today'),
+                lane('稍后', '留给以后', laterTasks, 'later'),
+            ),
+        ));
+
+        const tasks = todayTasks.slice(0, 3);
         const taskRows = tasks.length
             ? tasks.map((task) => {
                 let startButton;

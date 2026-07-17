@@ -587,17 +587,20 @@ async function openAskPopover({ aiChat, popover, animator, memory }) {
 
 function openTodoPopover({ todoList, focusFlow, popover }) {
     const snap = todoList.snapshot();
-    const itemsHtml = snap.today.map(it => `
-        <div class="todo-row" data-id="${it.id}">
+    const row = (it, lane) => `
+        <div class="todo-row" data-id="${it.id}" data-lane="${lane}">
             <input type="checkbox" ${it.completed ? 'checked' : ''}/>
             <span class="todo-title" style="flex:1">${escapeHtml(it.title)}</span>
             <span class="todo-prio" data-p="${it.priority}">P${it.priority}</span>
-            <button type="button" data-focus="${it.id}">专注</button>
+            ${lane === 'today' ? `<button type="button" data-focus="${it.id}">专注</button>` : `<button type="button" data-move="${it.id}">今天</button>`}
         </div>
-    `).join('') || `<div style="opacity:.6;text-align:center;padding:8px">今天没有待办</div>`;
+    `;
+    const inboxHtml = snap.inbox.map((item) => row(item, 'inbox')).join('');
+    const todayHtml = snap.today.map((item) => row(item, 'today')).join('');
+    const itemsHtml = `${inboxHtml ? `<div style="opacity:.68;font-size:12px;margin:3px 0">收件箱</div>${inboxHtml}` : ''}${todayHtml ? `<div style="opacity:.68;font-size:12px;margin:7px 0 3px">今天</div>${todayHtml}` : ''}` || `<div style="opacity:.6;text-align:center;padding:8px">收件箱和今天都很安静</div>`;
     popover.open({
         html: `
-            <div style="font-weight:700;margin-bottom:6px">今日待办</div>
+            <div style="font-weight:700;margin-bottom:6px">收件箱与今天</div>
             <div id="pet-popover-todo-list">${itemsHtml}</div>
             <div style="display:flex;gap:6px;margin-top:8px">
                 <input id="pet-popover-todo-input" placeholder="添加待办…" style="flex:1;padding:4px 6px;border-radius:6px;border:1px solid #ddd"/>
@@ -629,6 +632,12 @@ function openTodoPopover({ todoList, focusFlow, popover }) {
         button.addEventListener('click', () => {
             const task = snap.today.find((item) => item.id === button.dataset.focus);
             if (task && focusFlow.start(task)) popover.close();
+        });
+    });
+    host.querySelectorAll('button[data-move]').forEach((button) => {
+        button.addEventListener('click', () => {
+            todoList.move(button.dataset.move, 'today');
+            openTodoPopover({ todoList, focusFlow, popover });
         });
     });
 }

@@ -71,6 +71,7 @@ async function main() {
         windowStatus: () => window.petAPI.windowStatus(),
         windowAction: (action) => window.petAPI.windowAction(action),
         focusCommand: (command) => window.petAPI.focusCommand(command),
+        refreshCurrent: () => renderPanel(activeTab),
     };
     const tabButtons = [...document.querySelectorAll('[role="tab"]')];
     const panels = [...document.querySelectorAll('[role="tabpanel"]')];

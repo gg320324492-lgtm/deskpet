@@ -141,7 +141,10 @@ export function buildRhythmSummary({ rhythm: value, todos = [], now = new Date()
     const todayEvents = events.filter((event) => localDateKey(event.at) === todayKey);
     const completedTaskIds = new Set(todayEvents.filter((event) => event.type === 'task-complete' && event.taskId).map((event) => event.taskId));
     const openTaskIds = new Set((Array.isArray(todos) ? todos : [])
-        .filter((task) => task && !task.completed && (!task.dueAt || task.dueAt.slice(0, 10) <= todayKey))
+        .filter((task) => task && !task.completed && (
+            (typeof task.dueAt === 'string' && task.dueAt.slice(0, 10) <= todayKey)
+            || (!task.dueAt && task.bucket === 'today')
+        ))
         .map((task) => task.id)
         .filter(Boolean));
     const plannedTasks = new Set([...completedTaskIds, ...openTaskIds]);
