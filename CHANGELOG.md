@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.9 - 2026-07-17
+
+### Added
+
+- Added a Today-only completion review card with completion time and optional
+  next-step note.
+- Recently completed tasks can be safely restored to Today or the inbox.
+
 ## 1.1.8 - 2026-07-17
 
 ### Added

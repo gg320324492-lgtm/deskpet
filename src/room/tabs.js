@@ -12,6 +12,7 @@ import { beginTodayPatch, buildTodayStart, nextOpenTimeBlock } from '../renderer
 import { archiveTaskPatch, restoreTaskPatch, staleTasks } from '../renderer/task-triage.js';
 import { searchTasks } from '../renderer/task-search.js';
 import { taskEditorPatch } from '../renderer/task-editor.js';
+import { completedToday, restoreCompletedTaskPatch } from '../renderer/task-completion-review.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -78,11 +79,11 @@ function runAsync(button, task, { announce, success, failure }) {
         });
 }
 
-function makeInboxTodo(title) {
+function makeInboxTodo(title, note = '') {
     return {
         id: `t${Date.now()}${Math.random().toString(36).slice(2, 7)}`,
         title: String(title || '').trim().slice(0, 120),
-        note: '',
+        note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
         priority: 1,
         dueAt: null,
         repeat: 'none',
@@ -449,6 +450,7 @@ export const feedTab = {
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
         const archivedTasks = allTodos.filter((item) => todoBucket(item) === 'archive');
+        const completedTasks = completedToday({ todos: allTodos });
         const stale = staleTasks({ todos: allTodos });
         const dayCloseout = buildDayCloseout({ todos: allTodos });
         const tomorrowStart = buildTomorrowStart({ todos: allTodos });
@@ -473,7 +475,7 @@ export const feedTab = {
             if (task.repeat && task.repeat !== 'none') {
                 const due = new Date(now);
                 due.setDate(due.getDate() + (task.repeat === 'daily' ? 1 : 7));
-                nextItems.push({ ...makeInboxTodo(task.title), dueAt: due.toISOString(), repeat: task.repeat, bucket: 'later' });
+                nextItems.push({ ...makeInboxTodo(task.title, task.note), dueAt: due.toISOString(), repeat: task.repeat, bucket: 'later' });
             }
             const event = {
                 id: `rhythm-${now}-${Math.random().toString(36).slice(2, 8)}`,
@@ -495,6 +497,7 @@ export const feedTab = {
         const returnTomorrowTask = (task) => applyTodoPatch(task.id, returnToInboxPatch());
         const archiveTask = (task) => applyTodoPatch(task.id, archiveTaskPatch());
         const restoreTask = (task) => applyTodoPatch(task.id, restoreTaskPatch());
+        const undoCompletion = (task, destination) => applyTodoPatch(task.id, restoreCompletedTaskPatch(task, destination));
         const startSearchFocus = async (task) => {
             const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
             if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
@@ -918,6 +921,36 @@ export const feedTab = {
                 lane('稍后', '留给以后', laterTasks, 'later'),
             ),
         ));
+
+        if (completedTasks.length) {
+            const completionRows = completedTasks.slice(0, 6).map((task) => {
+                let todayButton;
+                todayButton = el('button', {
+                    class: 'completion-review-action today', type: 'button',
+                    onclick: () => runAsync(todayButton, () => undoCompletion(task, 'today'), { announce, success: '已回到今天。' }),
+                }, '回到今天');
+                let inboxButton;
+                inboxButton = el('button', {
+                    class: 'completion-review-action inbox', type: 'button',
+                    onclick: () => runAsync(inboxButton, () => undoCompletion(task, 'inbox'), { announce, success: '已放回收件箱。' }),
+                }, '放回收件箱');
+                const detail = task.note
+                    ? `完成于 ${formatRhythmTime(task.doneAt)} · 下一步：${task.note}`
+                    : `完成于 ${formatRhythmTime(task.doneAt)}`;
+                return el('article', { class: 'completion-review-row' },
+                    el('div', { class: 'completion-review-copy' }, el('strong', {}, task.title), el('small', {}, detail)),
+                    el('div', { class: 'completion-review-actions' }, todayButton, inboxButton),
+                );
+            });
+            root.appendChild(el('section', { class: 'card completion-review-card' },
+                el('div', { class: 'completion-review-head' },
+                    el('div', {}, el('span', {}, 'DONE, STILL FLEXIBLE'), el('h3', {}, '刚完成的，也可以反悔')),
+                    el('span', {}, `今天 ${completedTasks.length} 件`),
+                ),
+                el('p', { class: 'completion-review-description' }, '误点完成没关系。恢复后，任务和下一步备注都会留在原处。'),
+                el('div', { class: 'completion-review-list' }, ...completionRows),
+            ));
+        }
 
         const tasks = todayTasks.slice(0, 3);
         const taskRows = tasks.length
