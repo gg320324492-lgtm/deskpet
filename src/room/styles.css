@@ -548,6 +548,8 @@ select:focus-visible,
 .rhythm-tomorrow { min-height: 35px; padding: 7px 9px; }
 .rhythm-reflection-note:focus-visible,
 .rhythm-tomorrow:focus-visible { outline: 2px solid var(--room-accent); outline-offset: 2px; }
+.rhythm-tomorrow-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.rhythm-tomorrow-add { min-height: 35px; white-space: nowrap; }
 .rhythm-save { justify-self: start; margin-top: 2px; }
 
 .weekly-review-card {
@@ -837,6 +839,71 @@ select:focus-visible,
 .day-closeout-save { flex: 0 0 auto; white-space: nowrap; }
 .day-closeout-empty { position: relative; z-index: 1; margin: 0; padding: 13px; border: 1px dashed rgba(194, 239, 224, 0.2); border-radius: 12px; color: #b8d6cf; background: rgba(10, 22, 29, 0.25); font-size: 12px; line-height: 1.55; }
 .day-closeout-saved { margin: 11px 0 0; border-left: 2px solid #91dfc1; color: #c9e7de; font-size: 11px; line-height: 1.55; padding-left: 8px; }
+
+.tomorrow-start-card {
+    position: relative;
+    margin-top: 18px;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 95% 108%, rgba(126, 166, 255, 0.18), transparent 35%),
+        linear-gradient(135deg, rgba(39, 45, 73, 0.99), rgba(36, 43, 62, 0.99));
+}
+
+.tomorrow-start-card::after {
+    position: absolute;
+    top: -45px;
+    right: 9%;
+    width: 134px;
+    height: 134px;
+    border: 1px solid rgba(186, 210, 255, 0.12);
+    border-radius: 50%;
+    box-shadow: 0 0 0 18px rgba(186, 210, 255, 0.024), 0 0 0 36px rgba(186, 210, 255, 0.016);
+    content: '';
+}
+
+.tomorrow-start-head,
+.tomorrow-start-description,
+.tomorrow-plan-grid,
+.tomorrow-candidates { position: relative; z-index: 1; }
+.tomorrow-start-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.tomorrow-start-head h3 { margin: 3px 0 0; font-size: 19px; }
+.tomorrow-start-kicker { color: #b8cdff; font-size: 10px; font-weight: 850; letter-spacing: 0.15em; }
+.tomorrow-start-date { flex: 0 0 auto; padding: 5px 8px; border: 1px solid rgba(184, 205, 255, 0.24); border-radius: 999px; color: #d9e5ff; background: rgba(139, 175, 255, 0.11); font-size: 11px; font-weight: 750; }
+.tomorrow-start-description { max-width: 65ch; margin: 8px 0 14px; color: var(--room-muted); font-size: 13px; }
+.tomorrow-plan-grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 10px; }
+.tomorrow-plan-slot { min-width: 0; min-height: 106px; padding: 12px; border: 1px solid rgba(223, 232, 255, 0.13); border-radius: 13px; background: rgba(11, 18, 34, 0.43); }
+.tomorrow-plan-slot.important { border-top-color: rgba(255, 207, 129, 0.65); }
+.tomorrow-plan-slot.doable { border-top-color: rgba(151, 213, 190, 0.6); }
+.tomorrow-slot-head { display: flex; align-items: flex-start; gap: 8px; }
+.tomorrow-slot-head > span { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; border-radius: 7px; color: #f4e0b8; background: rgba(255, 204, 125, 0.14); font-size: 11px; font-weight: 850; }
+.tomorrow-plan-slot.doable .tomorrow-slot-head > span { color: #c8f1de; background: rgba(121, 214, 173, 0.13); }
+.tomorrow-slot-head h4 { margin: 0; color: var(--room-text); font-size: 13px; }
+.tomorrow-slot-head small { display: block; margin-top: 2px; color: var(--room-subtle); font-size: 10px; }
+.tomorrow-slot-empty { margin: 15px 0 0; color: #aebdce; font-size: 11px; line-height: 1.55; }
+.tomorrow-planned-list { display: grid; gap: 6px; margin-top: 11px; }
+.tomorrow-planned-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 11px; padding-top: 9px; border-top: 1px solid rgba(224, 234, 255, 0.09); }
+.tomorrow-planned-list .tomorrow-planned-row { margin-top: 0; }
+.tomorrow-planned-row > div { min-width: 0; }
+.tomorrow-planned-row strong { display: block; overflow: hidden; color: #f8fbff; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.tomorrow-planned-row small { display: block; margin-top: 2px; color: #f1cf96; font-size: 10px; }
+.tomorrow-planned-row.doable small { color: #b4e8d1; }
+.tomorrow-release { flex: 0 0 auto; min-height: 27px; border: 1px solid rgba(208, 223, 255, 0.19); border-radius: 8px; color: #cad9f8; background: rgba(255, 255, 255, 0.04); cursor: pointer; padding: 4px 7px; font: inherit; font-size: 10px; font-weight: 750; }
+.tomorrow-release:hover { border-color: rgba(184, 205, 255, 0.52); background: rgba(139, 175, 255, 0.13); color: #f1f6ff; }
+.tomorrow-candidates { margin-top: 11px; padding: 12px; border: 1px solid rgba(223, 232, 255, 0.12); border-radius: 13px; background: rgba(11, 18, 34, 0.3); }
+.tomorrow-candidates-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.tomorrow-candidates-head h4 { margin: 0; color: var(--room-text); font-size: 12px; }
+.tomorrow-candidates-head small { color: var(--room-subtle); font-size: 10px; }
+.tomorrow-candidate-list { display: grid; margin-top: 8px; border-top: 1px solid rgba(223, 232, 255, 0.09); }
+.tomorrow-candidate-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(223, 232, 255, 0.08); }
+.tomorrow-candidate-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.tomorrow-candidate-row strong { overflow: hidden; color: #e8efff; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.tomorrow-pick-actions { display: flex; flex: 0 0 auto; gap: 5px; }
+.tomorrow-pick { min-height: 27px; border: 1px solid rgba(208, 223, 255, 0.19); border-radius: 8px; color: #dce7ff; background: rgba(255, 255, 255, 0.04); cursor: pointer; padding: 4px 7px; font: inherit; font-size: 10px; font-weight: 800; }
+.tomorrow-pick.important { border-color: rgba(255, 207, 129, 0.35); color: #ffe0a6; }
+.tomorrow-pick.doable { border-color: rgba(151, 213, 190, 0.34); color: #c6f1df; }
+.tomorrow-pick:not(:disabled):hover { background: rgba(139, 175, 255, 0.13); border-color: rgba(184, 205, 255, 0.58); }
+.tomorrow-pick:disabled { cursor: not-allowed; opacity: 0.45; }
+.tomorrow-candidates-empty { margin: 10px 0 0; color: #b8c4d7; font-size: 11px; line-height: 1.55; }
 
 .todo-board-card {
     position: relative;
@@ -1913,6 +1980,10 @@ select {
     .day-closeout-row {
         grid-template-columns: minmax(130px, 1fr) auto;
     }
+
+    .tomorrow-plan-grid {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    }
 }
 
 @media (max-width: 480px) {
@@ -2003,6 +2074,10 @@ select {
         padding: 15px;
     }
 
+    .tomorrow-start-card {
+        padding: 15px;
+    }
+
     .time-block-track {
         grid-template-columns: 1fr;
     }
@@ -2027,6 +2102,35 @@ select {
 
     .day-closeout-save {
         width: 100%;
+    }
+
+    .rhythm-tomorrow-action {
+        grid-template-columns: 1fr;
+    }
+
+    .rhythm-tomorrow-add {
+        width: 100%;
+    }
+
+    .tomorrow-plan-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tomorrow-candidate-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .tomorrow-candidate-row strong {
+        white-space: normal;
+    }
+
+    .tomorrow-pick-actions {
+        width: 100%;
+    }
+
+    .tomorrow-pick {
+        flex: 1 1 0;
     }
 
     .todo-capture {

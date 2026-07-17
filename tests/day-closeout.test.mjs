@@ -26,7 +26,7 @@ test('closeout task actions preserve tasks while clearing the old time block', (
     assert.equal(tomorrow.bucket, 'later');
     assert.equal(tomorrow.timeBlock, '');
     assert.equal(new Date(tomorrow.dueAt).getDate(), 18);
-    assert.deepEqual(dayCloseoutPatch('inbox', now), { bucket: 'inbox', dueAt: null, timeBlock: '' });
-    assert.deepEqual(dayCloseoutPatch('later', now), { bucket: 'later', dueAt: null, timeBlock: '' });
+    assert.deepEqual(dayCloseoutPatch('inbox', now), { bucket: 'inbox', dueAt: null, timeBlock: '', tomorrowPlan: '' });
+    assert.deepEqual(dayCloseoutPatch('later', now), { bucket: 'later', dueAt: null, timeBlock: '', tomorrowPlan: '' });
     assert.equal(new Date(tomorrowDueAt(now)).getHours(), 9);
 });

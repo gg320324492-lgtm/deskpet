@@ -23,7 +23,7 @@ export function tomorrowDueAt(now = new Date()) {
 
 /** Map a closeout decision to a safe task patch. */
 export function dayCloseoutPatch(action, now = new Date()) {
-    if (action === 'tomorrow') return { bucket: 'later', dueAt: tomorrowDueAt(now), timeBlock: '' };
-    if (action === 'inbox') return { bucket: 'inbox', dueAt: null, timeBlock: '' };
-    return { bucket: 'later', dueAt: null, timeBlock: '' };
+    if (action === 'tomorrow') return { bucket: 'later', dueAt: tomorrowDueAt(now), timeBlock: '', tomorrowPlan: '' };
+    if (action === 'inbox') return { bucket: 'inbox', dueAt: null, timeBlock: '', tomorrowPlan: '' };
+    return { bucket: 'later', dueAt: null, timeBlock: '', tomorrowPlan: '' };
 }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.4 - 2026-07-17
+
+### Added
+
+- Added Tomorrow Start: turn the existing “tomorrow's first task” reflection
+  into a real local task with one click.
+- Added a deliberately small tomorrow plan: one Most Important task and up to
+  two Doable tasks, selected explicitly from the inbox.
+
+### Improved
+
+- Planned tomorrow tasks can be returned to the inbox at any time. Moving one
+  forward into Today clears its tomorrow-only label automatically.
+- Existing task priorities are not reinterpreted as a tomorrow plan; only
+  explicitly planned tasks receive the new local marker.
+
 ## 1.1.3 - 2026-07-17
 
 ### Added

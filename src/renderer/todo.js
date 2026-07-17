@@ -8,7 +8,7 @@
  *
  * Item shape:
  *   { id, title, priority: 1|2|3, dueAt, repeat: 'none'|'daily'|'weekly',
- *     bucket: 'inbox'|'today'|'later', timeBlock: '', completed, doneAt, createdAt }
+ *     bucket: 'inbox'|'today'|'later', timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
  */
 
 const REPEAT_DEFAULT = 'none';
@@ -57,7 +57,7 @@ export class TodoList {
         };
     }
 
-    add({ title, priority = 1, dueAt = null, repeat = REPEAT_DEFAULT, bucket = 'inbox', timeBlock = '' }) {
+    add({ title, priority = 1, dueAt = null, repeat = REPEAT_DEFAULT, bucket = 'inbox', timeBlock = '', tomorrowPlan = '' }) {
         const item = {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: String(title || '').trim().slice(0, 120),
@@ -66,6 +66,7 @@ export class TodoList {
             repeat,
             bucket: TODO_BUCKETS.has(bucket) ? bucket : 'inbox',
             timeBlock: ['morning', 'afternoon', 'evening'].includes(timeBlock) ? timeBlock : '',
+            tomorrowPlan: ['important', 'doable'].includes(tomorrowPlan) ? tomorrowPlan : '',
             completed: false,
             doneAt: null,
             createdAt: Date.now(),
@@ -92,6 +93,7 @@ export class TodoList {
             bucket,
             dueAt: bucket === 'today' ? new Date().toISOString() : null,
             timeBlock: bucket === 'today' ? (items.find((item) => item.id === id)?.timeBlock || '') : '',
+            tomorrowPlan: '',
         });
         return true;
     }
@@ -135,6 +137,7 @@ export class TodoList {
             repeat,
             bucket: 'later',
             timeBlock: '',
+            tomorrowPlan: '',
             completed: false,
             doneAt: null,
             createdAt: Date.now(),

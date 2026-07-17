@@ -7,6 +7,7 @@ import { buildRhythmSummary, buildWeeklyReview, formatRhythmEvent, formatRhythmT
 import { todoBucket } from '../renderer/todo.js';
 import { TIME_BLOCKS, timeBlockLabel } from '../renderer/time-blocks.js';
 import { buildDayCloseout, dayCloseoutPatch } from '../renderer/day-closeout.js';
+import { buildTomorrowStart, canPlanTomorrow, returnToInboxPatch, tomorrowPlanPatch } from '../renderer/tomorrow-start.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -82,6 +83,7 @@ function makeInboxTodo(title) {
         repeat: 'none',
         bucket: 'inbox',
         timeBlock: '',
+        tomorrowPlan: '',
         completed: false,
         doneAt: null,
         createdAt: Date.now(),
@@ -185,6 +187,25 @@ export const statsTab = {
             value: reflection.tomorrow || '',
             'aria-label': '明天第一件事',
         });
+        const tomorrowStart = buildTomorrowStart({ todos });
+        let addTomorrowTask;
+        addTomorrowTask = el('button', {
+            class: 'secondary rhythm-tomorrow-add',
+            type: 'button',
+            onclick: () => runAsync(addTomorrowTask, async () => {
+                const title = String(tomorrow.value || '').trim().slice(0, 120);
+                if (!title) throw new Error('先写下明天第一件想开始的事。');
+                if (tomorrowStart.important) throw new Error('明天已经有一件最重要的事了。');
+                await setSettings({ todos: { items: [
+                    ...todos,
+                    { ...makeInboxTodo(title), ...tomorrowPlanPatch('important') },
+                ] } });
+            }, {
+                announce,
+                success: '已加入明天最重要的一件事。',
+                failure: (error) => error.message,
+            }),
+        }, '加入明天');
         let saveReflection;
         saveReflection = el('button', {
             class: 'action rhythm-save',
@@ -229,7 +250,7 @@ export const statsTab = {
                 el('div', { class: 'rhythm-reflection-wrap' },
                     el('h4', {}, '轻复盘'),
                     el('label', {}, '今天完成了什么？', reflectionNote),
-                    el('label', {}, '明天第一件事', tomorrow),
+                    el('label', {}, '明天第一件事', el('div', { class: 'rhythm-tomorrow-action' }, tomorrow, addTomorrowTask)),
                     saveReflection,
                 ),
             ),
@@ -423,6 +444,7 @@ export const feedTab = {
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
         const dayCloseout = buildDayCloseout({ todos: allTodos });
+        const tomorrowStart = buildTomorrowStart({ todos: allTodos });
         const nextTimeBlock = TIME_BLOCKS.find((block) => !todayTasks.some((task) => task.timeBlock === block.id)) || TIME_BLOCKS[0];
         const applyTodoPatch = async (id, patch) => {
             await setSettings({ todos: {
@@ -434,6 +456,7 @@ export const feedTab = {
             bucket,
             dueAt: bucket === 'today' ? new Date().toISOString() : null,
             timeBlock: bucket === 'today' ? task.timeBlock || '' : '',
+            tomorrowPlan: bucket === 'today' ? '' : task.tomorrowPlan || '',
         });
         const completeTodo = async (task) => {
             const now = Date.now();
@@ -455,6 +478,13 @@ export const feedTab = {
             refreshCurrent();
         };
         const closeoutTask = (task, action) => applyTodoPatch(task.id, dayCloseoutPatch(action));
+        const planTomorrowTask = (task, role) => {
+            if (!canPlanTomorrow({ todos: allTodos, role })) throw new Error(role === 'important'
+                ? '明天已经有一件最重要的事了。'
+                : '明天的可做事项最多保留两件。');
+            return applyTodoPatch(task.id, tomorrowPlanPatch(role));
+        };
+        const returnTomorrowTask = (task) => applyTodoPatch(task.id, returnToInboxPatch());
         const saveDayCloseout = async () => {
             const now = Date.now();
             const previous = rhythm.reflections?.[dayCloseout.todayKey] || {};
@@ -614,6 +644,60 @@ export const feedTab = {
             rhythm.reflections?.[dayCloseout.todayKey]?.closeout
                 ? el('p', { class: 'day-closeout-saved' }, `已保存：${rhythm.reflections[dayCloseout.todayKey].closeout}`)
                 : null,
+        ));
+        const plannedTaskRow = (task, kind) => {
+            let releaseButton;
+            releaseButton = el('button', {
+                class: 'tomorrow-release', type: 'button',
+                onclick: () => runAsync(releaseButton, () => returnTomorrowTask(task), { announce, success: '已送回收件箱。' }),
+            }, '放回收件箱');
+            return el('div', { class: `tomorrow-planned-row ${kind}` },
+                el('div', {}, el('strong', {}, task.title), el('small', {}, kind === 'important' ? '明天最重要' : '明天可做')),
+                releaseButton,
+            );
+        };
+        const inboxCandidates = inboxTasks.slice(0, 4).map((task) => {
+            let importantButton;
+            importantButton = el('button', {
+                class: 'tomorrow-pick important', type: 'button', disabled: !!tomorrowStart.important,
+                onclick: () => runAsync(importantButton, () => planTomorrowTask(task, 'important'), {
+                    announce, success: '已选为明天最重要的一件事。', failure: (error) => error.message,
+                }),
+            }, '最重要');
+            let doableButton;
+            doableButton = el('button', {
+                class: 'tomorrow-pick doable', type: 'button', disabled: tomorrowStart.doable.length >= 2,
+                onclick: () => runAsync(doableButton, () => planTomorrowTask(task, 'doable'), {
+                    announce, success: '已加入明天可做事项。', failure: (error) => error.message,
+                }),
+            }, '可做');
+            return el('article', { class: 'tomorrow-candidate-row' },
+                el('strong', {}, task.title),
+                el('div', { class: 'tomorrow-pick-actions' }, importantButton, doableButton),
+            );
+        });
+        root.appendChild(el('section', { class: 'card tomorrow-start-card' },
+            el('div', { class: 'tomorrow-start-head' },
+                el('div', {}, el('span', { class: 'tomorrow-start-kicker' }, 'TOMORROW, LIGHTLY'), el('h3', {}, '明天只留三件以内')),
+                el('span', { class: 'tomorrow-start-date' }, `明天 · ${tomorrowStart.dateKey.slice(5).replace('-', ' / ')}`),
+            ),
+            el('p', { class: 'tomorrow-start-description' }, '先选一件最重要的，再补两件可做的；其余任务继续安心待在收件箱。'),
+            el('div', { class: 'tomorrow-plan-grid' },
+                el('section', { class: 'tomorrow-plan-slot important' },
+                    el('div', { class: 'tomorrow-slot-head' }, el('span', {}, '①'), el('div', {}, el('h4', {}, '最重要'), el('small', {}, '只留 1 件'))),
+                    tomorrowStart.important ? plannedTaskRow(tomorrowStart.important, 'important') : el('p', { class: 'tomorrow-slot-empty' }, '还没选。留给最值得开始的一步。'),
+                ),
+                el('section', { class: 'tomorrow-plan-slot doable' },
+                    el('div', { class: 'tomorrow-slot-head' }, el('span', {}, '②'), el('div', {}, el('h4', {}, '可做'), el('small', {}, `已选 ${tomorrowStart.doable.length} / 2 件`))),
+                    tomorrowStart.doable.length
+                        ? el('div', { class: 'tomorrow-planned-list' }, ...tomorrowStart.doable.map((task) => plannedTaskRow(task, 'doable')))
+                        : el('p', { class: 'tomorrow-slot-empty' }, '最多补两件，给临时变化留出位置。'),
+                ),
+            ),
+            el('div', { class: 'tomorrow-candidates' },
+                el('div', { class: 'tomorrow-candidates-head' }, el('h4', {}, '从收件箱慢慢挑'), el('small', {}, inboxTasks.length ? `展示前 ${Math.min(4, inboxTasks.length)} 件` : '暂时没有收件箱任务')),
+                inboxCandidates.length ? el('div', { class: 'tomorrow-candidate-list' }, ...inboxCandidates) : el('p', { class: 'tomorrow-candidates-empty' }, '不用填满。明天也可以从一件空白开始。'),
+            ),
         ));
         root.appendChild(el('section', { class: 'card todo-board-card' },
             el('div', { class: 'todo-board-head' },
