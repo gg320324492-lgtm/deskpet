@@ -139,6 +139,27 @@ handleFrom('window:action', ['room'], (_event, action) => {
     throw new Error('Unsupported window action');
 });
 
+function normalizeFocusCommand(command) {
+    if (!command || typeof command !== 'object' || Array.isArray(command)) throw new TypeError('Focus command must be an object');
+    const action = command.action;
+    if (!['start', 'toggle', 'skip', 'stop'].includes(action)) throw new TypeError('Unsupported focus command');
+    if (action !== 'start') return { action };
+    if (command.task == null) return { action };
+    if (!command.task || typeof command.task !== 'object' || Array.isArray(command.task)) throw new TypeError('Focus task must be an object');
+    const id = typeof command.task.id === 'string' ? command.task.id.trim() : '';
+    const title = typeof command.task.title === 'string' ? command.task.title.trim() : '';
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !title || title.length > 120) throw new TypeError('Invalid focus task');
+    return { action, task: { id, title } };
+}
+
+handleFrom('focus:command', ['room'], (_event, command) => {
+    const normalized = normalizeFocusCommand(command);
+    const pet = getPetWindow();
+    if (!pet || pet.isDestroyed()) return { ok: false, reason: 'pet-unavailable' };
+    pet.webContents.send('focus:command', normalized);
+    return { ok: true };
+});
+
 // === Storage IPC ===
 
 handleFrom('storage:set', ['pet', 'room'], async (_event, domain, patch) => {

@@ -32,6 +32,7 @@ export class SceneController {
         this._clearInterval = clearIntervalFn;
         this._timer = null;
         this._status = SCENES.manual;
+        this._overrideId = null;
     }
 
     start() {
@@ -46,12 +47,29 @@ export class SceneController {
 
     snapshot() { return this._status; }
 
-    sync({ notify = true } = {}) {
+    setOverride(id, { notify = true, source = 'runtime' } = {}) {
+        if (!SCENE_IDS.includes(id) || id === 'manual') throw new TypeError(`Unsupported scene override: ${String(id)}`);
+        this._overrideId = id;
+        return this.sync({ notify, source });
+    }
+
+    clearOverride({ notify = true, source = 'runtime' } = {}) {
+        if (this._overrideId == null) return this.snapshot();
+        this._overrideId = null;
+        return this.sync({ notify, source });
+    }
+
+    sync({ notify = true, source = 'settings' } = {}) {
         const settings = this._getSettings()?.settings || {};
-        const next = getSceneStatus(settings, this._now());
-        const changed = next.id !== this._status.id || next.scheduled !== this._status.scheduled;
+        const base = getSceneStatus(settings, this._now());
+        const next = this._overrideId
+            ? { ...SCENES[this._overrideId], active: true, scheduled: base.scheduled, baseId: base.id, overrideId: this._overrideId }
+            : { ...base, baseId: base.id, overrideId: null };
+        const changed = next.id !== this._status.id
+            || next.scheduled !== this._status.scheduled
+            || next.overrideId !== this._status.overrideId;
         this._status = next;
-        if (changed || !this._initialized) this._onChange(next, { notify: notify && this._initialized && changed });
+        if (changed || !this._initialized) this._onChange(next, { notify: notify && this._initialized && changed, source });
         this._initialized = true;
         return next;
     }

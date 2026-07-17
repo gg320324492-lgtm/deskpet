@@ -488,6 +488,117 @@ button.tile.interactive.active {
     transform: translateY(-1px);
 }
 
+.focus-queue-card {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 18px;
+    border-color: rgba(255, 138, 179, 0.3);
+    background:
+        radial-gradient(circle at 91% -10%, rgba(255, 138, 179, 0.18), transparent 35%),
+        linear-gradient(120deg, rgba(35, 40, 61, 0.98), rgba(28, 31, 46, 0.98));
+}
+
+.focus-queue-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.focus-kicker {
+    display: block;
+    color: var(--room-accent);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+}
+
+.focus-queue-head h3 {
+    margin-top: 3px;
+    color: var(--room-text);
+    font-size: 20px;
+}
+
+.focus-orbit {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border: 2px solid rgba(255, 138, 179, 0.76);
+    border-top-color: rgba(143, 179, 255, 0.94);
+    border-radius: 50%;
+    box-shadow: 0 0 0 7px rgba(255, 138, 179, 0.07);
+    animation: focus-orbit 5s linear infinite;
+}
+
+.focus-queue-detail {
+    max-width: 69ch;
+    margin-top: 8px;
+    color: var(--room-muted);
+    font-size: 13px;
+}
+
+.focus-task-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.focus-task-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px solid var(--room-border);
+    border-radius: 12px;
+    background: rgba(15, 17, 27, 0.34);
+    padding: 10px 11px 10px 14px;
+}
+
+.focus-task-copy {
+    min-width: 0;
+}
+
+.focus-task-copy strong,
+.focus-task-copy small {
+    display: block;
+}
+
+.focus-task-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.focus-task-copy small,
+.focus-empty {
+    color: var(--room-subtle);
+    font-size: 12px;
+}
+
+.focus-task-start {
+    min-height: 36px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(255, 138, 179, 0.54);
+    border-radius: 9px;
+    background: rgba(199, 53, 107, 0.23);
+    color: #fff4f8;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 6px 11px;
+    transition: background 180ms ease-out, transform 180ms ease-out, border-color 180ms ease-out;
+}
+
+.focus-task-start:hover {
+    border-color: var(--room-accent);
+    background: var(--room-action);
+    transform: translateY(-1px);
+}
+
+@keyframes focus-orbit {
+    to { transform: rotate(360deg); }
+}
+
 .action-copy h3,
 .settings-card h3 {
     color: var(--room-text);
@@ -1260,6 +1371,15 @@ select {
         align-items: stretch;
         flex-direction: column;
         gap: 14px;
+    }
+
+    .focus-task-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .focus-task-start {
+        width: 100%;
     }
 
     button.action {

@@ -75,6 +75,24 @@ export class PomodoroTimer {
         return true;
     }
 
+    /** Advance without counting the current work period as a completed session. */
+    skip() {
+        if (this._phase === 'idle') return false;
+        const phase = this._phase === 'paused' ? this._pausedPhase : this._phase;
+        clearInterval(this._interval);
+        this._interval = null;
+        if (phase === 'work') {
+            this._onBubble('已跳过本轮专注，进入休息。');
+            this._enter('rest', null);
+        } else {
+            this._phase = 'idle';
+            this._remainingMs = 0;
+            this._onBubble('已跳过休息，回到待命。');
+            this._emit();
+        }
+        return true;
+    }
+
     /** Hard cleanup — call when the renderer tears down to release timers. */
     dispose() {
         if (this._interval) clearInterval(this._interval);

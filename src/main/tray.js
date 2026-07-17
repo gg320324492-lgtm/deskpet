@@ -117,6 +117,17 @@ function buildMenu(sendState, withShowUnfinished = false) {
     items.push(
         { type: 'separator' },
         { label: '开始番茄钟',  click: () => sendState('__cmd:pomodoro:start') },
+        {
+            label: '专注控制',
+            submenu: [
+                { label: '开始专注', click: () => sendState('__cmd:pomodoro:start') },
+                { label: '暂停 / 继续', click: () => sendState('__cmd:focus:toggle') },
+                { label: '跳过当前阶段', click: () => sendState('__cmd:focus:skip') },
+                { label: '结束专注', click: () => sendState('__cmd:focus:stop') },
+                { type: 'separator' },
+                { label: '打开专注任务', click: () => sendState('__cmd:room:open:feed') },
+            ],
+        },
         { label: '今日待办',    click: () => sendState('__cmd:room:open:todos') },
         { label: '角色状态',    click: () => sendState('__cmd:room:open:stats') },
         {

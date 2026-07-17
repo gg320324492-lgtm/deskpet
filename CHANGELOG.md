@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.8 - 2026-07-17
+
+### Added
+
+- Added the Focus Flow: Pomodoro work temporarily activates the Focus scene,
+  breaks use Relaxed Companion, and completion or stopping returns to the
+  user's previous manual or scheduled scene.
+- Added task-linked focus from the room: choose a current task to start a
+  session; a naturally completed work period marks that task complete before
+  moving to rest. Skipping a phase never completes a task.
+- Added pause/resume, skip, stop and room-entry controls to the system tray
+  and pet context menu.
+- Added a Focus Flow task queue and daily estimated focus minutes in the room.
+
 ## 1.0.7 - 2026-07-17
 
 ### Added

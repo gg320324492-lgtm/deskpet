@@ -75,6 +75,9 @@ export const statsTab = {
         const mood = getSettings().mood || {};
         const pomodoro = getSettings().pomodoro || {};
         const stats = getSettings().stats || {};
+        const todos = getSettings().todos?.items || [];
+        const nextFocusTask = todos.find((item) => !item.completed && (!item.dueAt || item.dueAt.slice(0, 10) <= new Date().toISOString().slice(0, 10)));
+        const focusMinutes = (Number(pomodoro.sessionsToday) || 0) * (Number(pomodoro.workMin) || 25);
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -119,6 +122,11 @@ export const statsTab = {
                 el('span', { class: 'summary-label' }, '连续陪伴'),
                 el('strong', {}, `${stats.streakDays ?? 0} 天`),
                 el('small', {}, `累计 ${stats.totalCompanionMinutes ?? 0} 分钟`),
+            ),
+            el('article', { class: 'card summary-card focus-summary-card' },
+                el('span', { class: 'summary-label' }, '今日专注时长'),
+                el('strong', {}, `${focusMinutes} 分钟`),
+                el('small', {}, nextFocusTask ? `下一项：${nextFocusTask.title}` : '没有待开始的今日任务'),
             ),
         ));
     },
@@ -212,9 +220,41 @@ export const outfitsTab = {
 
 // ============ Feed / interaction ============
 export const feedTab = {
-    render(root, { getSettings, setSettings, announce }) {
+    render(root, { getSettings, setSettings, announce, focusCommand }) {
         let mood = { ...(getSettings().mood || {}) };
         root.appendChild(panelHeader('陪伴行动', '一起做点什么', '选择一个轻量互动，状态会立即同步到桌面宠物。'));
+
+        const tasks = (getSettings().todos?.items || [])
+            .filter((item) => !item.completed && (!item.dueAt || item.dueAt.slice(0, 10) <= new Date().toISOString().slice(0, 10)))
+            .slice(0, 3);
+        const taskRows = tasks.length
+            ? tasks.map((task) => {
+                let startButton;
+                startButton = el('button', {
+                    class: 'focus-task-start',
+                    type: 'button',
+                    onclick: () => runAsync(startButton, async () => {
+                        const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
+                        if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
+                    }, { announce, success: `专注请求已发送：${task.title}`, failure: (error) => error?.message || '无法开始专注。' }),
+                }, '开始专注');
+                return el('div', { class: 'focus-task-row' },
+                    el('div', { class: 'focus-task-copy' },
+                        el('strong', {}, task.title),
+                        el('small', {}, `优先级 P${task.priority || 1}`),
+                    ),
+                    startButton,
+                );
+            })
+            : [el('p', { class: 'focus-empty' }, '今天没有待办任务；可直接从托盘开始一轮自由专注。')];
+        root.appendChild(el('section', { class: 'card focus-queue-card' },
+            el('div', { class: 'focus-queue-head' },
+                el('div', {}, el('span', { class: 'focus-kicker' }, 'FOCUS FLOW'), el('h3', {}, '从一项任务开始')),
+                el('span', { class: 'focus-orbit', 'aria-hidden': 'true' }),
+            ),
+            el('p', { class: 'focus-queue-detail' }, '完成一轮专注后会自动进入休息，并将这项任务标记完成；结束时恢复你的原有场景。'),
+            el('div', { class: 'focus-task-list' }, ...taskRows),
+        ));
 
         const actionCard = (title, body, success, makePatch) => {
             let button;

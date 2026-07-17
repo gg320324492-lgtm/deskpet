@@ -71,4 +71,13 @@ test('start while already in work is a no-op', () => {
     timer.dispose();
 });
 
+test('skip moves a work phase to rest without counting a completed session', () => {
+    const { timer, store } = fresh();
+    timer.start();
+    assert.equal(timer.skip(), true);
+    assert.equal(timer.snapshot().phase, 'rest');
+    assert.equal(store.pomodoro.sessionsToday, 0);
+    timer.dispose();
+});
+
 test.afterEach(() => { /* ensure cleanup via dispose in each test */ });

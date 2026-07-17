@@ -64,3 +64,27 @@ test('controller notifies only after its initial scene state and releases timers
     controller.stop();
     assert.equal(cleared, 1);
 });
+
+test('runtime scene override returns to the current persisted scene when cleared', () => {
+    const store = { settings: {
+        sceneMode: 'night',
+        sceneAutoEnabled: false,
+        sceneAutoPreset: 'focus',
+        sceneAutoStart: 9,
+        sceneAutoEnd: 18,
+    } };
+    const controller = new SceneController({
+        getSettings: () => store,
+        setIntervalFn: () => 1,
+        clearIntervalFn: () => {},
+    });
+    controller.start();
+    controller.setOverride('focus', { notify: false });
+    assert.equal(controller.snapshot().id, 'focus');
+    assert.equal(controller.snapshot().baseId, 'night');
+    assert.equal(controller.snapshot().overrideId, 'focus');
+    controller.clearOverride({ notify: false });
+    assert.equal(controller.snapshot().id, 'night');
+    assert.equal(controller.snapshot().overrideId, null);
+    controller.stop();
+});

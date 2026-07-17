@@ -37,6 +37,7 @@ import { IdleWatcher } from './idle-watcher.js';
 import { Popover } from './popover.js';
 import { BehaviorArbiter } from './behavior-arbiter.js';
 import { PomodoroTimer } from './pomodoro.js';
+import { FocusFlow } from './focus-flow.js';
 import { ReminderEngine } from './reminders.js';
 import { TodoList } from './todo.js';
 import { DndController } from './dnd.js';
@@ -229,12 +230,19 @@ async function main() {
     });
     scene.start();
 
+    const focusFlow = new FocusFlow({
+        pomodoro,
+        scene,
+        todoList,
+        onNotice: (text) => animator.setBubbleText(text),
+    });
+
     // 12. Right-click menu — extra groups filled in
-    const extraGroups = buildExtraMenuGroups({ pomodoro, todoList, reminders, dnd });
+    const extraGroups = buildExtraMenuGroups({ pomodoro, focusFlow, todoList, reminders, dnd });
 
     // 13. Interaction
     const interaction = new Interaction(root, sm, idleWatcher, {
-        actionHandlers: buildActionHandlers({ pomodoro, todoList, reminders, dnd, popover, animator, getSettings, setSettings, allSettings, cache, root, wardrobe, aiChat, sm, dialogue, mood, memory }),
+        actionHandlers: buildActionHandlers({ pomodoro, focusFlow, todoList, reminders, dnd, popover, animator, getSettings, setSettings, allSettings, cache, root, wardrobe, aiChat, sm, dialogue, mood, memory }),
         extraMenuGroups: extraGroups,
     });
 
@@ -251,8 +259,9 @@ async function main() {
     // 15. Tray / main process event routes
     window.petAPI.onStateFromTray((state) => sm.transitionTo(state));
     window.petAPI.onTrayCommand((cmd) => handleTrayCommand(cmd, {
-        pomodoro, todoList, reminders, dnd, scene, sm, animator, popover, getSettings, setSettings, allSettings, cache,
+        pomodoro, focusFlow, todoList, reminders, dnd, scene, sm, animator, popover, getSettings, setSettings, allSettings, cache,
     }));
+    window.petAPI.onFocusCommand((command) => focusFlow.command(command));
     window.petAPI.onVisibility((visible) => {
         if (visible && sm.state === STATES.SLEEP) {
             // Wake the pet when window becomes visible after long hide.
@@ -353,7 +362,7 @@ async function main() {
 
     // Debug handle
     window.__sm = sm;
-    window.__pet = { animator, idleWatcher, interaction, popover, pomodoro, reminders, todoList, dnd, scene, sound, dialogue, mood, affinity, achievements, memory, wardrobe, cache };
+    window.__pet = { animator, idleWatcher, interaction, popover, pomodoro, focusFlow, reminders, todoList, dnd, scene, sound, dialogue, mood, affinity, achievements, memory, wardrobe, cache };
     console.log('[pet] Date Night Girl v2 ready (18 states + mood + affinity + achievements + room).');
 }
 
@@ -433,7 +442,7 @@ function maybeGreet(animator, getter, setter) {
     }
 }
 
-function buildExtraMenuGroups({ pomodoro, todoList, dnd }) {
+function buildExtraMenuGroups({ pomodoro, focusFlow, todoList, dnd }) {
     return [
         {
             label: '互动',
@@ -448,6 +457,8 @@ function buildExtraMenuGroups({ pomodoro, todoList, dnd }) {
             label: '效率',
             items: [
                 { id: 'pomo:start',     label: '开始番茄钟',  shortcut: '⏱' },
+                { id: 'pomo:toggle',    label: '暂停 / 继续', shortcut: '⏸' },
+                { id: 'pomo:skip',      label: '跳过当前阶段', shortcut: '⏭' },
                 { id: 'pomo:stop',      label: '结束番茄钟',  shortcut: '⏹' },
                 { id: 'todo:open',      label: '今日待办',    shortcut: '☐' },
                 { id: 'remind:water',   label: '提醒我喝水',  shortcut: '💧' },
@@ -473,7 +484,7 @@ function buildExtraMenuGroups({ pomodoro, todoList, dnd }) {
     ];
 }
 
-function buildActionHandlers({ pomodoro, todoList, reminders, dnd, popover, animator, getSettings, setSettings, cache, root, wardrobe, aiChat, sm, dialogue, mood, memory }) {
+function buildActionHandlers({ pomodoro, focusFlow, todoList, reminders, dnd, popover, animator, getSettings, setSettings, cache, root, wardrobe, aiChat, sm, dialogue, mood, memory }) {
     return {
         // Interact
         'interact:greet':   () => {
@@ -497,9 +508,11 @@ function buildActionHandlers({ pomodoro, todoList, reminders, dnd, popover, anim
 
         // Productivity
         'dnd:toggle':         () => dnd.toggle(),
-        'pomo:start':         () => pomodoro.start(),
-        'pomo:stop':          () => pomodoro.stop(),
-        'todo:open':          () => openTodoPopover({ todoList, popover }),
+        'pomo:start':         () => focusFlow.start(),
+        'pomo:toggle':        () => focusFlow.togglePause(),
+        'pomo:skip':          () => focusFlow.skip(),
+        'pomo:stop':          () => focusFlow.stop(),
+        'todo:open':          () => openTodoPopover({ todoList, focusFlow, popover }),
         'remind:water':       () => reminders.fireNow('water'),
         'remind:eye':         () => reminders.fireNow('eye'),
 
@@ -556,13 +569,14 @@ async function openAskPopover({ aiChat, popover, animator, memory }) {
     input.focus();
 }
 
-function openTodoPopover({ todoList, popover }) {
+function openTodoPopover({ todoList, focusFlow, popover }) {
     const snap = todoList.snapshot();
     const itemsHtml = snap.today.map(it => `
         <div class="todo-row" data-id="${it.id}">
             <input type="checkbox" ${it.completed ? 'checked' : ''}/>
             <span class="todo-title" style="flex:1">${escapeHtml(it.title)}</span>
             <span class="todo-prio" data-p="${it.priority}">P${it.priority}</span>
+            <button type="button" data-focus="${it.id}">专注</button>
         </div>
     `).join('') || `<div style="opacity:.6;text-align:center;padding:8px">今天没有待办</div>`;
     popover.open({
@@ -585,14 +599,20 @@ function openTodoPopover({ todoList, popover }) {
         if (inp && inp.value.trim()) {
             todoList.add({ title: inp.value.trim(), priority: 1 });
             inp.value = '';
-            openTodoPopover({ todoList, popover });
+            openTodoPopover({ todoList, focusFlow, popover });
         }
     });
     host.querySelectorAll('.todo-row input[type=checkbox]').forEach(cb => {
         cb.addEventListener('change', () => {
             const id = cb.closest('.todo-row').dataset.id;
             todoList.complete(id);
-            openTodoPopover({ todoList, popover });
+            openTodoPopover({ todoList, focusFlow, popover });
+        });
+    });
+    host.querySelectorAll('button[data-focus]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const task = snap.today.find((item) => item.id === button.dataset.focus);
+            if (task && focusFlow.start(task)) popover.close();
         });
     });
 }
@@ -650,7 +670,10 @@ function openSettingsPopover({ cache, setSettings, popover, root }) {
 function handleTrayCommand(cmd, refs) {
     // cmd strings like 'pomodoro:start', 'room:open:todos', 'dnd:toggle'.
     const parts = cmd.split(':');
-    if (parts[0] === 'pomodoro' && parts[1] === 'start') refs.pomodoro.start();
+    if (parts[0] === 'pomodoro' && parts[1] === 'start') refs.focusFlow.start();
+    else if (parts[0] === 'focus' && parts[1] === 'toggle') refs.focusFlow.togglePause();
+    else if (parts[0] === 'focus' && parts[1] === 'skip') refs.focusFlow.skip();
+    else if (parts[0] === 'focus' && parts[1] === 'stop') refs.focusFlow.stop();
     else if (parts[0] === 'room' && parts[1] === 'open') {
         const requestedTab = parts[2] === 'todos' ? 'feed' : (parts[2] || 'stats');
         window.petAPI.openRoom({ tab: requestedTab });
