@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.7 - 2026-07-17
+
+### Added
+
+- Added local title search across inbox, Today, Later, and archived tasks.
+- Search results can move a task to Today, restore an archived task, or start
+  a Focus Flow session for a Today task.
+
 ## 1.1.6 - 2026-07-17
 
 ### Added

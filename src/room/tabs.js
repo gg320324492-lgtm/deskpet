@@ -10,6 +10,7 @@ import { buildDayCloseout, dayCloseoutPatch } from '../renderer/day-closeout.js'
 import { buildTomorrowStart, canPlanTomorrow, returnToInboxPatch, tomorrowPlanPatch } from '../renderer/tomorrow-start.js';
 import { beginTodayPatch, buildTodayStart, nextOpenTimeBlock } from '../renderer/today-start.js';
 import { archiveTaskPatch, restoreTaskPatch, staleTasks } from '../renderer/task-triage.js';
+import { searchTasks } from '../renderer/task-search.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -492,6 +493,10 @@ export const feedTab = {
         const returnTomorrowTask = (task) => applyTodoPatch(task.id, returnToInboxPatch());
         const archiveTask = (task) => applyTodoPatch(task.id, archiveTaskPatch());
         const restoreTask = (task) => applyTodoPatch(task.id, restoreTaskPatch());
+        const startSearchFocus = async (task) => {
+            const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
+            if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
+        };
         const startCarriedFocus = async (task) => {
             const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
             if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
@@ -776,6 +781,70 @@ export const feedTab = {
             el('div', { class: 'triage-head' }, el('div', {}, el('span', {}, 'TASK RESET'), el('h3', {}, '回看一下，不必硬扛')), el('small', {}, '不删除数据')),
             stale.length ? el('div', { class: 'triage-list' }, ...stale.slice(0, 4).map((task) => triageRow(task))) : el('p', { class: 'triage-empty' }, '没有久留任务。'),
             archivedTasks.length ? el('details', { class: 'triage-archive' }, el('summary', {}, `已归档 ${archivedTasks.length} 件`), el('div', { class: 'triage-list' }, ...archivedTasks.slice(0, 6).map((task) => triageRow(task, true)))) : null,
+        ));
+        const locationLabel = { inbox: '收件箱', today: '今天', later: '稍后', archive: '归档' };
+        const searchInput = el('input', {
+            class: 'task-search-input', type: 'search', maxlength: 120,
+            placeholder: '搜索任务标题…', 'aria-label': '搜索任务标题',
+        });
+        const searchResults = el('div', { class: 'task-search-results', 'aria-live': 'polite' });
+        const renderSearchResults = () => {
+            const query = searchInput.value;
+            const results = searchTasks({ todos: allTodos, query });
+            searchResults.replaceChildren();
+            if (!query.trim()) {
+                searchResults.appendChild(el('p', { class: 'task-search-hint' }, '输入几个字，就能在收件箱、今天、稍后和归档里找到它。'));
+                return;
+            }
+            if (!results.length) {
+                searchResults.appendChild(el('p', { class: 'task-search-empty' }, '没有找到相符任务。换个词试试？'));
+                return;
+            }
+            results.slice(0, 8).forEach(({ task, bucket }) => {
+                let action;
+                if (bucket === 'archive') {
+                    action = el('button', {
+                        class: 'task-search-action restore', type: 'button',
+                        onclick: () => runAsync(action, () => restoreTask(task), { announce, success: '已恢复到收件箱。' }),
+                    }, '恢复');
+                } else if (bucket === 'today') {
+                    action = el('button', {
+                        class: 'task-search-action focus', type: 'button',
+                        onclick: () => runAsync(action, () => startSearchFocus(task), {
+                            announce, success: `专注请求已发送：${task.title}`,
+                            failure: (error) => error?.message || '无法开始专注。',
+                        }),
+                    }, '开始专注');
+                } else {
+                    action = el('button', {
+                        class: 'task-search-action today', type: 'button',
+                        onclick: () => runAsync(action, () => placeTodo(task, 'today'), { announce, success: '已放到今天。' }),
+                    }, '放到今天');
+                }
+                searchResults.appendChild(el('article', { class: `task-search-row in-${bucket}` },
+                    el('div', { class: 'task-search-copy' }, el('strong', {}, task.title), el('span', {}, locationLabel[bucket])),
+                    action,
+                ));
+            });
+            if (results.length > 8) searchResults.appendChild(el('p', { class: 'task-search-more' }, `已显示前 8 项，共 ${results.length} 项。`));
+        };
+        let searchClearButton;
+        searchClearButton = el('button', {
+            class: 'task-search-clear', type: 'button', disabled: true,
+            onclick: () => { searchInput.value = ''; renderSearchResults(); searchInput.focus(); },
+        }, '清除');
+        searchInput.addEventListener('input', () => {
+            searchClearButton.disabled = !searchInput.value;
+            renderSearchResults();
+        });
+        renderSearchResults();
+        root.appendChild(el('section', { class: 'card task-search-card' },
+            el('div', { class: 'task-search-head' },
+                el('div', {}, el('span', { class: 'task-search-kicker' }, 'TASK FINDER'), el('h3', {}, '想找哪件事？')),
+                el('span', { class: 'task-search-note' }, '仅本机搜索'),
+            ),
+            el('div', { class: 'task-search-control' }, searchInput, searchClearButton),
+            searchResults,
         ));
         root.appendChild(el('section', { class: 'card todo-board-card' },
             el('div', { class: 'todo-board-head' },

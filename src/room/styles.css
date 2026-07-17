@@ -972,6 +972,43 @@ select:focus-visible,
 .triage-archive summary { cursor:pointer; }
 .triage-empty { margin:13px 0 0; color:var(--room-subtle); font-size:12px; }
 
+.task-search-card {
+    margin-top: 18px;
+    border-color: rgba(125, 211, 252, 0.26);
+    background:
+        radial-gradient(circle at 94% 0%, rgba(125, 211, 252, 0.14), transparent 31%),
+        linear-gradient(135deg, rgba(32, 47, 62, 0.99), rgba(31, 37, 55, 0.99));
+}
+.task-search-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.task-search-kicker { display:block; color:#8bdcff; font-size:10px; font-weight:850; letter-spacing:.15em; }
+.task-search-head h3 { margin:3px 0 0; font-size:19px; }
+.task-search-note { flex:0 0 auto; padding:5px 8px; border:1px solid rgba(143, 214, 255, .28); border-radius:999px; color:#caeeff; background:rgba(125, 211, 252, .1); font-size:10px; font-weight:800; }
+.task-search-control { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:8px; margin-top:13px; }
+.task-search-input { min-width:0; min-height:40px; padding:8px 11px; border:1px solid rgba(185, 225, 255, .24); border-radius:11px; color:var(--room-text); background:rgba(8, 20, 32, .56); font:inherit; font-size:13px; }
+.task-search-input::placeholder { color:#abc1d2; opacity:1; }
+.task-search-input:focus-visible { outline:2px solid #83d9ff; outline-offset:2px; }
+.task-search-clear { min-height:40px; border:1px solid rgba(185, 225, 255, .2); border-radius:10px; color:#d5ecfb; background:rgba(255,255,255,.05); cursor:pointer; padding:6px 11px; font:inherit; font-size:11px; font-weight:800; }
+.task-search-clear:not(:disabled):hover { border-color:rgba(151, 220, 255, .62); background:rgba(125, 211, 252, .13); }
+.task-search-clear:disabled { cursor:default; opacity:.45; }
+.task-search-results { display:grid; gap:7px; margin-top:11px; }
+.task-search-hint, .task-search-empty, .task-search-more { margin:0; color:var(--room-muted); font-size:11px; line-height:1.55; }
+.task-search-empty { padding:10px 11px; border:1px dashed rgba(185, 225, 255, .2); border-radius:10px; }
+.task-search-more { color:#b9d7e9; }
+.task-search-row { display:flex; align-items:center; justify-content:space-between; gap:11px; padding:9px 10px; border:1px solid rgba(214, 231, 248, .13); border-radius:10px; background:rgba(8, 16, 29, .34); }
+.task-search-row.in-today { border-left:3px solid rgba(255, 154, 188, .78); }
+.task-search-row.in-inbox { border-left:3px solid rgba(143, 179, 255, .76); }
+.task-search-row.in-later { border-left:3px solid rgba(121, 214, 173, .76); }
+.task-search-row.in-archive { border-left:3px solid rgba(211, 184, 255, .76); }
+.task-search-copy { display:grid; min-width:0; gap:3px; }
+.task-search-copy strong { overflow:hidden; color:var(--room-text); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.task-search-copy span { color:var(--room-subtle); font-size:10px; }
+.task-search-action { flex:0 0 auto; min-height:29px; border:1px solid rgba(192, 224, 255, .25); border-radius:8px; color:#dbeeff; background:rgba(255,255,255,.055); cursor:pointer; padding:4px 8px; font:inherit; font-size:10px; font-weight:800; }
+.task-search-action.today:hover { border-color:rgba(143, 179, 255, .72); background:rgba(143, 179, 255, .14); }
+.task-search-action.focus { border-color:rgba(255, 154, 188, .38); color:#ffd8e5; }
+.task-search-action.focus:hover { background:rgba(255, 138, 179, .13); }
+.task-search-action.restore { border-color:rgba(211, 184, 255, .37); color:#e7d9ff; }
+.task-search-action.restore:hover { background:rgba(211, 184, 255, .13); }
+
 .todo-board-card::before {
     position: absolute;
     top: 18px;
@@ -2132,6 +2169,12 @@ select {
     .triage-row { align-items:stretch; flex-direction:column; }
     .triage-row > div { width:100%; }
     .triage-action { flex:1 1 0; }
+
+    .task-search-card { padding:15px; }
+    .task-search-control { grid-template-columns:1fr; }
+    .task-search-clear { width:100%; }
+    .task-search-row { align-items:stretch; flex-direction:column; }
+    .task-search-action { width:100%; }
 
     .time-block-card {
         padding: 15px;
