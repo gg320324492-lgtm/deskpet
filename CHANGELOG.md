@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.1.3 - 2026-07-17
+
+### Added
+
+- Added a local Day Closeout card for unfinished Today tasks. Each task can be
+  moved to tomorrow, returned to the inbox, or left for later without being
+  deleted.
+- Added a concise saved day-closeout summary that records completed and still
+  unplaced tasks alongside the existing daily reflection.
+
+### Improved
+
+- Returning a task to tomorrow, inbox, or later clears its old soft time block
+  so the day view stays truthful.
+- Saving a handwritten daily reflection now preserves the automatically saved
+  closeout summary, and vice versa.
+
 ## 1.1.2 - 2026-07-17
 
 ### Added

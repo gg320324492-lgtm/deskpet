@@ -43,6 +43,7 @@ test('rhythm tracker keeps the most recent bounded local history and reflection'
     assert.deepEqual(settings.rhythm.reflections[localDateKey(new Date(2026, 6, 17, 21, 0))], {
         note: '完成了最重要的一步',
         tomorrow: '先整理桌面',
+        closeout: '',
         updatedAt: new Date(2026, 6, 17, 21, 0).valueOf(),
     });
 });

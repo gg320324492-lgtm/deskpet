@@ -6,6 +6,7 @@ import { SCENES, getSceneStatus } from '../renderer/scene-controller.js';
 import { buildRhythmSummary, buildWeeklyReview, formatRhythmEvent, formatRhythmTime } from '../renderer/rhythm.js';
 import { todoBucket } from '../renderer/todo.js';
 import { TIME_BLOCKS, timeBlockLabel } from '../renderer/time-blocks.js';
+import { buildDayCloseout, dayCloseoutPatch } from '../renderer/day-closeout.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -194,6 +195,7 @@ export const statsTab = {
                     [rhythmSummary.todayKey]: {
                         note: String(reflectionNote.value || '').trim().slice(0, 280),
                         tomorrow: String(tomorrow.value || '').trim().slice(0, 120),
+                        closeout: String(reflection.closeout || '').trim().slice(0, 280),
                         updatedAt: Date.now(),
                     },
                 };
@@ -420,6 +422,7 @@ export const feedTab = {
         const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
+        const dayCloseout = buildDayCloseout({ todos: allTodos });
         const nextTimeBlock = TIME_BLOCKS.find((block) => !todayTasks.some((task) => task.timeBlock === block.id)) || TIME_BLOCKS[0];
         const applyTodoPatch = async (id, patch) => {
             await setSettings({ todos: {
@@ -449,6 +452,23 @@ export const feedTab = {
                 todos: { items: nextItems },
                 rhythm: { ...rhythm, events: [...(rhythm.events || []), event].slice(-360) },
             });
+            refreshCurrent();
+        };
+        const closeoutTask = (task, action) => applyTodoPatch(task.id, dayCloseoutPatch(action));
+        const saveDayCloseout = async () => {
+            const now = Date.now();
+            const previous = rhythm.reflections?.[dayCloseout.todayKey] || {};
+            const closeout = buildDayCloseout({ todos: allTodos });
+            const reflections = {
+                ...(rhythm.reflections || {}),
+                [closeout.todayKey]: {
+                    note: String(previous.note || '').trim().slice(0, 280),
+                    tomorrow: String(previous.tomorrow || '').trim().slice(0, 120),
+                    closeout: closeout.summary,
+                    updatedAt: now,
+                },
+            };
+            await setSettings({ rhythm: { ...rhythm, reflections } });
             refreshCurrent();
         };
         const laneRow = (task, lane) => {
@@ -549,6 +569,52 @@ export const feedTab = {
             })),
         );
         root.appendChild(timeBlockCard);
+        const closeoutRows = dayCloseout.pending.slice(0, 5).map((task) => {
+            const actions = [
+                ['tomorrow', '放到明天'],
+                ['inbox', '回收件箱'],
+                ['later', '留在稍后'],
+            ].map(([action, label]) => {
+                let button;
+                button = el('button', {
+                    class: `day-closeout-action ${action}`, type: 'button',
+                    onclick: () => runAsync(button, () => closeoutTask(task, action), {
+                        announce,
+                        success: action === 'tomorrow' ? '已留给明天。' : action === 'inbox' ? '已送回收件箱。' : '已留到稍后。',
+                    }),
+                }, label);
+                return button;
+            });
+            return el('article', { class: 'day-closeout-row' },
+                el('div', { class: 'day-closeout-copy' },
+                    el('strong', {}, task.title),
+                    el('small', {}, task.timeBlock ? `原定${timeBlockLabel(task.timeBlock)}` : '还没安排时间'),
+                ),
+                el('div', { class: 'day-closeout-actions' }, ...actions),
+            );
+        });
+        let saveCloseoutButton;
+        saveCloseoutButton = el('button', {
+            class: 'action day-closeout-save', type: 'button',
+            onclick: () => runAsync(saveCloseoutButton, saveDayCloseout, { announce, success: '今天的小结已保存在本机。' }),
+        }, '保存今天的小结');
+        root.appendChild(el('section', { class: 'card day-closeout-card' },
+            el('div', { class: 'day-closeout-head' },
+                el('div', {}, el('span', { class: 'day-closeout-kicker' }, 'DAY CLOSEOUT'), el('h3', {}, '把今天轻轻收好')),
+                el('span', { class: 'day-closeout-badge' }, '仅本机保存'),
+            ),
+            el('p', { class: 'day-closeout-description' }, dayCloseout.summary),
+            dayCloseout.pending.length
+                ? el('div', { class: 'day-closeout-list' }, ...closeoutRows)
+                : el('p', { class: 'day-closeout-empty' }, '今天没有需要处理的任务。保留一点余白，也是一种完成。'),
+            el('div', { class: 'day-closeout-footer' },
+                el('small', {}, '三种去处都可以，任务不会被删除。'),
+                saveCloseoutButton,
+            ),
+            rhythm.reflections?.[dayCloseout.todayKey]?.closeout
+                ? el('p', { class: 'day-closeout-saved' }, `已保存：${rhythm.reflections[dayCloseout.todayKey].closeout}`)
+                : null,
+        ));
         root.appendChild(el('section', { class: 'card todo-board-card' },
             el('div', { class: 'todo-board-head' },
                 el('div', {}, el('span', { class: 'todo-kicker' }, 'TASK INBOX'), el('h3', {}, '先记下，再决定什么时候做')),

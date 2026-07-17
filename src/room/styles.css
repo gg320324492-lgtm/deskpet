@@ -790,6 +790,54 @@ select:focus-visible,
 .time-block-task { overflow: hidden; border-left: 2px solid #f5b768; color: #f8eee2; font-size: 11px; line-height: 1.4; padding-left: 7px; text-overflow: ellipsis; white-space: nowrap; }
 .time-block-empty { margin: 17px 0 0; color: var(--room-subtle); font-size: 11px; line-height: 1.5; }
 
+.day-closeout-card {
+    position: relative;
+    margin-top: 18px;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 4% 112%, rgba(136, 223, 194, 0.14), transparent 32%),
+        linear-gradient(135deg, rgba(34, 57, 62, 0.99), rgba(34, 42, 57, 0.99));
+}
+
+.day-closeout-card::after {
+    position: absolute;
+    top: 18px;
+    right: 25px;
+    width: 70px;
+    height: 70px;
+    border: 1px solid rgba(163, 239, 209, 0.15);
+    border-radius: 50% 50% 50% 13px;
+    box-shadow: -10px 11px 0 rgba(163, 239, 209, 0.035);
+    content: '';
+    transform: rotate(-24deg);
+}
+
+.day-closeout-head,
+.day-closeout-description,
+.day-closeout-list,
+.day-closeout-footer,
+.day-closeout-saved { position: relative; z-index: 1; }
+.day-closeout-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.day-closeout-head h3 { margin: 3px 0 0; font-size: 19px; }
+.day-closeout-kicker { color: #a5ead1; font-size: 10px; font-weight: 850; letter-spacing: 0.15em; }
+.day-closeout-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid rgba(165, 234, 209, 0.26); border-radius: 999px; color: #c7f4e2; background: rgba(119, 211, 179, 0.11); font-size: 11px; font-weight: 750; }
+.day-closeout-description { max-width: 65ch; margin: 8px 0 14px; color: var(--room-muted); font-size: 13px; }
+.day-closeout-list { display: grid; gap: 8px; }
+.day-closeout-row { display: grid; grid-template-columns: minmax(140px, 1fr) auto; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid rgba(194, 239, 224, 0.13); border-radius: 12px; background: rgba(10, 22, 29, 0.36); }
+.day-closeout-copy { min-width: 0; }
+.day-closeout-copy strong { display: block; overflow: hidden; color: var(--room-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.day-closeout-copy small { display: block; margin-top: 3px; color: #a7c8c2; font-size: 10px; }
+.day-closeout-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.day-closeout-action { min-height: 29px; border: 1px solid rgba(194, 239, 224, 0.19); border-radius: 8px; color: #c4e8dd; background: rgba(255, 255, 255, 0.045); cursor: pointer; padding: 4px 8px; font: inherit; font-size: 11px; font-weight: 750; transition: background 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out; }
+.day-closeout-action:hover { border-color: rgba(165, 234, 209, 0.54); color: #effff8; background: rgba(119, 211, 179, 0.14); }
+.day-closeout-action.tomorrow { border-color: rgba(255, 211, 143, 0.35); color: #ffe2ab; }
+.day-closeout-action.inbox { border-color: rgba(164, 194, 255, 0.32); color: #d9e5ff; }
+.day-closeout-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.day-closeout-footer small { color: var(--room-subtle); font-size: 11px; }
+.day-closeout-save { flex: 0 0 auto; white-space: nowrap; }
+.day-closeout-empty { position: relative; z-index: 1; margin: 0; padding: 13px; border: 1px dashed rgba(194, 239, 224, 0.2); border-radius: 12px; color: #b8d6cf; background: rgba(10, 22, 29, 0.25); font-size: 12px; line-height: 1.55; }
+.day-closeout-saved { margin: 11px 0 0; border-left: 2px solid #91dfc1; color: #c9e7de; font-size: 11px; line-height: 1.55; padding-left: 8px; }
+
 .todo-board-card {
     position: relative;
     margin-top: 18px;
@@ -1861,6 +1909,10 @@ select {
     .time-block-track {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+
+    .day-closeout-row {
+        grid-template-columns: minmax(130px, 1fr) auto;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1947,12 +1999,34 @@ select {
         padding: 15px;
     }
 
+    .day-closeout-card {
+        padding: 15px;
+    }
+
     .time-block-track {
         grid-template-columns: 1fr;
     }
 
     .time-block-slot {
         min-height: 0;
+    }
+
+    .day-closeout-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .day-closeout-actions {
+        justify-content: flex-start;
+    }
+
+    .day-closeout-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .day-closeout-save {
+        width: 100%;
     }
 
     .todo-capture {

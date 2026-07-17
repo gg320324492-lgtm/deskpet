@@ -360,12 +360,13 @@ function validateRhythmReflections(value) {
         assertDate(date, `rhythm.reflections.${date}`);
         if (!date) throw new TypeError('rhythm.reflections cannot use an empty date');
         assertPlainRecord(reflection, `rhythm.reflections.${date}`);
-        assertKnownKeys(reflection, ['note', 'tomorrow', 'updatedAt'], `rhythm.reflections.${date}`);
+        assertKnownKeys(reflection, ['note', 'tomorrow', 'closeout', 'updatedAt'], `rhythm.reflections.${date}`);
         if (!Object.hasOwn(reflection, 'note') || !Object.hasOwn(reflection, 'tomorrow') || !Object.hasOwn(reflection, 'updatedAt')) {
             throw new TypeError(`rhythm.reflections.${date} is incomplete`);
         }
         assertString(reflection.note, `rhythm.reflections.${date}.note`, 280);
         assertString(reflection.tomorrow, `rhythm.reflections.${date}.tomorrow`, 120);
+        if (Object.hasOwn(reflection, 'closeout')) assertString(reflection.closeout, `rhythm.reflections.${date}.closeout`, 280);
         assertNumber(reflection.updatedAt, `rhythm.reflections.${date}.updatedAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
     }
 }

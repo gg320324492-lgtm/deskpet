@@ -82,9 +82,11 @@ export class RhythmTracker {
 
     saveReflection({ date = localDateKey(this._now()), note = '', tomorrow = '' } = {}) {
         const rhythm = this.snapshot();
+        const previous = rhythm.reflections[date] || {};
         const reflection = {
             note: clampText(note, 280),
             tomorrow: clampText(tomorrow, 120),
+            closeout: clampText(previous.closeout, 280),
             updatedAt: this._now(),
         };
         const reflections = { ...rhythm.reflections, [date]: reflection };
@@ -177,7 +179,7 @@ export function buildRhythmSummary({ rhythm: value, todos = [], now = new Date()
         completionRate: plannedTasks.size ? Math.round((completedTaskIds.size / plannedTasks.size) * 100) : 0,
         todayEvents: [...todayEvents].reverse(),
         week,
-        reflection: rhythm.reflections[todayKey] || { note: '', tomorrow: '', updatedAt: 0 },
+        reflection: rhythm.reflections[todayKey] || { note: '', tomorrow: '', closeout: '', updatedAt: 0 },
     };
 }
 
