@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0 - 2026-07-17
+
+### Added
+
+- Added a local weekly review to the character room, with real seven-day focus
+  duration, active days, completed tasks, the strongest focus day, and a
+  compact intensity ribbon.
+- Added one to three optional “next week light goals”. They are saved only on
+  the device and are included in normal backups.
+
+### Improved
+
+- The weekly note offers a gentle, deterministic encouragement based on the
+  recorded rhythm, without sending activity data to any remote service.
+
 ## 1.0.9 - 2026-07-17
 
 ### Added

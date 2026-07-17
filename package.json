@@ -1,6 +1,6 @@
 {
   "name": "date-night-girl",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Date Night Girl - a cute animated desktop companion for Windows",
   "main": "src/main/main.js",
   "scripts": {

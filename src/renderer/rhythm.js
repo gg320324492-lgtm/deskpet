@@ -58,6 +58,8 @@ function currentRhythm(value) {
         events: Array.isArray(rhythm.events) ? rhythm.events : [],
         reflections: rhythm.reflections && typeof rhythm.reflections === 'object' && !Array.isArray(rhythm.reflections)
             ? rhythm.reflections : {},
+        weeklyPlans: rhythm.weeklyPlans && typeof rhythm.weeklyPlans === 'object' && !Array.isArray(rhythm.weeklyPlans)
+            ? rhythm.weeklyPlans : {},
     };
 }
 
@@ -91,6 +93,21 @@ export class RhythmTracker {
         this._setSettings({ rhythm: { ...rhythm, reflections } });
         return reflection;
     }
+
+    saveWeeklyPlan({ week = weekStartKey(dayOffset(new Date(this._now()), 7)), goals = [] } = {}) {
+        const rhythm = this.snapshot();
+        const normalizedGoals = [...new Set((Array.isArray(goals) ? goals : [])
+            .map((goal) => clampText(goal, 100))
+            .filter(Boolean))].slice(0, 3);
+        const weeklyPlans = {
+            ...rhythm.weeklyPlans,
+            [week]: { goals: normalizedGoals, updatedAt: this._now() },
+        };
+        const weeks = Object.keys(weeklyPlans).sort();
+        for (const oldWeek of weeks.slice(0, Math.max(0, weeks.length - 26))) delete weeklyPlans[oldWeek];
+        this._setSettings({ rhythm: { ...rhythm, weeklyPlans } });
+        return weeklyPlans[week];
+    }
 }
 
 function dayOffset(date, offset) {
@@ -98,6 +115,15 @@ function dayOffset(date, offset) {
     next.setHours(0, 0, 0, 0);
     next.setDate(next.getDate() + offset);
     return next;
+}
+
+export function weekStartKey(value = new Date()) {
+    const date = value instanceof Date ? new Date(value) : new Date(value);
+    if (Number.isNaN(date.valueOf())) return '';
+    date.setHours(0, 0, 0, 0);
+    const mondayOffset = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - mondayOffset);
+    return localDateKey(date);
 }
 
 function eventMinutes(event) {
@@ -149,5 +175,31 @@ export function buildRhythmSummary({ rhythm: value, todos = [], now = new Date()
         todayEvents: [...todayEvents].reverse(),
         week,
         reflection: rhythm.reflections[todayKey] || { note: '', tomorrow: '', updatedAt: 0 },
+    };
+}
+
+export function buildWeeklyReview({ rhythm: value, now = new Date() } = {}) {
+    const rhythm = currentRhythm(value);
+    const summary = buildRhythmSummary({ rhythm, now, days: 7 });
+    const focusMinutes = summary.week.reduce((sum, day) => sum + day.focusMinutes, 0);
+    const completedTasks = summary.week.reduce((sum, day) => sum + day.tasks, 0);
+    const activeDays = summary.week.filter((day) => day.focusMinutes > 0).length;
+    const bestDay = summary.week.reduce((best, day) => day.focusMinutes > (best?.focusMinutes || 0) ? day : best, null);
+    const nextWeekKey = weekStartKey(dayOffset(now instanceof Date ? now : new Date(now), 7));
+    const goals = rhythm.weeklyPlans[nextWeekKey]?.goals || [];
+    let encouragement = '下一周从一件最小、最想开始的事开始就很好。';
+    if (summary.focusMinutes >= 180 && activeDays >= 4) encouragement = '这周的节奏很稳定，保留最舒服的那段时间就够了。';
+    else if (summary.focusMinutes > 0) encouragement = '你已经找到了可持续的开始方式，不需要补回空白的日子。';
+    else encouragement = '这周还没有专注记录；下周留出 15 分钟开始，就已经很足够。';
+
+    return {
+        ...summary,
+        focusMinutes,
+        completedTasks,
+        activeDays,
+        bestDay: bestDay?.focusMinutes > 0 ? bestDay : null,
+        nextWeekKey,
+        goals,
+        encouragement,
     };
 }

@@ -111,6 +111,7 @@ const DOMAIN_DEFAULTS = Object.freeze({
         version: STORAGE_VERSION,
         events: [],
         reflections: {},
+        weeklyPlans: {},
     }),
 });
 
@@ -363,6 +364,22 @@ function validateRhythmReflections(value) {
     }
 }
 
+function validateWeeklyPlans(value) {
+    assertPlainRecord(value, 'rhythm.weeklyPlans');
+    if (Object.keys(value).length > 26) throw new RangeError('rhythm.weeklyPlans must contain at most 26 weeks');
+    for (const [week, plan] of Object.entries(value)) {
+        assertDate(week, `rhythm.weeklyPlans.${week}`);
+        if (!week) throw new TypeError('rhythm.weeklyPlans cannot use an empty week');
+        assertPlainRecord(plan, `rhythm.weeklyPlans.${week}`);
+        assertKnownKeys(plan, ['goals', 'updatedAt'], `rhythm.weeklyPlans.${week}`);
+        if (!Array.isArray(plan.goals) || plan.goals.length > 3) {
+            throw new RangeError(`rhythm.weeklyPlans.${week}.goals must contain at most 3 goals`);
+        }
+        plan.goals.forEach((goal, index) => assertString(goal, `rhythm.weeklyPlans.${week}.goals[${index}]`, 100, { allowEmpty: false }));
+        assertNumber(plan.updatedAt, `rhythm.weeklyPlans.${week}.updatedAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
+    }
+}
+
 const FIELD_VALIDATORS = {
     settings: {
         volume: (v) => assertNumber(v, 'settings.volume', { min: 0, max: 1 }),
@@ -453,6 +470,7 @@ const FIELD_VALIDATORS = {
             v.forEach(validateRhythmEvent);
         },
         reflections: validateRhythmReflections,
+        weeklyPlans: validateWeeklyPlans,
     },
 };
 
@@ -524,6 +542,8 @@ function sanitizeDomain(domain, data) {
                 out.events = sanitizeCollection(data.events, 360, normalizeRhythmEvent);
             } else if (domain === 'rhythm' && key === 'reflections') {
                 out.reflections = sanitizeMap(data.reflections, validateRhythmReflections);
+            } else if (domain === 'rhythm' && key === 'weeklyPlans') {
+                out.weeklyPlans = sanitizeMap(data.weeklyPlans, validateWeeklyPlans);
             }
         }
     }

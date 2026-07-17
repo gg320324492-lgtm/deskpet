@@ -3,7 +3,7 @@ import { ACHIEVEMENTS } from '../renderer/achievements.js';
 import { OUTFITS } from '../renderer/wardrobe.js';
 import { getDndScheduleStatus } from './dnd-schedule-status.js';
 import { SCENES, getSceneStatus } from '../renderer/scene-controller.js';
-import { buildRhythmSummary, formatRhythmEvent, formatRhythmTime } from '../renderer/rhythm.js';
+import { buildRhythmSummary, buildWeeklyReview, formatRhythmEvent, formatRhythmTime } from '../renderer/rhythm.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -79,6 +79,7 @@ export const statsTab = {
         const todos = getSettings().todos?.items || [];
         const rhythm = getSettings().rhythm || {};
         const rhythmSummary = buildRhythmSummary({ rhythm, todos });
+        const weeklyReview = buildWeeklyReview({ rhythm });
         const nextFocusTask = todos.find((item) => !item.completed && (!item.dueAt || item.dueAt.slice(0, 10) <= new Date().toISOString().slice(0, 10)));
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
@@ -212,6 +213,74 @@ export const statsTab = {
                     el('label', {}, '明天第一件事', tomorrow),
                     saveReflection,
                 ),
+            ),
+        ));
+
+        const weeklyGoalInputs = Array.from({ length: 3 }, (_, index) => el('input', {
+            class: 'weekly-goal-input',
+            type: 'text',
+            maxlength: 100,
+            placeholder: `轻目标 ${index + 1}（可留空）`,
+            value: weeklyReview.goals[index] || '',
+            'aria-label': `下周轻目标 ${index + 1}`,
+        }));
+        let saveWeeklyPlan;
+        saveWeeklyPlan = el('button', {
+            class: 'action weekly-save',
+            type: 'button',
+            onclick: () => runAsync(saveWeeklyPlan, async () => {
+                const goals = weeklyGoalInputs
+                    .map((input) => String(input.value || '').trim().slice(0, 100))
+                    .filter(Boolean)
+                    .filter((goal, index, all) => all.indexOf(goal) === index)
+                    .slice(0, 3);
+                const weeklyPlans = {
+                    ...(rhythm.weeklyPlans || {}),
+                    [weeklyReview.nextWeekKey]: { goals, updatedAt: Date.now() },
+                };
+                await setSettings({ rhythm: { ...rhythm, weeklyPlans } });
+            }, { announce, success: '下周轻目标已保存。' }),
+        }, '保存下周目标');
+        const weeklyBars = weeklyReview.week.map((day) => el('div', {
+            class: `weekly-bar level-${day.level}`,
+            title: `${day.weekday}：${day.focusMinutes} 分钟`,
+            'aria-label': `${day.weekday} ${day.focusMinutes} 分钟专注`,
+        },
+            el('span', { class: 'weekly-bar-fill' }),
+            el('small', {}, day.weekday.replace('周', '')),
+        ));
+        const bestDayCopy = weeklyReview.bestDay
+            ? `${weeklyReview.bestDay.weekday} · ${weeklyReview.bestDay.focusMinutes} 分钟`
+            : '下周慢慢找到自己的节奏';
+
+        root.appendChild(el('section', { class: 'card weekly-review-card' },
+            el('div', { class: 'weekly-review-head' },
+                el('div', {},
+                    el('span', { class: 'weekly-kicker' }, 'WEEKEND NOTE'),
+                    el('h3', {}, '这一周，已经做得很好'),
+                ),
+                el('span', { class: 'weekly-range' }, '最近 7 天'),
+            ),
+            el('p', { class: 'weekly-encouragement' }, weeklyReview.encouragement),
+            el('div', { class: 'weekly-review-grid' },
+                el('div', { class: 'weekly-total' },
+                    el('span', {}, '真实专注'),
+                    el('strong', {}, `${weeklyReview.focusMinutes}`),
+                    el('small', {}, '分钟'),
+                ),
+                el('div', { class: 'weekly-facts' },
+                    el('div', {}, el('span', {}, '有节奏的日子'), el('strong', {}, `${weeklyReview.activeDays} 天`)),
+                    el('div', {}, el('span', {}, '完成任务'), el('strong', {}, `${weeklyReview.week.reduce((sum, day) => sum + day.tasks, 0)} 项`)),
+                    el('div', {}, el('span', {}, '最稳定的一天'), el('strong', {}, bestDayCopy)),
+                ),
+                el('div', { class: 'weekly-bars', role: 'list', 'aria-label': '最近七天专注强度' }, ...weeklyBars),
+            ),
+            el('div', { class: 'weekly-plan-wrap' },
+                el('div', { class: 'weekly-plan-copy' },
+                    el('h4', {}, '下周轻目标'),
+                    el('p', {}, '只留 1–3 件想推进的事；它们是方向，不是必须完成的清单。'),
+                ),
+                el('div', { class: 'weekly-goal-fields' }, ...weeklyGoalInputs, saveWeeklyPlan),
             ),
         ));
     },

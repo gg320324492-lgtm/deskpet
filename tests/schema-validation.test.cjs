@@ -65,6 +65,19 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
     }), /unsupported value/);
 });
 
+test('weekly plans accept up to three concise goals and reject malformed entries', () => {
+    assert.doesNotThrow(() => validateDomainPatch('rhythm', {
+        weeklyPlans: {
+            '2026-07-20': { goals: ['整理桌面', '完成一轮专注'], updatedAt: 1_784_534_400_000 },
+        },
+    }));
+    assert.throws(() => validateDomainPatch('rhythm', {
+        weeklyPlans: {
+            '2026-07-20': { goals: ['一', '二', '三', '四'], updatedAt: 1 },
+        },
+    }), /at most 3 goals/);
+});
+
 test('versioned backup parser accepts complete snapshots and rejects drift', () => {
     const snapshot = createBackupSnapshot(defaultsByDomain(), {
         appVersion: '1.0.0',
