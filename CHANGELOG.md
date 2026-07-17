@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.2 - 2026-07-18
+
+### Added
+
+- Added an optional one-line reflection for each completed focus period.
+- Added a local Today-in-small-pieces view that groups completed focus periods
+  under the current mainline when one is selected.
+
+### Improved
+
+- Focus reflections appear in the daily rhythm timeline without scores,
+  streaks, or required end-of-day summaries.
+
 ## 1.2.1 - 2026-07-17
 
 ### Added

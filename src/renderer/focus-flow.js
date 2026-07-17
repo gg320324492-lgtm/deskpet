@@ -19,6 +19,7 @@ export class FocusFlow {
         this._task = null;
         this._skipPending = false;
         this._awaitingDecision = false;
+        this._reflectionEventId = '';
         this._message = '';
         this._focusStartedAt = 0;
         this._focusElapsedMs = 0;
@@ -31,7 +32,7 @@ export class FocusFlow {
     _emit() { for (const listener of this._listeners) listener(this.snapshot()); }
 
     _record(type, { minutes = 0 } = {}) {
-        this._onEvent({
+        return this._onEvent({
             type,
             title: this._task?.title || '',
             taskId: this._task?.id || '',
@@ -64,6 +65,7 @@ export class FocusFlow {
             task: this._task ? { ...this._task } : null,
             elapsedMs: this._elapsedMs(),
             awaitingDecision: this._awaitingDecision,
+            reflectionEventId: this._reflectionEventId,
             message: this._message,
             sceneOverride: timer.phase === 'work' || timer.phase === 'paused'
                 ? 'focus'
@@ -78,6 +80,7 @@ export class FocusFlow {
         if (current !== 'idle') return false;
         this._task = nextTask;
         this._awaitingDecision = false;
+        this._reflectionEventId = '';
         this._message = nextTask
             ? `从「${nextTask.title}」开始，我们先走这一小段。`
             : '先陪你安静走一小段。';
@@ -169,6 +172,7 @@ export class FocusFlow {
         if (phase === 'work') {
             if (this._previousPhase !== 'paused') {
                 this._focusElapsedMs = 0;
+                this._reflectionEventId = '';
                 this._record('focus-start');
             }
             this._focusStartedAt = Date.now();
@@ -182,13 +186,17 @@ export class FocusFlow {
             this._scene.setOverride('relaxed', { notify: false, source: 'focus-flow' });
             const minutes = this._finishFocusMinutes();
             const endedWork = this._previousPhase === 'work' || this._previousPhase === 'paused';
-            if (endedWork) this._record(this._skipPending ? 'focus-skip' : 'focus-complete', { minutes });
+            if (endedWork) {
+                const event = this._record(this._skipPending ? 'focus-skip' : 'focus-complete', { minutes });
+                this._reflectionEventId = !this._skipPending && typeof event?.id === 'string' ? event.id : '';
+            }
             if (endedWork && this._task && !this._skipPending) {
                 this._awaitingDecision = true;
                 this._say(`这一段已经走完了。「${this._task.title}」接下来想怎么安排？`);
             } else if (this._skipPending) {
                 this._task = null;
                 this._awaitingDecision = false;
+                this._reflectionEventId = '';
                 this._message = '这一段先停在这里，先休息也很好。';
             }
             this._skipPending = false;
@@ -204,6 +212,7 @@ export class FocusFlow {
             this._task = null;
             this._skipPending = false;
             this._awaitingDecision = false;
+            this._reflectionEventId = '';
             this._message = '';
         }
         this._previousPhase = phase;

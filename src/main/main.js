@@ -45,7 +45,7 @@ const MAX_BACKUP_FILE_BYTES = 2 * 1024 * 1024;
 const aiService = new AiService({ storage, vault: new CredentialVault() });
 let updateService = null;
 let focusState = Object.freeze({
-    phase: 'idle', remainingMs: 0, elapsedMs: 0, awaitingDecision: false, task: null, message: '',
+    phase: 'idle', remainingMs: 0, elapsedMs: 0, awaitingDecision: false, reflectionEventId: '', task: null, message: '',
 });
 
 // 单实例锁
@@ -173,11 +173,14 @@ function normalizeFocusState(value) {
         task = { id, title };
     }
     const message = typeof value.message === 'string' ? value.message.trim().slice(0, 180) : '';
+    const reflectionEventId = typeof value.reflectionEventId === 'string' ? value.reflectionEventId.trim() : '';
+    if (reflectionEventId && !/^[A-Za-z0-9_-]{1,80}$/.test(reflectionEventId)) throw new TypeError('Invalid focus reflection event');
     return Object.freeze({
         phase,
         remainingMs: finite('remainingMs', 24 * 60 * 60 * 1000),
         elapsedMs: finite('elapsedMs', 24 * 60 * 60 * 1000),
         awaitingDecision: value.awaitingDecision === true,
+        reflectionEventId,
         task,
         message,
     });

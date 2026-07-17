@@ -30,7 +30,10 @@ test('linked focus work asks before marking its task complete, then restores the
         },
         todoList: { complete: (id) => completed.push(id) },
         onNotice: (text) => notices.push(text),
-        onEvent: (event) => events.push(event),
+        onEvent: (event) => {
+            events.push(event);
+            return { ...event, id: `event-${events.length}` };
+        },
     });
 
     assert.equal(flow.start({ id: 't1', title: '整理方案' }), true);
@@ -41,6 +44,7 @@ test('linked focus work asks before marking its task complete, then restores the
     assert.match(notices[0], /整理方案/);
     assert.deepEqual(events.map((event) => event.type), ['focus-start', 'focus-complete']);
     assert.equal(flow.snapshot().awaitingDecision, true);
+    assert.equal(flow.snapshot().reflectionEventId, 'event-2');
     assert.equal(flow.completeTask(), true);
     assert.deepEqual(completed, ['t1']);
     assert.equal(flow.snapshot().awaitingDecision, false);

@@ -39,6 +39,7 @@ export function buildFocusCompanion(state = {}) {
         mode,
         task,
         awaitingDecision,
+        reflectionEventId: typeof state.reflectionEventId === 'string' ? state.reflectionEventId.slice(0, 80) : '',
         active,
         kicker: copy[0],
         heading: copy[1],

@@ -140,7 +140,7 @@ async function main() {
         if (activeTab !== 'feed') return;
         const card = document.querySelector('[data-focus-companion]');
         const next = buildFocusCompanion(focusState);
-        const nextKey = `${next.phase}:${next.task?.id || ''}:${next.awaitingDecision}`;
+        const nextKey = `${next.phase}:${next.task?.id || ''}:${next.awaitingDecision}:${focusState.reflectionEventId || ''}`;
         if (!card || card.dataset.focusKey !== nextKey) {
             renderPanel('feed');
             return;

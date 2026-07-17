@@ -24,6 +24,7 @@ test('quick-captured todos stay in inbox until deliberately placed', () => {
 
 test('due items automatically surface today while future due items stay later', () => {
     const tomorrow = new Date();
+    tomorrow.setHours(12, 0, 0, 0);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const now = new Date().toISOString();
     assert.equal(todoBucket({ id: 'now', completed: false, dueAt: now, bucket: 'later' }), 'today');

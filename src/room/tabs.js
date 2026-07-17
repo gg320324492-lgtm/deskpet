@@ -15,6 +15,7 @@ import { taskEditorPatch } from '../renderer/task-editor.js';
 import { completedToday, restoreCompletedTaskPatch } from '../renderer/task-completion-review.js';
 import { buildTodayFocus, clearTodayFocusPatch, todayFocusPatch } from '../renderer/today-focus.js';
 import { buildFocusCompanion } from '../renderer/focus-companion.js';
+import { buildTodayFocusEchoes, focusReflectionPatch } from '../renderer/focus-reflection.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -174,10 +175,11 @@ export const statsTab = {
         const eventRows = rhythmSummary.todayEvents.slice(0, 6).map((event) => el('li', { class: `rhythm-event event-${event.type}` },
             el('time', { datetime: new Date(event.at).toISOString() }, formatRhythmTime(event.at)),
             el('span', { class: 'rhythm-event-dot', 'aria-hidden': 'true' }),
-            el('span', { class: 'rhythm-event-copy' },
-                el('strong', {}, formatRhythmEvent(event)),
-                event.minutes ? el('small', {}, `实际 ${event.minutes} 分钟`) : null,
-            ),
+                el('span', { class: 'rhythm-event-copy' },
+                    el('strong', {}, formatRhythmEvent(event)),
+                    event.minutes ? el('small', {}, `实际 ${event.minutes} 分钟`) : null,
+                    event.detail ? el('small', { class: 'rhythm-event-detail' }, event.detail) : null,
+                ),
         ));
         const reflection = rhythmSummary.reflection;
         const reflectionNote = el('textarea', {
@@ -453,6 +455,7 @@ export const feedTab = {
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
         const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos: allTodos });
         const companion = buildFocusCompanion(getFocusState());
+        const focusEchoes = buildTodayFocusEchoes({ rhythm, todayFocus });
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
         const archivedTasks = allTodos.filter((item) => todoBucket(item) === 'archive');
         const completedTasks = completedToday({ todos: allTodos });
@@ -804,10 +807,28 @@ export const feedTab = {
                 }, '标记完成');
                 companionActions.push(continueButton, restButton, completeButton);
             }
+            let reflectionControl = null;
+            if (companion.mode === 'decision' && companion.reflectionEventId) {
+                const reflectionInput = el('input', {
+                    class: 'focus-reflection-input', type: 'text', maxlength: 120,
+                    placeholder: '这一段推进了什么？（可跳过）', 'aria-label': '这一段推进了什么',
+                });
+                let reflectionSave;
+                reflectionSave = el('button', {
+                    class: 'focus-reflection-save', type: 'button',
+                    onclick: () => runAsync(reflectionSave, async () => {
+                        await setSettings({ rhythm: focusReflectionPatch({
+                            rhythm, eventId: companion.reflectionEventId, detail: reflectionInput.value,
+                        }) });
+                        refreshCurrent();
+                    }, { announce, success: reflectionInput.value.trim() ? '这一小段已留下。' : '已保持空白。' }),
+                }, '留下一句');
+                reflectionControl = el('div', { class: 'focus-reflection-control' }, reflectionInput, reflectionSave);
+            }
             root.appendChild(el('section', {
                 class: `card focus-companion-card mode-${companion.mode}`,
                 'data-focus-companion': 'true',
-                'data-focus-key': `${companion.phase}:${companion.task?.id || ''}:${companion.awaitingDecision}`,
+                'data-focus-key': `${companion.phase}:${companion.task?.id || ''}:${companion.awaitingDecision}:${companion.reflectionEventId}`,
             },
             el('div', { class: 'focus-companion-head' },
                 el('div', {}, el('span', { class: 'focus-companion-kicker' }, companion.kicker), el('h3', {}, companion.heading)),
@@ -819,8 +840,31 @@ export const feedTab = {
                 el('span', { 'data-focus-remaining': 'true' }, companion.remaining),
             ),
             el('p', { class: 'focus-companion-message', 'data-focus-message': 'true' }, companion.message || '不需要冲刺，只陪你把眼前这一段走完。'),
+            reflectionControl,
             companionActions.length ? el('div', { class: 'focus-companion-actions' }, ...companionActions) : el('p', { class: 'focus-companion-rest-note' }, '这一段先放在这里。等休息结束，也可以再开始。'),
             el('small', { class: 'focus-companion-footnote' }, '不打卡，不比较；只是陪你把这段时间轻轻放在这里。'),
+            ));
+        }
+        if (focusEchoes.echoes.length) {
+            const echoRows = focusEchoes.echoes.map((event) => el('article', {
+                class: `focus-echo-row ${event.taskId && event.taskId === todayFocus.task?.id ? 'mainline' : ''}`,
+            },
+            el('time', { datetime: new Date(event.at).toISOString() }, formatRhythmTime(event.at)),
+            el('div', { class: 'focus-echo-copy' },
+                el('strong', {}, event.title || '自由专注'),
+                el('small', {}, event.detail || (event.minutes ? `陪自己走了 ${event.minutes} 分钟` : '留一点空白也很好')),
+            ),
+            event.minutes ? el('span', { class: 'focus-echo-minutes' }, `${event.minutes}m`) : null,
+            ));
+            root.appendChild(el('section', { class: 'card focus-echo-card' },
+                el('div', { class: 'focus-echo-head' },
+                    el('div', {}, el('span', {}, 'TODAY, IN SMALL PIECES'), el('h3', {}, focusEchoes.mainlineEchoes.length ? '今日主线留下的几小段' : '今天陪自己走过的几小段')),
+                    el('span', {}, `${focusEchoes.echoes.length} 段`),
+                ),
+                el('p', { class: 'focus-echo-description' }, focusEchoes.mainlineTitle
+                    ? `「${focusEchoes.mainlineTitle}」不需要一次做完；留下的每一小段都在这里。`
+                    : '不需要完整总结，记得住的几小段就已经很好。'),
+                el('div', { class: 'focus-echo-list' }, ...echoRows),
             ));
         }
         root.appendChild(timeBlockCard);
