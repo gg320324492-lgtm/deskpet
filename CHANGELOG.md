@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.5 - 2026-07-17
+
+### Added
+
+- Added Today Start, a compact opening card that surfaces only tasks explicitly
+  carried from yesterday's local tomorrow plan.
+- Added one-click handoff from a carried task to the next open soft time block,
+  or directly into a linked Focus Flow session.
+
+### Improved
+
+- Starting or scheduling a carried task removes its tomorrow-only marker, so
+  the planning state never lingers after the day has begun.
+- The opening card intentionally ignores overdue and ordinary tasks to keep the
+  first decision of the day calm and trustworthy.
+
 ## 1.1.4 - 2026-07-17
 
 ### Added

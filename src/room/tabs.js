@@ -8,6 +8,7 @@ import { todoBucket } from '../renderer/todo.js';
 import { TIME_BLOCKS, timeBlockLabel } from '../renderer/time-blocks.js';
 import { buildDayCloseout, dayCloseoutPatch } from '../renderer/day-closeout.js';
 import { buildTomorrowStart, canPlanTomorrow, returnToInboxPatch, tomorrowPlanPatch } from '../renderer/tomorrow-start.js';
+import { beginTodayPatch, buildTodayStart, nextOpenTimeBlock } from '../renderer/today-start.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -445,7 +446,8 @@ export const feedTab = {
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
         const dayCloseout = buildDayCloseout({ todos: allTodos });
         const tomorrowStart = buildTomorrowStart({ todos: allTodos });
-        const nextTimeBlock = TIME_BLOCKS.find((block) => !todayTasks.some((task) => task.timeBlock === block.id)) || TIME_BLOCKS[0];
+        const todayStart = buildTodayStart({ todos: allTodos });
+        const nextTimeBlock = nextOpenTimeBlock(todayTasks);
         const applyTodoPatch = async (id, patch) => {
             await setSettings({ todos: {
                 items: allTodos.map((item) => item.id === id ? { ...item, ...patch } : item),
@@ -485,6 +487,11 @@ export const feedTab = {
             return applyTodoPatch(task.id, tomorrowPlanPatch(role));
         };
         const returnTomorrowTask = (task) => applyTodoPatch(task.id, returnToInboxPatch());
+        const startCarriedFocus = async (task) => {
+            const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
+            if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
+            await applyTodoPatch(task.id, beginTodayPatch());
+        };
         const saveDayCloseout = async () => {
             const now = Date.now();
             const previous = rhythm.reflections?.[dayCloseout.todayKey] || {};
@@ -598,6 +605,42 @@ export const feedTab = {
                 );
             })),
         );
+        if (todayStart.important || todayStart.doable.length) {
+            const carriedRows = [
+                ...(todayStart.important ? [[todayStart.important, '最重要']] : []),
+                ...todayStart.doable.map((task) => [task, '可做']),
+            ].map(([task, kind]) => {
+                let scheduleButton;
+                scheduleButton = el('button', {
+                    class: 'today-start-action schedule', type: 'button',
+                    onclick: () => runAsync(scheduleButton, () => applyTodoPatch(task.id, beginTodayPatch({ timeBlock: nextTimeBlock.id })), {
+                        announce, success: `已安排到${nextTimeBlock.label}。`,
+                    }),
+                }, `安排${nextTimeBlock.label}`);
+                let focusButton;
+                focusButton = el('button', {
+                    class: 'today-start-action focus', type: 'button',
+                    onclick: () => runAsync(focusButton, () => startCarriedFocus(task), {
+                        announce, success: `专注请求已发送：${task.title}`, failure: (error) => error?.message || '无法开始专注。',
+                    }),
+                }, '现在专注');
+                return el('article', { class: `today-start-row ${kind === '最重要' ? 'important' : 'doable'}` },
+                    el('div', { class: 'today-start-copy' },
+                        el('span', {}, kind),
+                        el('strong', {}, task.title),
+                    ),
+                    el('div', { class: 'today-start-actions' }, scheduleButton, focusButton),
+                );
+            });
+            root.appendChild(el('section', { class: 'card today-start-card' },
+                el('div', { class: 'today-start-head' },
+                    el('div', {}, el('span', { class: 'today-start-kicker' }, 'TODAY, START HERE'), el('h3', {}, '昨天选的，今天从这里开始')),
+                    el('span', { class: 'today-start-badge' }, '已到今天'),
+                ),
+                el('p', { class: 'today-start-description' }, '不必一次做完。先把其中一件放进下一段时间，或者直接开始一轮专注。'),
+                el('div', { class: 'today-start-list' }, ...carriedRows),
+            ));
+        }
         root.appendChild(timeBlockCard);
         const closeoutRows = dayCloseout.pending.slice(0, 5).map((task) => {
             const actions = [

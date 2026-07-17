@@ -752,6 +752,49 @@ select:focus-visible,
 .weekly-goal-actions { display: grid; grid-template-columns: repeat(2, auto); gap: 7px; }
 .weekly-to-inbox { min-height: 37px; border-radius: 10px; padding: 7px 10px; font-size: 12px; font-weight: 750; white-space: nowrap; }
 
+.today-start-card {
+    position: relative;
+    margin-top: 18px;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 93% 10%, rgba(255, 214, 137, 0.18), transparent 28%),
+        linear-gradient(135deg, rgba(61, 52, 61, 0.99), rgba(47, 48, 65, 0.99));
+}
+
+.today-start-card::after {
+    position: absolute;
+    top: -45px;
+    right: 7%;
+    width: 128px;
+    height: 128px;
+    border: 1px solid rgba(255, 224, 172, 0.16);
+    border-radius: 50%;
+    box-shadow: 0 0 0 18px rgba(255, 224, 172, 0.03), 0 0 0 36px rgba(255, 224, 172, 0.018);
+    content: '';
+}
+
+.today-start-head,
+.today-start-description,
+.today-start-list { position: relative; z-index: 1; }
+.today-start-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.today-start-head h3 { margin: 3px 0 0; font-size: 19px; }
+.today-start-kicker { color: #ffd797; font-size: 10px; font-weight: 850; letter-spacing: 0.15em; }
+.today-start-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid rgba(255, 215, 151, 0.27); border-radius: 999px; color: #ffe4b8; background: rgba(255, 195, 101, 0.12); font-size: 11px; font-weight: 750; }
+.today-start-description { max-width: 65ch; margin: 8px 0 14px; color: var(--room-muted); font-size: 13px; }
+.today-start-list { display: grid; gap: 8px; }
+.today-start-row { display: grid; grid-template-columns: minmax(150px, 1fr) auto; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid rgba(255, 230, 192, 0.14); border-radius: 12px; background: rgba(24, 26, 40, 0.44); }
+.today-start-row.important { border-left: 2px solid #f2bd6f; }
+.today-start-row.doable { border-left: 2px solid #82d5b0; }
+.today-start-copy { min-width: 0; }
+.today-start-copy > span { display: block; color: #f6cf92; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; }
+.today-start-row.doable .today-start-copy > span { color: #b9ecd7; }
+.today-start-copy strong { display: block; overflow: hidden; margin-top: 3px; color: #f9fbff; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.today-start-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.today-start-action { min-height: 29px; border: 1px solid rgba(255, 230, 192, 0.18); border-radius: 8px; color: #e8e8f4; background: rgba(255, 255, 255, 0.045); cursor: pointer; padding: 4px 8px; font: inherit; font-size: 11px; font-weight: 750; transition: border-color 160ms ease-out, background 160ms ease-out, color 160ms ease-out; }
+.today-start-action.schedule { border-color: rgba(255, 205, 127, 0.36); color: #ffe0a7; }
+.today-start-action.focus { border-color: rgba(132, 225, 181, 0.42); color: #c9f5dd; }
+.today-start-action:hover { border-color: rgba(255, 229, 182, 0.65); background: rgba(255, 205, 127, 0.13); color: #fff8ed; }
+
 .time-block-card {
     position: relative;
     margin-top: 18px;
@@ -1981,6 +2024,10 @@ select {
         grid-template-columns: minmax(130px, 1fr) auto;
     }
 
+    .today-start-row {
+        grid-template-columns: minmax(130px, 1fr) auto;
+    }
+
     .tomorrow-plan-grid {
         grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     }
@@ -2070,6 +2117,10 @@ select {
         padding: 15px;
     }
 
+    .today-start-card {
+        padding: 15px;
+    }
+
     .day-closeout-card {
         padding: 15px;
     }
@@ -2089,6 +2140,19 @@ select {
     .day-closeout-row {
         grid-template-columns: 1fr;
         align-items: stretch;
+    }
+
+    .today-start-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .today-start-actions {
+        justify-content: flex-start;
+    }
+
+    .today-start-action {
+        flex: 1 1 0;
     }
 
     .day-closeout-actions {
