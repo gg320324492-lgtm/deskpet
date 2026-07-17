@@ -13,6 +13,7 @@ import { archiveTaskPatch, restoreTaskPatch, staleTasks } from '../renderer/task
 import { searchTasks } from '../renderer/task-search.js';
 import { taskEditorPatch } from '../renderer/task-editor.js';
 import { completedToday, restoreCompletedTaskPatch } from '../renderer/task-completion-review.js';
+import { buildTodayFocus, clearTodayFocusPatch, todayFocusPatch } from '../renderer/today-focus.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -106,7 +107,8 @@ export const statsTab = {
         const rhythm = getSettings().rhythm || {};
         const rhythmSummary = buildRhythmSummary({ rhythm, todos });
         const weeklyReview = buildWeeklyReview({ rhythm });
-        const nextFocusTask = todos.find((item) => todoBucket(item) === 'today');
+        const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos });
+        const nextFocusTask = todayFocus.task || todos.find((item) => todoBucket(item) === 'today');
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -448,6 +450,7 @@ export const feedTab = {
         const rhythm = getSettings().rhythm || {};
         const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
+        const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos: allTodos });
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
         const archivedTasks = allTodos.filter((item) => todoBucket(item) === 'archive');
         const completedTasks = completedToday({ todos: allTodos });
@@ -498,6 +501,14 @@ export const feedTab = {
         const archiveTask = (task) => applyTodoPatch(task.id, archiveTaskPatch());
         const restoreTask = (task) => applyTodoPatch(task.id, restoreTaskPatch());
         const undoCompletion = (task, destination) => applyTodoPatch(task.id, restoreCompletedTaskPatch(task, destination));
+        const setTodayFocus = async (task) => {
+            await setSettings({ rhythm: { ...rhythm, todayFocus: task ? todayFocusPatch(task) : clearTodayFocusPatch() } });
+            refreshCurrent();
+        };
+        const startTodayFocus = async (task) => {
+            const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
+            if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
+        };
         const startSearchFocus = async (task) => {
             const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
             if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
@@ -596,6 +607,15 @@ export const feedTab = {
                 actions.push(laterButton);
             }
             if (lane === 'today') {
+                let mainlineButton;
+                const isMainline = todayFocus.task?.id === task.id;
+                mainlineButton = el('button', {
+                    class: `todo-lane-button todo-mainline-button ${isMainline ? 'active' : ''}`, type: 'button',
+                    onclick: () => runAsync(mainlineButton, () => setTodayFocus(isMainline ? null : task), {
+                        announce, success: isMainline ? '今日主线已清空。' : '已设为今日主线。',
+                    }),
+                }, isMainline ? '主线中' : '设为主线');
+                actions.push(mainlineButton);
                 if (!task.timeBlock) {
                     let nextBlockButton;
                     nextBlockButton = el('button', {
@@ -706,6 +726,40 @@ export const feedTab = {
                 ),
                 el('p', { class: 'today-start-description' }, '不必一次做完。先把其中一件放进下一段时间，或者直接开始一轮专注。'),
                 el('div', { class: 'today-start-list' }, ...carriedRows),
+            ));
+        }
+        if (todayTasks.length) {
+            const focusPicker = el('select', { class: 'today-mainline-picker', 'aria-label': '选择今日主线', value: todayFocus.task?.id || '' },
+                el('option', { value: '' }, '暂不选，也没关系'),
+                ...todayTasks.map((task) => el('option', { value: task.id }, task.title)),
+            );
+            focusPicker.value = todayFocus.task?.id || '';
+            focusPicker.addEventListener('change', () => {
+                const task = todayTasks.find((item) => item.id === focusPicker.value) || null;
+                runAsync(focusPicker, () => setTodayFocus(task), {
+                    announce, success: task ? '今日主线已更新。' : '今日主线已清空。',
+                });
+            });
+            let startButton;
+            startButton = el('button', {
+                class: 'today-mainline-start', type: 'button', disabled: !todayFocus.task,
+                onclick: () => runAsync(startButton, () => startTodayFocus(todayFocus.task), {
+                    announce, success: `专注请求已发送：${todayFocus.task?.title || ''}`,
+                    failure: (error) => error?.message || '无法开始专注。',
+                }),
+            }, '现在开始');
+            let clearButton;
+            clearButton = el('button', {
+                class: 'today-mainline-clear', type: 'button', disabled: !todayFocus.task,
+                onclick: () => runAsync(clearButton, () => setTodayFocus(null), { announce, success: '今日主线已清空。' }),
+            }, '清空');
+            root.appendChild(el('section', { class: `card today-mainline-card ${todayFocus.task ? 'has-mainline' : ''}` },
+                el('div', { class: 'today-mainline-head' },
+                    el('div', {}, el('span', {}, 'TODAY\'S THREAD'), el('h3', {}, todayFocus.task ? '先陪这一件走一小段' : '今天，想先陪哪一件？')),
+                    el('span', {}, todayFocus.task ? '已选主线' : '随时可换'),
+                ),
+                el('p', { class: 'today-mainline-copy' }, todayFocus.task?.note || (todayFocus.task ? todayFocus.task.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
+                el('div', { class: 'today-mainline-controls' }, focusPicker, startButton, clearButton),
             ));
         }
         root.appendChild(timeBlockCard);
@@ -952,7 +1006,10 @@ export const feedTab = {
             ));
         }
 
-        const tasks = todayTasks.slice(0, 3);
+        const tasks = [
+            ...(todayFocus.task ? [todayFocus.task] : []),
+            ...todayTasks.filter((task) => task.id !== todayFocus.task?.id),
+        ].slice(0, 3);
         const taskRows = tasks.length
             ? tasks.map((task) => {
                 let startButton;
@@ -964,10 +1021,11 @@ export const feedTab = {
                         if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
                     }, { announce, success: `专注请求已发送：${task.title}`, failure: (error) => error?.message || '无法开始专注。' }),
                 }, '开始专注');
-                return el('div', { class: 'focus-task-row' },
+                const isMainline = task.id === todayFocus.task?.id;
+                return el('div', { class: `focus-task-row ${isMainline ? 'mainline' : ''}` },
                     el('div', { class: 'focus-task-copy' },
                         el('strong', {}, task.title),
-                        el('small', {}, `优先级 P${task.priority || 1}`),
+                        el('small', {}, isMainline ? '今日主线 · 现在开始' : `优先级 P${task.priority || 1}`),
                     ),
                     startButton,
                 );

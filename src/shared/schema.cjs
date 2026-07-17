@@ -113,6 +113,7 @@ const DOMAIN_DEFAULTS = Object.freeze({
         events: [],
         reflections: {},
         weeklyPlans: {},
+        todayFocus: null,
     }),
 });
 
@@ -391,6 +392,15 @@ function validateWeeklyPlans(value) {
     }
 }
 
+function validateTodayFocus(value) {
+    if (value === null) return;
+    assertPlainRecord(value, 'rhythm.todayFocus');
+    assertKnownKeys(value, ['date', 'taskId', 'updatedAt'], 'rhythm.todayFocus');
+    assertDate(value.date, 'rhythm.todayFocus.date');
+    assertString(value.taskId, 'rhythm.todayFocus.taskId', 80, { allowEmpty: false });
+    assertNumber(value.updatedAt, 'rhythm.todayFocus.updatedAt', { min: 0, max: 8_640_000_000_000_000, integer: true });
+}
+
 const FIELD_VALIDATORS = {
     settings: {
         volume: (v) => assertNumber(v, 'settings.volume', { min: 0, max: 1 }),
@@ -483,6 +493,7 @@ const FIELD_VALIDATORS = {
         },
         reflections: validateRhythmReflections,
         weeklyPlans: validateWeeklyPlans,
+        todayFocus: validateTodayFocus,
     },
 };
 

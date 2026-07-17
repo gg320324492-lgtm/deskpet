@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 - 2026-07-17
+
+### Added
+
+- Added a local Today\'s Thread selector for choosing one open Today task as a
+  gentle starting point.
+- The selected task leads the Focus Flow queue and can be switched, cleared,
+  or started directly without adding ranking pressure.
+
 ## 1.1.9 - 2026-07-17
 
 ### Added
