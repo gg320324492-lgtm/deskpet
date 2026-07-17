@@ -280,6 +280,9 @@ async function main() {
         pomodoro, focusFlow, todoList, reminders, dnd, scene, sm, animator, popover, getSettings, setSettings, allSettings, cache,
     }));
     window.petAPI.onFocusCommand((command) => focusFlow.command(command));
+    const publishFocusState = () => window.petAPI.focusStateUpdate(focusFlow.snapshot());
+    focusFlow.onChange(publishFocusState);
+    publishFocusState();
     window.petAPI.onVisibility((visible) => {
         if (visible && sm.state === STATES.SLEEP) {
             // Wake the pet when window becomes visible after long hide.

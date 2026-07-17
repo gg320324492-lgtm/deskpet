@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.1 - 2026-07-17
+
+### Added
+
+- Added a live Focus Companion card that mirrors the desktop pet's linked
+  focus state, task, elapsed time, and gentle phase feedback in the room.
+- Completing a linked focus period now offers three calm choices: continue a
+  little longer, rest first, or explicitly mark the task complete.
+
+### Improved
+
+- Pausing and resuming linked focus now receive companion feedback without
+  turning focus time into a streak or check-in system.
+
 ## 1.2.0 - 2026-07-17
 
 ### Added

@@ -14,6 +14,7 @@ import { searchTasks } from '../renderer/task-search.js';
 import { taskEditorPatch } from '../renderer/task-editor.js';
 import { completedToday, restoreCompletedTaskPatch } from '../renderer/task-completion-review.js';
 import { buildTodayFocus, clearTodayFocusPatch, todayFocusPatch } from '../renderer/today-focus.js';
+import { buildFocusCompanion } from '../renderer/focus-companion.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -442,7 +443,7 @@ export const outfitsTab = {
 
 // ============ Feed / interaction ============
 export const feedTab = {
-    render(root, { getSettings, setSettings, announce, focusCommand, refreshCurrent }) {
+    render(root, { getSettings, setSettings, announce, focusCommand, getFocusState, refreshCurrent }) {
         let mood = { ...(getSettings().mood || {}) };
         root.appendChild(panelHeader('陪伴行动', '一起做点什么', '选择一个轻量互动，状态会立即同步到桌面宠物。'));
 
@@ -451,6 +452,7 @@ export const feedTab = {
         const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
         const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
         const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos: allTodos });
+        const companion = buildFocusCompanion(getFocusState());
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
         const archivedTasks = allTodos.filter((item) => todoBucket(item) === 'archive');
         const completedTasks = completedToday({ todos: allTodos });
@@ -517,6 +519,10 @@ export const feedTab = {
             const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
             if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
             await applyTodoPatch(task.id, beginTodayPatch());
+        };
+        const sendFocusAction = async (action) => {
+            const result = await focusCommand({ action });
+            if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
         };
         const saveDayCloseout = async () => {
             const now = Date.now();
@@ -760,6 +766,61 @@ export const feedTab = {
                 ),
                 el('p', { class: 'today-mainline-copy' }, todayFocus.task?.note || (todayFocus.task ? todayFocus.task.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
                 el('div', { class: 'today-mainline-controls' }, focusPicker, startButton, clearButton),
+            ));
+        }
+        if (companion.phase !== 'idle') {
+            const companionActions = [];
+            if (companion.mode === 'work' || companion.mode === 'paused') {
+                let toggleButton;
+                toggleButton = el('button', {
+                    class: 'focus-companion-action primary', type: 'button',
+                    onclick: () => runAsync(toggleButton, () => sendFocusAction('toggle'), {
+                        announce,
+                        success: companion.mode === 'work' ? '好，先暂停一下。' : '继续陪你走这一段。',
+                    }),
+                }, companion.mode === 'work' ? '暂停一下' : '继续');
+                let endButton;
+                endButton = el('button', {
+                    class: 'focus-companion-action quiet', type: 'button',
+                    onclick: () => runAsync(endButton, () => sendFocusAction('skip'), { announce, success: '这一段先放在这里。' }),
+                }, '结束这一段');
+                companionActions.push(toggleButton, endButton);
+            }
+            if (companion.mode === 'decision') {
+                let continueButton;
+                continueButton = el('button', {
+                    class: 'focus-companion-action primary', type: 'button',
+                    onclick: () => runAsync(continueButton, () => sendFocusAction('continue'), { announce, success: '再走一小段。' }),
+                }, '继续一小段');
+                let restButton;
+                restButton = el('button', {
+                    class: 'focus-companion-action quiet', type: 'button',
+                    onclick: () => runAsync(restButton, () => sendFocusAction('rest'), { announce, success: '好，先休息。' }),
+                }, '先休息');
+                let completeButton;
+                completeButton = el('button', {
+                    class: 'focus-companion-action complete', type: 'button',
+                    onclick: () => runAsync(completeButton, () => sendFocusAction('complete'), { announce, success: '已标记完成，做得很好。' }),
+                }, '标记完成');
+                companionActions.push(continueButton, restButton, completeButton);
+            }
+            root.appendChild(el('section', {
+                class: `card focus-companion-card mode-${companion.mode}`,
+                'data-focus-companion': 'true',
+                'data-focus-key': `${companion.phase}:${companion.task?.id || ''}:${companion.awaitingDecision}`,
+            },
+            el('div', { class: 'focus-companion-head' },
+                el('div', {}, el('span', { class: 'focus-companion-kicker' }, companion.kicker), el('h3', {}, companion.heading)),
+                el('span', { class: 'focus-companion-phase' }, companion.mode === 'paused' ? '暂停中' : companion.mode === 'decision' ? '刚完成一段' : companion.mode === 'rest' ? '休息中' : '专注中'),
+            ),
+            el('p', { class: 'focus-companion-task' }, companion.task?.title || '自由专注'),
+            el('div', { class: 'focus-companion-time' },
+                el('strong', { 'data-focus-elapsed': 'true' }, companion.elapsed),
+                el('span', { 'data-focus-remaining': 'true' }, companion.remaining),
+            ),
+            el('p', { class: 'focus-companion-message', 'data-focus-message': 'true' }, companion.message || '不需要冲刺，只陪你把眼前这一段走完。'),
+            companionActions.length ? el('div', { class: 'focus-companion-actions' }, ...companionActions) : el('p', { class: 'focus-companion-rest-note' }, '这一段先放在这里。等休息结束，也可以再开始。'),
+            el('small', { class: 'focus-companion-footnote' }, '不打卡，不比较；只是陪你把这段时间轻轻放在这里。'),
             ));
         }
         root.appendChild(timeBlockCard);
@@ -1036,7 +1097,7 @@ export const feedTab = {
                 el('div', {}, el('span', { class: 'focus-kicker' }, 'FOCUS FLOW'), el('h3', {}, '从一项任务开始')),
                 el('span', { class: 'focus-orbit', 'aria-hidden': 'true' }),
             ),
-            el('p', { class: 'focus-queue-detail' }, '完成一轮专注后会自动进入休息，并将这项任务标记完成；结束时恢复你的原有场景。'),
+            el('p', { class: 'focus-queue-detail' }, '完成一段后会自动进入休息；是否标记任务完成，始终留给你自己决定。'),
             el('div', { class: 'focus-task-list' }, ...taskRows),
         ));
 

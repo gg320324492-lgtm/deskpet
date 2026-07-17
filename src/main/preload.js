@@ -50,6 +50,8 @@ const roomAPI = {
     windowStatus: ()       => ipcRenderer.invoke('window:status'),
     windowAction: (action) => ipcRenderer.invoke('window:action', action),
     focusCommand: (command) => ipcRenderer.invoke('focus:command', command),
+    focusState: () => ipcRenderer.invoke('focus:state'),
+    onFocusState: (handler) => subscribe('focus:state', handler),
 };
 
 const petAPI = {
@@ -69,6 +71,7 @@ const petAPI = {
     onVisibility:    (handler)  => subscribe('window-visibility', handler),
     onTrayCommand:   (handler)  => subscribe('tray:command', handler),
     onFocusCommand:  (handler)  => subscribe('focus:command', handler),
+    focusStateUpdate: (state)  => ipcRenderer.send('focus:state:update', state),
 };
 
 contextBridge.exposeInMainWorld('petAPI', Object.freeze(isRoom ? roomAPI : petAPI));

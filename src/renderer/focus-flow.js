@@ -18,6 +18,8 @@ export class FocusFlow {
         this._listeners = new Set();
         this._task = null;
         this._skipPending = false;
+        this._awaitingDecision = false;
+        this._message = '';
         this._focusStartedAt = 0;
         this._focusElapsedMs = 0;
         this._previousPhase = pomodoro.snapshot().phase;
@@ -45,11 +47,24 @@ export class FocusFlow {
         return minutes;
     }
 
+    _elapsedMs() {
+        const activeMs = this._focusStartedAt ? Math.max(0, Date.now() - this._focusStartedAt) : 0;
+        return Math.max(0, this._focusElapsedMs + activeMs);
+    }
+
+    _say(message) {
+        this._message = message;
+        this._onNotice(message);
+    }
+
     snapshot() {
         const timer = this._pomodoro.snapshot();
         return {
             ...timer,
             task: this._task ? { ...this._task } : null,
+            elapsedMs: this._elapsedMs(),
+            awaitingDecision: this._awaitingDecision,
+            message: this._message,
             sceneOverride: timer.phase === 'work' || timer.phase === 'paused'
                 ? 'focus'
                 : (REST_PHASES.has(timer.phase) ? 'relaxed' : null),
@@ -62,13 +77,36 @@ export class FocusFlow {
         if (current === 'paused') return this.resume();
         if (current !== 'idle') return false;
         this._task = nextTask;
+        this._awaitingDecision = false;
+        this._message = nextTask
+            ? `从「${nextTask.title}」开始，我们先走这一小段。`
+            : '先陪你安静走一小段。';
         const started = this._pomodoro.start();
-        if (!started) this._task = null;
+        if (!started) {
+            this._task = null;
+            this._message = '';
+        } else {
+            this._say(this._message);
+        }
         return started;
     }
 
-    pause() { return this._pomodoro.pause(); }
-    resume() { return this._pomodoro.resume(); }
+    pause() {
+        const paused = this._pomodoro.pause();
+        if (paused) {
+            this._say('暂停也可以，进度会留在这里。');
+            this._emit();
+        }
+        return paused;
+    }
+    resume() {
+        const resumed = this._pomodoro.resume();
+        if (resumed) {
+            this._say('回来啦，继续陪你走。');
+            this._emit();
+        }
+        return resumed;
+    }
     stop() { return this._pomodoro.stop(); }
     togglePause() { return this._pomodoro.snapshot().phase === 'paused' ? this.resume() : this.pause(); }
 
@@ -78,19 +116,56 @@ export class FocusFlow {
         return this._pomodoro.skip();
     }
 
+    continue() {
+        const phase = this._pomodoro.snapshot().phase;
+        if (!REST_PHASES.has(phase) || !this._task) return false;
+        this._awaitingDecision = false;
+        const continued = this._pomodoro.continueWork();
+        if (continued) {
+            this._say('再陪你走一小段。');
+            this._emit();
+        }
+        return continued;
+    }
+
+    rest() {
+        if (!REST_PHASES.has(this._pomodoro.snapshot().phase)) return false;
+        this._awaitingDecision = false;
+        this._say('好，先休息一会儿。');
+        this._emit();
+        return true;
+    }
+
+    completeTask() {
+        if (!this._awaitingDecision || !this._task) return false;
+        const task = this._task;
+        this._todoList.complete(task.id);
+        this._task = null;
+        this._awaitingDecision = false;
+        this._say(`已收好「${task.title}」，这一段做得很好。`);
+        this._emit();
+        return true;
+    }
+
     command(command = {}) {
         switch (command.action) {
         case 'start': return this.start(command.task);
         case 'toggle': return this.togglePause();
         case 'skip': return this.skip();
         case 'stop': return this.stop();
+        case 'continue': return this.continue();
+        case 'rest': return this.rest();
+        case 'complete': return this.completeTask();
         default: return false;
         }
     }
 
     _onPomodoroChange(snapshot) {
         const phase = snapshot.phase;
-        if (phase === this._previousPhase) return;
+        if (phase === this._previousPhase) {
+            this._emit();
+            return;
+        }
         if (phase === 'work') {
             if (this._previousPhase !== 'paused') {
                 this._focusElapsedMs = 0;
@@ -108,11 +183,13 @@ export class FocusFlow {
             const minutes = this._finishFocusMinutes();
             const endedWork = this._previousPhase === 'work' || this._previousPhase === 'paused';
             if (endedWork) this._record(this._skipPending ? 'focus-skip' : 'focus-complete', { minutes });
-            if (this._previousPhase === 'work' && this._task && !this._skipPending) {
-                const task = this._task;
+            if (endedWork && this._task && !this._skipPending) {
+                this._awaitingDecision = true;
+                this._say(`这一段已经走完了。「${this._task.title}」接下来想怎么安排？`);
+            } else if (this._skipPending) {
                 this._task = null;
-                this._todoList.complete(task.id);
-                this._onNotice(`已完成「${task.title}」，先休息一下吧。`);
+                this._awaitingDecision = false;
+                this._message = '这一段先停在这里，先休息也很好。';
             }
             this._skipPending = false;
         }
@@ -126,6 +203,8 @@ export class FocusFlow {
             this._scene.clearOverride({ notify: false, source: 'focus-flow' });
             this._task = null;
             this._skipPending = false;
+            this._awaitingDecision = false;
+            this._message = '';
         }
         this._previousPhase = phase;
         this._emit();

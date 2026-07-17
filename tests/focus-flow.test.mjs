@@ -11,11 +11,12 @@ class FakePomodoro {
     start() { if (this.phase !== 'idle') return false; this.transition('work'); return true; }
     pause() { if (this.phase === 'idle') return false; this.transition('paused'); return true; }
     resume() { if (this.phase !== 'paused') return false; this.transition('work'); return true; }
+    continueWork() { if (this.phase !== 'rest' && this.phase !== 'longRest') return false; this.transition('work'); return true; }
     stop() { if (this.phase === 'idle') return false; this.transition('idle'); return true; }
     skip() { if (this.phase === 'idle') return false; this.transition('rest'); return true; }
 }
 
-test('linked focus work overrides scenes, completes its task, then restores the base scene', () => {
+test('linked focus work asks before marking its task complete, then restores the base scene', () => {
     const pomodoro = new FakePomodoro();
     const calls = [];
     const completed = [];
@@ -36,12 +37,35 @@ test('linked focus work overrides scenes, completes its task, then restores the 
     assert.deepEqual(calls, [['override', 'focus']]);
     pomodoro.transition('rest');
     assert.deepEqual(calls.at(-1), ['override', 'relaxed']);
-    assert.deepEqual(completed, ['t1']);
+    assert.deepEqual(completed, []);
     assert.match(notices[0], /整理方案/);
     assert.deepEqual(events.map((event) => event.type), ['focus-start', 'focus-complete']);
+    assert.equal(flow.snapshot().awaitingDecision, true);
+    assert.equal(flow.completeTask(), true);
+    assert.deepEqual(completed, ['t1']);
+    assert.equal(flow.snapshot().awaitingDecision, false);
     pomodoro.transition('idle');
     assert.deepEqual(calls.at(-1), ['clear']);
     assert.equal(flow.snapshot().task, null);
+    flow.dispose();
+});
+
+test('linked focus can continue from its gentle landing or keep resting without completing the task', () => {
+    const pomodoro = new FakePomodoro();
+    const completed = [];
+    const flow = new FocusFlow({
+        pomodoro,
+        scene: { setOverride: () => {}, clearOverride: () => {} },
+        todoList: { complete: (id) => completed.push(id) },
+    });
+    flow.start({ id: 't3', title: '继续写一段' });
+    pomodoro.transition('rest');
+    assert.equal(flow.rest(), true);
+    assert.deepEqual(completed, []);
+    assert.equal(flow.continue(), true);
+    assert.equal(flow.snapshot().phase, 'work');
+    assert.equal(flow.snapshot().task?.id, 't3');
+    flow.stop();
     flow.dispose();
 });
 

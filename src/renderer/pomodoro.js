@@ -64,6 +64,16 @@ export class PomodoroTimer {
         return true;
     }
 
+    /** Start another work period directly from a completed rest phase. */
+    continueWork() {
+        if (this._phase !== 'rest' && this._phase !== 'longRest') return false;
+        clearInterval(this._interval);
+        this._interval = null;
+        this._enter('work', null);
+        this._onBubble('再走一小段。');
+        return true;
+    }
+
     stop() {
         if (this._phase === 'idle') return false;
         clearInterval(this._interval);

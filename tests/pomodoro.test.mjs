@@ -80,4 +80,15 @@ test('skip moves a work phase to rest without counting a completed session', () 
     timer.dispose();
 });
 
+test('continueWork starts another work period only from a rest phase', () => {
+    const { timer } = fresh();
+    assert.equal(timer.continueWork(), false);
+    timer.start();
+    timer.skip();
+    assert.equal(timer.snapshot().phase, 'rest');
+    assert.equal(timer.continueWork(), true);
+    assert.equal(timer.snapshot().phase, 'work');
+    timer.dispose();
+});
+
 test.afterEach(() => { /* ensure cleanup via dispose in each test */ });

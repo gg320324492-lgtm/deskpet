@@ -44,6 +44,9 @@ const { parseBackupSnapshot } = require('../shared/schema.cjs');
 const MAX_BACKUP_FILE_BYTES = 2 * 1024 * 1024;
 const aiService = new AiService({ storage, vault: new CredentialVault() });
 let updateService = null;
+let focusState = Object.freeze({
+    phase: 'idle', remainingMs: 0, elapsedMs: 0, awaitingDecision: false, task: null, message: '',
+});
 
 // 单实例锁
 const gotLock = app.requestSingleInstanceLock();
@@ -142,7 +145,7 @@ handleFrom('window:action', ['room'], (_event, action) => {
 function normalizeFocusCommand(command) {
     if (!command || typeof command !== 'object' || Array.isArray(command)) throw new TypeError('Focus command must be an object');
     const action = command.action;
-    if (!['start', 'toggle', 'skip', 'stop'].includes(action)) throw new TypeError('Unsupported focus command');
+    if (!['start', 'toggle', 'skip', 'stop', 'continue', 'rest', 'complete'].includes(action)) throw new TypeError('Unsupported focus command');
     if (action !== 'start') return { action };
     if (command.task == null) return { action };
     if (!command.task || typeof command.task !== 'object' || Array.isArray(command.task)) throw new TypeError('Focus task must be an object');
@@ -152,12 +155,47 @@ function normalizeFocusCommand(command) {
     return { action, task: { id, title } };
 }
 
+function normalizeFocusState(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Focus state must be an object');
+    const phase = value.phase;
+    if (!['idle', 'work', 'paused', 'rest', 'longRest'].includes(phase)) throw new TypeError('Invalid focus phase');
+    const finite = (field, max) => {
+        const number = value[field];
+        if (!Number.isFinite(number) || number < 0 || number > max) throw new TypeError(`Invalid focus ${field}`);
+        return Math.round(number);
+    };
+    let task = null;
+    if (value.task != null) {
+        if (!value.task || typeof value.task !== 'object' || Array.isArray(value.task)) throw new TypeError('Invalid focus task');
+        const id = typeof value.task.id === 'string' ? value.task.id.trim() : '';
+        const title = typeof value.task.title === 'string' ? value.task.title.trim() : '';
+        if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !title || title.length > 120) throw new TypeError('Invalid focus task');
+        task = { id, title };
+    }
+    const message = typeof value.message === 'string' ? value.message.trim().slice(0, 180) : '';
+    return Object.freeze({
+        phase,
+        remainingMs: finite('remainingMs', 24 * 60 * 60 * 1000),
+        elapsedMs: finite('elapsedMs', 24 * 60 * 60 * 1000),
+        awaitingDecision: value.awaitingDecision === true,
+        task,
+        message,
+    });
+}
+
 handleFrom('focus:command', ['room'], (_event, command) => {
     const normalized = normalizeFocusCommand(command);
     const pet = getPetWindow();
     if (!pet || pet.isDestroyed()) return { ok: false, reason: 'pet-unavailable' };
     pet.webContents.send('focus:command', normalized);
     return { ok: true };
+});
+
+handleFrom('focus:state', ['room'], () => focusState);
+onFrom('focus:state:update', ['pet'], (_event, nextState) => {
+    focusState = normalizeFocusState(nextState);
+    const room = getRoomWindow();
+    if (room && !room.isDestroyed()) room.webContents.send('focus:state', focusState);
 });
 
 // === Storage IPC ===

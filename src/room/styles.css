@@ -831,6 +831,44 @@ select:focus-visible,
 .focus-task-row.mainline { border-color:rgba(255,205,133,.48); box-shadow:inset 3px 0 rgba(255,205,133,.72); }
 .focus-task-row.mainline .focus-task-copy small { color:#ffe2aa; }
 
+.focus-companion-card {
+    position:relative;
+    overflow:hidden;
+    margin-top:18px;
+    border-color:rgba(255,146,180,.32);
+    background:
+        radial-gradient(circle at 93% 2%, rgba(255,146,180,.17), transparent 29%),
+        radial-gradient(circle at 0% 100%, rgba(255,207,133,.1), transparent 36%),
+        linear-gradient(135deg, rgba(54,39,57,.99), rgba(33,36,52,.99));
+}
+.focus-companion-card::after { content:''; position:absolute; right:-34px; bottom:-46px; width:150px; height:150px; border:1px solid rgba(255,209,144,.16); border-radius:50%; box-shadow:0 0 0 19px rgba(255,209,144,.035), 0 0 0 42px rgba(255,209,144,.025); pointer-events:none; }
+.focus-companion-card.mode-decision { border-color:rgba(255,207,133,.5); background:radial-gradient(circle at 93% 2%, rgba(255,207,133,.2), transparent 31%), linear-gradient(135deg, rgba(65,49,48,.99), rgba(35,37,52,.99)); }
+.focus-companion-card.mode-paused { border-color:rgba(174,163,231,.43); }
+.focus-companion-head { position:relative; z-index:1; display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+.focus-companion-kicker { display:block; color:#ffc5d9; font-size:10px; font-weight:900; letter-spacing:.14em; }
+.focus-companion-card.mode-decision .focus-companion-kicker { color:#ffe1a8; }
+.focus-companion-head h3 { margin:4px 0 0; color:var(--room-text); font-size:19px; }
+.focus-companion-phase { flex:0 0 auto; border:1px solid rgba(255,198,219,.28); border-radius:999px; color:#ffd9e7; background:rgba(255,255,255,.06); font-size:11px; font-weight:800; padding:5px 8px; }
+.focus-companion-card.mode-decision .focus-companion-phase { border-color:rgba(255,220,163,.33); color:#ffe8bd; }
+.focus-companion-task { position:relative; z-index:1; overflow:hidden; margin:14px 0 0; color:#fff4f8; font-size:15px; font-weight:850; text-overflow:ellipsis; white-space:nowrap; }
+.focus-companion-time { position:relative; z-index:1; display:flex; align-items:baseline; gap:9px; margin-top:7px; }
+.focus-companion-time strong { color:#ffd0df; font-size:13px; }
+.focus-companion-time span { color:var(--room-muted); font-size:12px; }
+.focus-companion-message { position:relative; z-index:1; max-width:58ch; margin:10px 0 0; color:var(--room-muted); font-size:12px; line-height:1.55; }
+.focus-companion-actions { position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:8px; margin-top:15px; }
+.focus-companion-action { min-height:37px; border-radius:10px; cursor:pointer; font:inherit; font-size:12px; font-weight:850; padding:7px 12px; transition:transform 160ms ease, border-color 160ms ease, background 160ms ease; }
+.focus-companion-action:hover { transform:translateY(-1px); }
+.focus-companion-action.primary { border:1px solid rgba(255,202,220,.74); color:#301722; background:#ffc8da; box-shadow:0 8px 18px rgba(236,106,156,.17); }
+.focus-companion-action.primary:hover { background:#ffe0eb; }
+.focus-companion-action.quiet { border:1px solid rgba(230,219,245,.24); color:#ebe4f5; background:rgba(255,255,255,.06); }
+.focus-companion-action.quiet:hover { border-color:rgba(230,219,245,.52); }
+.focus-companion-action.complete { border:1px solid rgba(255,212,142,.58); color:#2e2112; background:#ffd58d; }
+.focus-companion-action.complete:hover { background:#ffe5b6; }
+.focus-companion-action:focus-visible { outline:2px solid #fff0bd; outline-offset:2px; }
+.focus-companion-rest-note, .focus-companion-footnote { position:relative; z-index:1; color:var(--room-subtle); font-size:11px; line-height:1.5; }
+.focus-companion-rest-note { margin:14px 0 0; }
+.focus-companion-footnote { display:block; margin-top:13px; color:#c8bfd4; }
+
 .time-block-card::after {
     position: absolute;
     top: -54px;
@@ -2269,6 +2307,11 @@ select {
     .today-mainline-controls { grid-template-columns:1fr 1fr; }
     .today-mainline-picker { grid-column:1 / -1; }
     .today-mainline-start, .today-mainline-clear { width:100%; }
+    .focus-companion-card { padding:15px; }
+    .focus-companion-head h3 { font-size:18px; }
+    .focus-companion-actions { display:grid; grid-template-columns:1fr 1fr; }
+    .focus-companion-action { width:100%; }
+    .focus-companion-action.complete { grid-column:1 / -1; }
 
     .day-closeout-card {
         padding: 15px;

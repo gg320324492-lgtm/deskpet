@@ -2,6 +2,7 @@
  * Character-room entry: shared storage, accessible tabs and live updates.
  */
 import { statsTab, achievementsTab, outfitsTab, feedTab, settingsTab } from './tabs.js';
+import { buildFocusCompanion } from '../renderer/focus-companion.js';
 
 const TABS = {
     stats: statsTab,
@@ -24,10 +25,14 @@ async function main() {
         }, 3600);
     };
 
-    const data = await window.petAPI.storageList();
+    const [data, initialFocusState] = await Promise.all([
+        window.petAPI.storageList(),
+        window.petAPI.focusState(),
+    ]);
     const cache = new Map(Object.entries(data));
     const pendingWrites = new Map();
     const getSettings = () => Object.fromEntries(cache);
+    let focusState = initialFocusState;
     const markWrite = (domain, delta) => {
         const next = (pendingWrites.get(domain) || 0) + delta;
         if (next > 0) pendingWrites.set(domain, next);
@@ -71,6 +76,7 @@ async function main() {
         windowStatus: () => window.petAPI.windowStatus(),
         windowAction: (action) => window.petAPI.windowAction(action),
         focusCommand: (command) => window.petAPI.focusCommand(command),
+        getFocusState: () => focusState,
         refreshCurrent: () => renderPanel(activeTab),
     };
     const tabButtons = [...document.querySelectorAll('[role="tab"]')];
@@ -129,6 +135,23 @@ async function main() {
     });
 
     window.petAPI.onRoomTab((name) => activate(name, { notify: true }));
+    window.petAPI.onFocusState((nextState) => {
+        focusState = nextState;
+        if (activeTab !== 'feed') return;
+        const card = document.querySelector('[data-focus-companion]');
+        const next = buildFocusCompanion(focusState);
+        const nextKey = `${next.phase}:${next.task?.id || ''}:${next.awaitingDecision}`;
+        if (!card || card.dataset.focusKey !== nextKey) {
+            renderPanel('feed');
+            return;
+        }
+        const elapsed = card.querySelector('[data-focus-elapsed]');
+        const remaining = card.querySelector('[data-focus-remaining]');
+        const message = card.querySelector('[data-focus-message]');
+        if (elapsed) elapsed.textContent = next.elapsed;
+        if (remaining) remaining.textContent = next.remaining;
+        if (message && next.message) message.textContent = next.message;
+    });
     window.petAPI.onStorageChange(({ domain, data: nextData }) => {
         cache.set(domain, nextData);
         if (pendingWrites.has(domain)) return;

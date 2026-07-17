@@ -37,6 +37,8 @@ export const IPC = Object.freeze({
     POMODORO_PHASE:   'pomodoro:phase',     // main -> renderer event
     POMODORO_STATE:   'pomodoro:state',     // invoke
     FOCUS_COMMAND:    'focus:command',      // room -> pet command relay
+    FOCUS_STATE:      'focus:state',        // room invoke + main -> room event
+    FOCUS_STATE_UPDATE: 'focus:state:update', // pet -> main runtime update
 
     // ---- Todos ----
     TODOS_ADD:        'todos:add',
@@ -107,6 +109,7 @@ export const CHANNEL_GROUPS = Object.freeze({
     'pomodoro': [
         IPC.POMODORO_START, IPC.POMODORO_PAUSE, IPC.POMODORO_RESUME,
         IPC.POMODORO_STOP, IPC.POMODORO_TICK, IPC.POMODORO_PHASE, IPC.POMODORO_STATE, IPC.FOCUS_COMMAND,
+        IPC.FOCUS_STATE, IPC.FOCUS_STATE_UPDATE,
     ],
     'todos': [
         IPC.TODOS_ADD, IPC.TODOS_UPDATE, IPC.TODOS_DELETE,
