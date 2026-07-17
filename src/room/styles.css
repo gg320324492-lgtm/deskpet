@@ -358,6 +358,198 @@ select:focus-visible,
     font-size: 12px;
 }
 
+.rhythm-card {
+    position: relative;
+    margin-top: 18px;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 88% -24%, rgba(239, 151, 194, 0.22), transparent 42%),
+        linear-gradient(145deg, rgba(49, 47, 71, 0.99), rgba(31, 36, 54, 0.99));
+}
+
+.rhythm-card::before {
+    position: absolute;
+    top: 0;
+    right: 26px;
+    left: 26px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 225, 241, 0.54), transparent);
+    content: '';
+}
+
+.rhythm-card-head,
+.rhythm-detail-grid,
+.rhythm-today-grid {
+    position: relative;
+    z-index: 1;
+}
+
+.rhythm-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.rhythm-card h3 {
+    margin: 3px 0 0;
+    font-size: 19px;
+}
+
+.rhythm-local-badge {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 1px solid rgba(181, 230, 211, 0.3);
+    border-radius: 999px;
+    color: #c8f2df;
+    background: rgba(94, 176, 139, 0.12);
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.rhythm-card-description {
+    position: relative;
+    z-index: 1;
+    max-width: 68ch;
+    margin: 9px 0 18px;
+    color: var(--room-muted);
+    font-size: 13px;
+}
+
+.rhythm-week {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.rhythm-day {
+    display: grid;
+    min-width: 0;
+    min-height: 82px;
+    padding: 9px 5px;
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    border-radius: 12px;
+    background: rgba(10, 13, 23, 0.3);
+    text-align: center;
+}
+
+.rhythm-day.today { border-color: rgba(239, 151, 194, 0.66); box-shadow: inset 0 0 0 1px rgba(239, 151, 194, 0.12); }
+.rhythm-day.level-1 { background: linear-gradient(180deg, rgba(107, 189, 156, 0.2), rgba(10, 13, 23, 0.36)); }
+.rhythm-day.level-2 { background: linear-gradient(180deg, rgba(107, 189, 156, 0.36), rgba(10, 13, 23, 0.36)); }
+.rhythm-day.level-3 { background: linear-gradient(180deg, rgba(139, 205, 172, 0.5), rgba(10, 13, 23, 0.36)); }
+.rhythm-day.level-4 { background: linear-gradient(180deg, rgba(255, 194, 222, 0.52), rgba(120, 198, 166, 0.22)); }
+
+.rhythm-weekday,
+.rhythm-day small,
+.rhythm-stat small,
+.rhythm-event-copy small {
+    color: var(--room-subtle);
+    font-size: 11px;
+}
+
+.rhythm-day strong {
+    align-self: center;
+    color: var(--room-text);
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+}
+
+.rhythm-today-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    margin-top: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.rhythm-stat {
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+    background: rgba(21, 24, 37, 0.78);
+}
+
+.rhythm-stat strong { color: var(--room-text); font-size: 18px; font-variant-numeric: tabular-nums; }
+.rhythm-stat.subdued strong { color: var(--room-muted); }
+
+.rhythm-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(230px, 0.8fr);
+    gap: 16px;
+    margin-top: 17px;
+}
+
+.rhythm-detail-grid h4 {
+    margin: 0 0 10px;
+    color: var(--room-text);
+    font-size: 13px;
+}
+
+.rhythm-timeline {
+    display: grid;
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.rhythm-event {
+    display: grid;
+    grid-template-columns: 42px 10px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 8px 11px;
+    background: rgba(22, 26, 40, 0.92);
+}
+
+.rhythm-event time { color: var(--room-subtle); font-size: 11px; font-variant-numeric: tabular-nums; }
+.rhythm-event-dot { width: 8px; height: 8px; border-radius: 50%; background: #94b6ff; box-shadow: 0 0 0 3px rgba(148, 182, 255, 0.12); }
+.rhythm-event.event-focus-complete .rhythm-event-dot,
+.rhythm-event.event-task-complete .rhythm-event-dot { background: #8be0ba; box-shadow: 0 0 0 3px rgba(139, 224, 186, 0.12); }
+.rhythm-event.event-focus-skip .rhythm-event-dot,
+.rhythm-event.event-focus-stop .rhythm-event-dot { background: #e9b277; box-shadow: 0 0 0 3px rgba(233, 178, 119, 0.12); }
+.rhythm-event.event-scene-change .rhythm-event-dot { background: #ef97c2; box-shadow: 0 0 0 3px rgba(239, 151, 194, 0.12); }
+
+.rhythm-event-copy { display: grid; gap: 2px; min-width: 0; }
+.rhythm-event-copy strong { overflow: hidden; color: var(--room-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.rhythm-empty { margin: 0; padding: 14px; border: 1px dashed rgba(255, 255, 255, 0.18); border-radius: 13px; color: var(--room-muted); font-size: 12px; line-height: 1.6; }
+
+.rhythm-reflection-wrap {
+    display: grid;
+    align-content: start;
+    gap: 9px;
+    padding: 13px;
+    border: 1px solid rgba(239, 151, 194, 0.2);
+    border-radius: 13px;
+    background: rgba(41, 35, 55, 0.64);
+}
+
+.rhythm-reflection-wrap label { display: grid; gap: 5px; color: var(--room-muted); font-size: 12px; font-weight: 700; }
+.rhythm-reflection-note,
+.rhythm-tomorrow {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 9px;
+    color: var(--room-text);
+    background: rgba(12, 15, 25, 0.58);
+    font: inherit;
+}
+.rhythm-reflection-note { min-height: 76px; padding: 8px 9px; resize: vertical; line-height: 1.5; }
+.rhythm-tomorrow { min-height: 35px; padding: 7px 9px; }
+.rhythm-reflection-note:focus-visible,
+.rhythm-tomorrow:focus-visible { outline: 2px solid var(--room-accent); outline-offset: 2px; }
+.rhythm-save { justify-self: start; margin-top: 2px; }
+
 .tile-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
@@ -1339,6 +1531,10 @@ select {
         display: grid;
         grid-template-columns: 1fr;
     }
+
+    .rhythm-detail-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1361,6 +1557,31 @@ select {
     .metric-grid,
     .summary-grid {
         grid-template-columns: 1fr;
+    }
+
+    .rhythm-card {
+        padding: 15px;
+    }
+
+    .rhythm-day {
+        min-height: 70px;
+        padding: 8px 2px;
+    }
+
+    .rhythm-day strong {
+        font-size: 17px;
+    }
+
+    .rhythm-today-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .rhythm-stat {
+        padding: 10px;
+    }
+
+    .rhythm-save {
+        width: 100%;
     }
 
     .tile-grid {

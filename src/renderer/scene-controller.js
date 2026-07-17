@@ -37,7 +37,7 @@ export class SceneController {
 
     start() {
         this.sync({ notify: false });
-        if (this._timer == null) this._timer = this._setInterval(() => this.sync(), 30_000);
+        if (this._timer == null) this._timer = this._setInterval(() => this.sync({ source: 'schedule' }), 30_000);
     }
 
     stop() {

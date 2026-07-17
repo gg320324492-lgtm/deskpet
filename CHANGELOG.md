@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.9 - 2026-07-17
+
+### Added
+
+- Added a local Daily Rhythm ledger that records focus starts, completions,
+  skips and stops, completed tasks, and deliberate scene changes. History is
+  bounded and remains on the device.
+- Added a seven-day focus ribbon, real elapsed focus duration, task completion
+  rate, and a readable daily timeline to the character room.
+- Added a lightweight daily reflection with a short note and tomorrow's first
+  task. It is included in the normal local backup.
+
+### Improved
+
+- Focus durations now exclude paused time and use elapsed session time instead
+  of estimating from the configured Pomodoro length.
+- Completing an already-complete or missing task no longer emits a duplicate
+  completion side effect.
+
 ## 1.0.8 - 2026-07-17
 
 ### Added

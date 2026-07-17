@@ -7,8 +7,9 @@
  * If the renderer ever needs direct access (currently it accesses via
  * petAPI IPC), write a tiny `schema.mjs` shim that re-exports these.
  *
- * Domains (8):
- *   - settings, mood, todos, pomodoro, reminders, memory, achievements, stats
+ * Domains (9):
+ *   - settings, mood, todos, pomodoro, reminders, memory, achievements, stats,
+ *     rhythm
  */
 
 const STORAGE_VERSION = 1;
@@ -104,6 +105,12 @@ const DOMAIN_DEFAULTS = Object.freeze({
         streakDays: 0,
         streakLastDay: '',
         totalCompanionMinutes: 0,
+    }),
+
+    rhythm: Object.freeze({
+        version: STORAGE_VERSION,
+        events: [],
+        reflections: {},
     }),
 });
 
@@ -307,6 +314,55 @@ function validateAchievements(value) {
     }
 }
 
+const RHYTHM_EVENT_TYPES = Object.freeze([
+    'focus-start', 'focus-complete', 'focus-skip', 'focus-stop',
+    'task-complete', 'scene-change',
+]);
+
+function validateRhythmEvent(event, index = 0) {
+    const name = `rhythm.events[${index}]`;
+    assertPlainRecord(event, name);
+    assertKnownKeys(event, ['id', 'type', 'at', 'title', 'detail', 'minutes', 'taskId'], name);
+    assertString(event.id, `${name}.id`, 80, { allowEmpty: false });
+    assertEnum(event.type, RHYTHM_EVENT_TYPES, `${name}.type`);
+    assertNumber(event.at, `${name}.at`, { min: 0, max: 8_640_000_000_000_000, integer: true });
+    if (Object.hasOwn(event, 'title')) assertString(event.title, `${name}.title`, 120);
+    if (Object.hasOwn(event, 'detail')) assertString(event.detail, `${name}.detail`, 120);
+    if (Object.hasOwn(event, 'minutes')) assertNumber(event.minutes, `${name}.minutes`, { min: 0, max: 1_440, integer: true });
+    if (Object.hasOwn(event, 'taskId')) assertString(event.taskId, `${name}.taskId`, 80);
+}
+
+function normalizeRhythmEvent(event, index) {
+    validateRhythmEvent(event, index);
+    const out = {
+        id: event.id,
+        type: event.type,
+        at: event.at,
+        title: event.title ?? '',
+        minutes: event.minutes ?? 0,
+    };
+    if (Object.hasOwn(event, 'detail')) out.detail = event.detail;
+    if (Object.hasOwn(event, 'taskId')) out.taskId = event.taskId;
+    return out;
+}
+
+function validateRhythmReflections(value) {
+    assertPlainRecord(value, 'rhythm.reflections');
+    if (Object.keys(value).length > 90) throw new RangeError('rhythm.reflections must contain at most 90 days');
+    for (const [date, reflection] of Object.entries(value)) {
+        assertDate(date, `rhythm.reflections.${date}`);
+        if (!date) throw new TypeError('rhythm.reflections cannot use an empty date');
+        assertPlainRecord(reflection, `rhythm.reflections.${date}`);
+        assertKnownKeys(reflection, ['note', 'tomorrow', 'updatedAt'], `rhythm.reflections.${date}`);
+        if (!Object.hasOwn(reflection, 'note') || !Object.hasOwn(reflection, 'tomorrow') || !Object.hasOwn(reflection, 'updatedAt')) {
+            throw new TypeError(`rhythm.reflections.${date} is incomplete`);
+        }
+        assertString(reflection.note, `rhythm.reflections.${date}.note`, 280);
+        assertString(reflection.tomorrow, `rhythm.reflections.${date}.tomorrow`, 120);
+        assertNumber(reflection.updatedAt, `rhythm.reflections.${date}.updatedAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
+    }
+}
+
 const FIELD_VALIDATORS = {
     settings: {
         volume: (v) => assertNumber(v, 'settings.volume', { min: 0, max: 1 }),
@@ -391,6 +447,13 @@ const FIELD_VALIDATORS = {
         streakLastDay: (v) => assertDate(v, 'stats.streakLastDay'),
         totalCompanionMinutes: (v) => assertNumber(v, 'stats.totalCompanionMinutes'),
     },
+    rhythm: {
+        events: (v) => {
+            if (!Array.isArray(v) || v.length > 360) throw new RangeError('rhythm.events must contain at most 360 items');
+            v.forEach(validateRhythmEvent);
+        },
+        reflections: validateRhythmReflections,
+    },
 };
 
 function validateDomainPatch(domain, patch) {
@@ -457,6 +520,10 @@ function sanitizeDomain(domain, data) {
                 out.snoozes = sanitizeMap(data.snoozes, (value) => validateTimestampMap(value, 'reminders.snoozes'));
             } else if (domain === 'achievements' && key === 'unlocked') {
                 out.unlocked = sanitizeMap(data.unlocked, validateAchievements);
+            } else if (domain === 'rhythm' && key === 'events') {
+                out.events = sanitizeCollection(data.events, 360, normalizeRhythmEvent);
+            } else if (domain === 'rhythm' && key === 'reflections') {
+                out.reflections = sanitizeMap(data.reflections, validateRhythmReflections);
             }
         }
     }

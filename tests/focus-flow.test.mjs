@@ -20,6 +20,7 @@ test('linked focus work overrides scenes, completes its task, then restores the 
     const calls = [];
     const completed = [];
     const notices = [];
+    const events = [];
     const flow = new FocusFlow({
         pomodoro,
         scene: {
@@ -28,6 +29,7 @@ test('linked focus work overrides scenes, completes its task, then restores the 
         },
         todoList: { complete: (id) => completed.push(id) },
         onNotice: (text) => notices.push(text),
+        onEvent: (event) => events.push(event),
     });
 
     assert.equal(flow.start({ id: 't1', title: '整理方案' }), true);
@@ -36,6 +38,7 @@ test('linked focus work overrides scenes, completes its task, then restores the 
     assert.deepEqual(calls.at(-1), ['override', 'relaxed']);
     assert.deepEqual(completed, ['t1']);
     assert.match(notices[0], /整理方案/);
+    assert.deepEqual(events.map((event) => event.type), ['focus-start', 'focus-complete']);
     pomodoro.transition('idle');
     assert.deepEqual(calls.at(-1), ['clear']);
     assert.equal(flow.snapshot().task, null);
@@ -45,14 +48,17 @@ test('linked focus work overrides scenes, completes its task, then restores the 
 test('skipping a linked work period never marks its task as complete', () => {
     const pomodoro = new FakePomodoro();
     const completed = [];
+    const events = [];
     const flow = new FocusFlow({
         pomodoro,
         scene: { setOverride: () => {}, clearOverride: () => {} },
         todoList: { complete: (id) => completed.push(id) },
+        onEvent: (event) => events.push(event),
     });
     flow.start({ id: 't2', title: '不应完成' });
     flow.skip();
     assert.deepEqual(completed, []);
+    assert.deepEqual(events.map((event) => event.type), ['focus-start', 'focus-skip']);
     flow.stop();
     flow.dispose();
 });

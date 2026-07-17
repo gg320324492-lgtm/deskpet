@@ -9,14 +9,17 @@ function normalizeTask(task) {
 }
 
 export class FocusFlow {
-    constructor({ pomodoro, scene, todoList, onNotice = () => {} }) {
+    constructor({ pomodoro, scene, todoList, onNotice = () => {}, onEvent = () => {} }) {
         this._pomodoro = pomodoro;
         this._scene = scene;
         this._todoList = todoList;
         this._onNotice = onNotice;
+        this._onEvent = onEvent;
         this._listeners = new Set();
         this._task = null;
         this._skipPending = false;
+        this._focusStartedAt = 0;
+        this._focusElapsedMs = 0;
         this._previousPhase = pomodoro.snapshot().phase;
         this._unsubscribe = pomodoro.onChange((snapshot) => this._onPomodoroChange(snapshot));
     }
@@ -24,6 +27,23 @@ export class FocusFlow {
     dispose() { this._unsubscribe?.(); this._listeners.clear(); }
     onChange(fn) { this._listeners.add(fn); return () => this._listeners.delete(fn); }
     _emit() { for (const listener of this._listeners) listener(this.snapshot()); }
+
+    _record(type, { minutes = 0 } = {}) {
+        this._onEvent({
+            type,
+            title: this._task?.title || '',
+            taskId: this._task?.id || '',
+            minutes,
+        });
+    }
+
+    _finishFocusMinutes() {
+        const activeMs = this._focusStartedAt ? Date.now() - this._focusStartedAt : 0;
+        const minutes = Math.max(0, Math.round((this._focusElapsedMs + activeMs) / 60_000));
+        this._focusStartedAt = 0;
+        this._focusElapsedMs = 0;
+        return minutes;
+    }
 
     snapshot() {
         const timer = this._pomodoro.snapshot();
@@ -71,9 +91,23 @@ export class FocusFlow {
     _onPomodoroChange(snapshot) {
         const phase = snapshot.phase;
         if (phase === this._previousPhase) return;
-        if (phase === 'work') this._scene.setOverride('focus', { notify: false, source: 'focus-flow' });
+        if (phase === 'work') {
+            if (this._previousPhase !== 'paused') {
+                this._focusElapsedMs = 0;
+                this._record('focus-start');
+            }
+            this._focusStartedAt = Date.now();
+            this._scene.setOverride('focus', { notify: false, source: 'focus-flow' });
+        }
+        if (phase === 'paused' && this._previousPhase === 'work') {
+            this._focusElapsedMs += Math.max(0, Date.now() - this._focusStartedAt);
+            this._focusStartedAt = 0;
+        }
         if (REST_PHASES.has(phase)) {
             this._scene.setOverride('relaxed', { notify: false, source: 'focus-flow' });
+            const minutes = this._finishFocusMinutes();
+            const endedWork = this._previousPhase === 'work' || this._previousPhase === 'paused';
+            if (endedWork) this._record(this._skipPending ? 'focus-skip' : 'focus-complete', { minutes });
             if (this._previousPhase === 'work' && this._task && !this._skipPending) {
                 const task = this._task;
                 this._task = null;
@@ -83,6 +117,12 @@ export class FocusFlow {
             this._skipPending = false;
         }
         if (phase === 'idle') {
+            if ((this._previousPhase === 'work' || this._previousPhase === 'paused') && (this._focusStartedAt || this._focusElapsedMs)) {
+                this._record('focus-stop', { minutes: this._finishFocusMinutes() });
+            } else {
+                this._focusStartedAt = 0;
+                this._focusElapsedMs = 0;
+            }
             this._scene.clearOverride({ notify: false, source: 'focus-flow' });
             this._task = null;
             this._skipPending = false;

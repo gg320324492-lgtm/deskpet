@@ -3,6 +3,7 @@ import { ACHIEVEMENTS } from '../renderer/achievements.js';
 import { OUTFITS } from '../renderer/wardrobe.js';
 import { getDndScheduleStatus } from './dnd-schedule-status.js';
 import { SCENES, getSceneStatus } from '../renderer/scene-controller.js';
+import { buildRhythmSummary, formatRhythmEvent, formatRhythmTime } from '../renderer/rhythm.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -71,13 +72,14 @@ function runAsync(button, task, { announce, success, failure }) {
 
 // ============ Stats ============
 export const statsTab = {
-    render(root, { getSettings }) {
+    render(root, { getSettings, setSettings, announce }) {
         const mood = getSettings().mood || {};
         const pomodoro = getSettings().pomodoro || {};
         const stats = getSettings().stats || {};
         const todos = getSettings().todos?.items || [];
+        const rhythm = getSettings().rhythm || {};
+        const rhythmSummary = buildRhythmSummary({ rhythm, todos });
         const nextFocusTask = todos.find((item) => !item.completed && (!item.dueAt || item.dueAt.slice(0, 10) <= new Date().toISOString().slice(0, 10)));
-        const focusMinutes = (Number(pomodoro.sessionsToday) || 0) * (Number(pomodoro.workMin) || 25);
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -124,9 +126,92 @@ export const statsTab = {
                 el('small', {}, `累计 ${stats.totalCompanionMinutes ?? 0} 分钟`),
             ),
             el('article', { class: 'card summary-card focus-summary-card' },
-                el('span', { class: 'summary-label' }, '今日专注时长'),
-                el('strong', {}, `${focusMinutes} 分钟`),
+                el('span', { class: 'summary-label' }, '真实专注时长'),
+                el('strong', {}, `${rhythmSummary.focusMinutes} 分钟`),
                 el('small', {}, nextFocusTask ? `下一项：${nextFocusTask.title}` : '没有待开始的今日任务'),
+            ),
+        ));
+
+        const weekDays = rhythmSummary.week.map((day) => el('article', {
+            class: `rhythm-day level-${day.level} ${day.date === rhythmSummary.todayKey ? 'today' : ''}`,
+            title: `${day.date}：${day.focusMinutes} 分钟专注，完成 ${day.tasks} 项任务`,
+            'aria-label': `${day.date}，${day.focusMinutes} 分钟专注，完成 ${day.tasks} 项任务`,
+        },
+            el('span', { class: 'rhythm-weekday' }, day.weekday),
+            el('strong', {}, String(day.day)),
+            el('small', {}, day.focusMinutes ? `${day.focusMinutes}m` : '—'),
+        ));
+        const eventRows = rhythmSummary.todayEvents.slice(0, 6).map((event) => el('li', { class: `rhythm-event event-${event.type}` },
+            el('time', { datetime: new Date(event.at).toISOString() }, formatRhythmTime(event.at)),
+            el('span', { class: 'rhythm-event-dot', 'aria-hidden': 'true' }),
+            el('span', { class: 'rhythm-event-copy' },
+                el('strong', {}, formatRhythmEvent(event)),
+                event.minutes ? el('small', {}, `实际 ${event.minutes} 分钟`) : null,
+            ),
+        ));
+        const reflection = rhythmSummary.reflection;
+        const reflectionNote = el('textarea', {
+            class: 'rhythm-reflection-note',
+            rows: 3,
+            maxlength: 280,
+            placeholder: '今天有哪些值得记住的进展？',
+            value: reflection.note || '',
+            'aria-label': '今日轻复盘',
+        });
+        const tomorrow = el('input', {
+            class: 'rhythm-tomorrow',
+            type: 'text',
+            maxlength: 120,
+            placeholder: '明天第一件事',
+            value: reflection.tomorrow || '',
+            'aria-label': '明天第一件事',
+        });
+        let saveReflection;
+        saveReflection = el('button', {
+            class: 'action rhythm-save',
+            type: 'button',
+            onclick: () => runAsync(saveReflection, async () => {
+                const nextReflections = {
+                    ...(rhythm.reflections || {}),
+                    [rhythmSummary.todayKey]: {
+                        note: String(reflectionNote.value || '').trim().slice(0, 280),
+                        tomorrow: String(tomorrow.value || '').trim().slice(0, 120),
+                        updatedAt: Date.now(),
+                    },
+                };
+                await setSettings({ rhythm: { ...rhythm, reflections: nextReflections } });
+            }, { announce, success: '今日复盘已保存。' }),
+        }, '保存复盘');
+
+        root.appendChild(el('section', { class: 'card rhythm-card' },
+            el('div', { class: 'rhythm-card-head' },
+                el('div', {},
+                    el('span', { class: 'focus-kicker' }, 'RHYTHM LEDGER'),
+                    el('h3', {}, '今日节奏，轻轻回看'),
+                ),
+                el('span', { class: 'rhythm-local-badge' }, '仅本机保存'),
+            ),
+            el('p', { class: 'rhythm-card-description' }, '真实记录来自专注、任务和场景切换；没有联网同步，也不需要打卡压力。'),
+            el('div', { class: 'rhythm-week', role: 'list', 'aria-label': '最近七天专注记录' }, ...weekDays),
+            el('div', { class: 'rhythm-today-grid' },
+                el('div', { class: 'rhythm-stat' }, el('small', {}, '完成专注'), el('strong', {}, `${rhythmSummary.completedFocus} 次`)),
+                el('div', { class: 'rhythm-stat' }, el('small', {}, '完成任务'), el('strong', {}, `${rhythmSummary.completedTasks} 项`)),
+                el('div', { class: 'rhythm-stat' }, el('small', {}, '今日完成率'), el('strong', {}, rhythmSummary.plannedTasks ? `${rhythmSummary.completionRate}%` : '—')),
+                el('div', { class: 'rhythm-stat subdued' }, el('small', {}, '跳过专注'), el('strong', {}, `${rhythmSummary.skippedFocus} 次`)),
+            ),
+            el('div', { class: 'rhythm-detail-grid' },
+                el('div', { class: 'rhythm-timeline-wrap' },
+                    el('h4', {}, '今日时间线'),
+                    eventRows.length
+                        ? el('ol', { class: 'rhythm-timeline' }, ...eventRows)
+                        : el('p', { class: 'rhythm-empty' }, '还没有记录。开始一轮专注、完成一项任务，或切换场景都会出现在这里。'),
+                ),
+                el('div', { class: 'rhythm-reflection-wrap' },
+                    el('h4', {}, '轻复盘'),
+                    el('label', {}, '今天完成了什么？', reflectionNote),
+                    el('label', {}, '明天第一件事', tomorrow),
+                    saveReflection,
+                ),
             ),
         ));
     },
@@ -855,7 +940,7 @@ export const settingsTab = {
             }),
         }, '导入备份');
 
-        const dataCard = card('数据与备份', '将八个数据域保存为一个可迁移的 JSON 备份。',
+        const dataCard = card('数据与备份', '将九个数据域保存为一个可迁移的 JSON 备份。',
             el('div', { class: 'data-safety' },
                 el('div', { class: 'data-safety-copy' },
                     el('strong', {}, '本地、安全、可恢复'),

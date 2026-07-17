@@ -68,18 +68,22 @@ export class TodoList {
     complete(id) {
         const now = Date.now();
         const rescheduled = [];
+        let completedItem = null;
         const list = (this._getSettings().todos?.items || []).map(it => {
             if (it.id !== id) return it;
             if (it.completed) return it;
             const updated = { ...it, completed: true, doneAt: now };
+            completedItem = updated;
             // If repeat != none, queue a fresh item to append in the same commit.
             if (it.repeat && it.repeat !== 'none') {
                 rescheduled.push(this._makeReschedule(updated, it.repeat));
             }
             return updated;
         });
+        if (!completedItem) return false;
         this._commit([...list, ...rescheduled]);
-        this._onAfterChange({ kind: 'complete', id });
+        this._onAfterChange({ kind: 'complete', id, item: completedItem });
+        return true;
     }
 
     _makeReschedule(done, repeat) {

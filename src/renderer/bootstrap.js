@@ -38,6 +38,7 @@ import { Popover } from './popover.js';
 import { BehaviorArbiter } from './behavior-arbiter.js';
 import { PomodoroTimer } from './pomodoro.js';
 import { FocusFlow } from './focus-flow.js';
+import { RhythmTracker } from './rhythm.js';
 import { ReminderEngine } from './reminders.js';
 import { TodoList } from './todo.js';
 import { DndController } from './dnd.js';
@@ -179,12 +180,19 @@ async function main() {
         dialogue,
     });
 
-    // 9. Todo list
+    // 9. Local rhythm ledger: bounded, on-device-only event history and reflection.
+    const rhythm = new RhythmTracker({
+        getSettings: () => ({ rhythm: cache.get('rhythm') || { events: [], reflections: {} } }),
+        setSettings: (patch) => setSettings(patch),
+    });
+
+    // 10. Todo list
     const todoList = new TodoList({
         getSettings: () => ({ todos: cache.get('todos') || { items: [] } }),
         setSettings: (p) => setSettings(p),
-        onAfterChange: ({ kind, id }) => {
+        onAfterChange: ({ kind, id, item }) => {
             if (kind === 'complete') {
+                rhythm.record({ type: 'task-complete', taskId: id, title: item?.title || '' });
                 sm.transitionTo(STATES.CHEER);
                 setTimeout(() => sm.transitionTo(STATES.IDLE), TEMP_DURATIONS[STATES.CHEER] || 2000);
             }
@@ -221,10 +229,17 @@ async function main() {
 
     const scene = new SceneController({
         getSettings: () => ({ settings: cache.get('settings') || {} }),
-        onChange: (status, { notify }) => {
+        onChange: (status, { notify, source }) => {
             const settings = cache.get('settings') || {};
             arbiter.setEnabled((status.autonomyLevel || settings.autonomyLevel) !== 'low');
             dnd.syncFromSettings({ sceneActive: status.dnd, source: 'scene', notify: false });
+            if (notify && source !== 'focus-flow') {
+                rhythm.record({
+                    type: 'scene-change',
+                    title: status.label,
+                    detail: source === 'schedule' ? '定时场景' : '手动场景',
+                });
+            }
             if (notify) animator.setBubbleText(`已切换到${status.label}`);
         },
     });
@@ -235,6 +250,7 @@ async function main() {
         scene,
         todoList,
         onNotice: (text) => animator.setBubbleText(text),
+        onEvent: (event) => rhythm.record(event),
     });
 
     // 12. Right-click menu — extra groups filled in
@@ -362,7 +378,7 @@ async function main() {
 
     // Debug handle
     window.__sm = sm;
-    window.__pet = { animator, idleWatcher, interaction, popover, pomodoro, focusFlow, reminders, todoList, dnd, scene, sound, dialogue, mood, affinity, achievements, memory, wardrobe, cache };
+    window.__pet = { animator, idleWatcher, interaction, popover, pomodoro, focusFlow, reminders, todoList, dnd, scene, sound, dialogue, mood, affinity, achievements, memory, wardrobe, rhythm, cache };
     console.log('[pet] Date Night Girl v2 ready (18 states + mood + affinity + achievements + room).');
 }
 
@@ -372,7 +388,7 @@ async function main() {
 
 function applySettingsToStorageShape(allSettings) {
     // Defensive: some domains might be missing from disk on first launch.
-    for (const k of ['settings','mood','todos','pomodoro','reminders','memory','achievements','stats']) {
+    for (const k of ['settings','mood','todos','pomodoro','reminders','memory','achievements','stats','rhythm']) {
         if (!allSettings[k]) allSettings[k] = {};
     }
 }

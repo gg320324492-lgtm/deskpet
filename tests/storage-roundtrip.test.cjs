@@ -81,12 +81,12 @@ test('flushAll writes pending writes immediately', async () => {
     assert.equal(onDisk.mood, 88);
 });
 
-test('list returns all 8 domains', async () => {
+test('list returns all 9 domains', async () => {
     const s = new Storage();
     await s.init();
     const all = s.list();
-    assert.equal(Object.keys(all).length, 8);
-    for (const k of ['settings','mood','todos','pomodoro','reminders','memory','achievements','stats']) {
+    assert.equal(Object.keys(all).length, 9);
+    for (const k of ['settings','mood','todos','pomodoro','reminders','memory','achievements','stats','rhythm']) {
         assert.ok(k in all, `missing ${k}`);
     }
 });
@@ -132,7 +132,7 @@ test('snapshot export and import round-trips all domains and preserves pre-impor
     assert.equal(s.get('settings').volume, 0.65);
     assert.equal(s.get('settings').preferredName, '小糖');
     assert.equal(s.get('mood').mood, 91);
-    assert.equal(Object.keys(snapshot.data).length, 8);
+    assert.equal(Object.keys(snapshot.data).length, 9);
     const backup = JSON.parse(fs.readFileSync(path.join(TMP_DIR, 'settings.json.bak'), 'utf8'));
     assert.equal(backup.volume, 0.1);
 });
