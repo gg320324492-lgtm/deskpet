@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.3 - 2026-07-18
+
+### Added
+
+- Added an in-focus quick capture field that sends a thought straight to the
+  local inbox without pausing or rescheduling the current focus period.
+- Captured thoughts are marked "later" and the end-of-period companion card
+  gently reports how many were set aside.
+
 ## 1.2.2 - 2026-07-18
 
 ### Added

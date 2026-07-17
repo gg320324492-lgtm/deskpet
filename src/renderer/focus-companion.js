@@ -40,6 +40,7 @@ export function buildFocusCompanion(state = {}) {
         task,
         awaitingDecision,
         reflectionEventId: typeof state.reflectionEventId === 'string' ? state.reflectionEventId.slice(0, 80) : '',
+        capturedCount: Number.isInteger(state.capturedCount) ? Math.max(0, Math.min(50, state.capturedCount)) : 0,
         active,
         kicker: copy[0],
         heading: copy[1],

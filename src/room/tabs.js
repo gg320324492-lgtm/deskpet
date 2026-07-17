@@ -527,6 +527,15 @@ export const feedTab = {
             const result = await focusCommand({ action });
             if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
         };
+        const captureFocusThought = async (title) => {
+            const todo = makeInboxTodo(title, '专注中随手收集 · 稍后再看');
+            if (!todo.title) throw new Error('先写下一件想记住的事。');
+            const result = await focusCommand({ action: 'capture', title: todo.title });
+            if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
+            await setSettings({ todos: { items: [...allTodos, todo] } });
+            refreshCurrent();
+            return todo;
+        };
         const saveDayCloseout = async () => {
             const now = Date.now();
             const previous = rhythm.reflections?.[dayCloseout.todayKey] || {};
@@ -825,10 +834,34 @@ export const feedTab = {
                 }, '留下一句');
                 reflectionControl = el('div', { class: 'focus-reflection-control' }, reflectionInput, reflectionSave);
             }
+            let captureControl = null;
+            if (companion.active) {
+                const captureInput = el('input', {
+                    class: 'focus-capture-input', type: 'text', maxlength: 120,
+                    placeholder: '突然想到什么？先放到收件箱', 'aria-label': '专注中随手收集',
+                });
+                let captureButton;
+                const capture = () => runAsync(captureButton, () => captureFocusThought(captureInput.value), {
+                    announce,
+                    success: '已收进收件箱，继续专注就好。',
+                    failure: (error) => error.message,
+                });
+                captureButton = el('button', { class: 'focus-capture-save', type: 'button', onclick: capture }, '先收下');
+                captureInput.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') { event.preventDefault(); capture(); }
+                });
+                captureControl = el('div', { class: 'focus-capture-control' },
+                    el('div', { class: 'focus-capture-copy' },
+                        el('span', {}, 'PARK IT HERE'),
+                        el('small', {}, '不打断这一段，稍后再看。'),
+                    ),
+                    el('div', { class: 'focus-capture-entry' }, captureInput, captureButton),
+                );
+            }
             root.appendChild(el('section', {
                 class: `card focus-companion-card mode-${companion.mode}`,
                 'data-focus-companion': 'true',
-                'data-focus-key': `${companion.phase}:${companion.task?.id || ''}:${companion.awaitingDecision}:${companion.reflectionEventId}`,
+                'data-focus-key': `${companion.phase}:${companion.task?.id || ''}:${companion.awaitingDecision}:${companion.reflectionEventId}:${companion.capturedCount}`,
             },
             el('div', { class: 'focus-companion-head' },
                 el('div', {}, el('span', { class: 'focus-companion-kicker' }, companion.kicker), el('h3', {}, companion.heading)),
@@ -840,7 +873,11 @@ export const feedTab = {
                 el('span', { 'data-focus-remaining': 'true' }, companion.remaining),
             ),
             el('p', { class: 'focus-companion-message', 'data-focus-message': 'true' }, companion.message || '不需要冲刺，只陪你把眼前这一段走完。'),
+            captureControl,
             reflectionControl,
+            companion.mode === 'decision' && companion.capturedCount
+                ? el('p', { class: 'focus-capture-summary' }, `刚才收下了 ${companion.capturedCount} 件事，已经放进收件箱，稍后再看就好。`)
+                : null,
             companionActions.length ? el('div', { class: 'focus-companion-actions' }, ...companionActions) : el('p', { class: 'focus-companion-rest-note' }, '这一段先放在这里。等休息结束，也可以再开始。'),
             el('small', { class: 'focus-companion-footnote' }, '不打卡，不比较；只是陪你把这段时间轻轻放在这里。'),
             ));

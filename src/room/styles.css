@@ -855,6 +855,17 @@ select:focus-visible,
 .focus-companion-time strong { color:#ffd0df; font-size:13px; }
 .focus-companion-time span { color:var(--room-muted); font-size:12px; }
 .focus-companion-message { position:relative; z-index:1; max-width:58ch; margin:10px 0 0; color:var(--room-muted); font-size:12px; line-height:1.55; }
+.focus-capture-control { position:relative; z-index:1; margin-top:13px; border:1px solid rgba(151,219,255,.18); border-radius:12px; background:rgba(84,145,184,.07); padding:9px; }
+.focus-capture-copy { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.focus-capture-copy span { color:#b8e5ff; font-size:10px; font-weight:900; letter-spacing:.12em; }
+.focus-capture-copy small { color:#becbdc; font-size:11px; }
+.focus-capture-entry { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin-top:8px; }
+.focus-capture-input { min-width:0; min-height:36px; border:1px solid rgba(187,225,255,.2); border-radius:9px; color:var(--room-text); background:rgba(12,21,33,.48); font:inherit; font-size:12px; padding:7px 10px; }
+.focus-capture-input::placeholder { color:#aab8ca; }
+.focus-capture-input:focus-visible { outline:2px solid #b9e7ff; outline-offset:2px; }
+.focus-capture-save { min-height:36px; border:1px solid rgba(171,224,255,.54); border-radius:9px; color:#132b39; background:#bce8ff; cursor:pointer; font:inherit; font-size:11px; font-weight:850; padding:7px 11px; }
+.focus-capture-save:hover { background:#d9f2ff; }
+.focus-capture-summary { position:relative; z-index:1; margin:12px 0 0; border-left:3px solid rgba(183,231,255,.76); color:#d5eafa; font-size:12px; line-height:1.5; padding:5px 0 5px 9px; }
 .focus-reflection-control { position:relative; z-index:1; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin-top:13px; }
 .focus-reflection-input { min-width:0; min-height:37px; border:1px solid rgba(255,215,166,.28); border-radius:10px; color:var(--room-text); background:rgba(18,18,28,.48); font:inherit; font-size:12px; padding:7px 10px; }
 .focus-reflection-input::placeholder { color:#bdb4c7; }
@@ -2331,6 +2342,8 @@ select {
     .today-mainline-start, .today-mainline-clear { width:100%; }
     .focus-companion-card { padding:15px; }
     .focus-companion-head h3 { font-size:18px; }
+    .focus-capture-entry { grid-template-columns:1fr; }
+    .focus-capture-save { width:100%; }
     .focus-reflection-control { grid-template-columns:1fr; }
     .focus-reflection-save { width:100%; }
     .focus-companion-actions { display:grid; grid-template-columns:1fr 1fr; }

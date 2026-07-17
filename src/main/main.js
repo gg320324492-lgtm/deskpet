@@ -45,7 +45,7 @@ const MAX_BACKUP_FILE_BYTES = 2 * 1024 * 1024;
 const aiService = new AiService({ storage, vault: new CredentialVault() });
 let updateService = null;
 let focusState = Object.freeze({
-    phase: 'idle', remainingMs: 0, elapsedMs: 0, awaitingDecision: false, reflectionEventId: '', task: null, message: '',
+    phase: 'idle', remainingMs: 0, elapsedMs: 0, awaitingDecision: false, reflectionEventId: '', capturedCount: 0, task: null, message: '',
 });
 
 // 单实例锁
@@ -145,7 +145,12 @@ handleFrom('window:action', ['room'], (_event, action) => {
 function normalizeFocusCommand(command) {
     if (!command || typeof command !== 'object' || Array.isArray(command)) throw new TypeError('Focus command must be an object');
     const action = command.action;
-    if (!['start', 'toggle', 'skip', 'stop', 'continue', 'rest', 'complete'].includes(action)) throw new TypeError('Unsupported focus command');
+    if (!['start', 'toggle', 'skip', 'stop', 'continue', 'rest', 'complete', 'capture'].includes(action)) throw new TypeError('Unsupported focus command');
+    if (action === 'capture') {
+        const title = typeof command.title === 'string' ? command.title.trim() : '';
+        if (!title || title.length > 120) throw new TypeError('Invalid focus capture');
+        return { action, title };
+    }
     if (action !== 'start') return { action };
     if (command.task == null) return { action };
     if (!command.task || typeof command.task !== 'object' || Array.isArray(command.task)) throw new TypeError('Focus task must be an object');
@@ -181,6 +186,7 @@ function normalizeFocusState(value) {
         elapsedMs: finite('elapsedMs', 24 * 60 * 60 * 1000),
         awaitingDecision: value.awaitingDecision === true,
         reflectionEventId,
+        capturedCount: finite('capturedCount', 50),
         task,
         message,
     });

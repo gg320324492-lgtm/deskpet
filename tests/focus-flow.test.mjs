@@ -73,6 +73,27 @@ test('linked focus can continue from its gentle landing or keep resting without 
     flow.dispose();
 });
 
+test('a captured thought keeps focus running and is gently acknowledged at the end', () => {
+    const pomodoro = new FakePomodoro();
+    const notices = [];
+    const flow = new FocusFlow({
+        pomodoro,
+        scene: { setOverride: () => {}, clearOverride: () => {} },
+        todoList: { complete: () => {} },
+        onNotice: (text) => notices.push(text),
+        onEvent: (event) => ({ ...event, id: `event-${event.type}` }),
+    });
+    flow.start({ id: 't4', title: '写提纲' });
+    assert.equal(flow.capture('查一下资料来源'), true);
+    assert.equal(flow.snapshot().phase, 'work');
+    assert.equal(flow.snapshot().capturedCount, 1);
+    assert.equal(flow.capture(''), false);
+    pomodoro.transition('rest');
+    assert.match(flow.snapshot().message, /收下了 1 件事/);
+    assert.match(notices.at(-1), /收下了 1 件事/);
+    flow.dispose();
+});
+
 test('skipping a linked work period never marks its task as complete', () => {
     const pomodoro = new FakePomodoro();
     const completed = [];
