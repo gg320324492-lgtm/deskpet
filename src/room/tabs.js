@@ -19,7 +19,7 @@ import { buildTodayFocusEchoes, focusReflectionPatch } from '../renderer/focus-r
 import { buildInboxTriage, inboxTriageRecordPatch } from '../renderer/inbox-triage.js';
 import { buildGentleStart } from '../renderer/gentle-start.js';
 import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '../renderer/soft-schedule.js';
-import { completeMicroStepPatch, currentMicroStep } from '../renderer/micro-steps.js';
+import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, resetMicroSteps } from '../renderer/micro-steps.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -116,12 +116,14 @@ export const statsTab = {
         const rhythmSummary = buildRhythmSummary({ rhythm, todos });
         const weeklyReview = buildWeeklyReview({ rhythm });
         const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos });
-        const nextFocusTask = todayFocus.task || todos.find((item) => todoBucket(item) === 'today');
+        const nextFocusTask = (todayFocus.task && !hasFinishedMicroSteps(todayFocus.task) ? todayFocus.task : null)
+            || todos.find((item) => todoBucket(item) === 'today' && !hasFinishedMicroSteps(item));
         const inboxTriage = buildInboxTriage({ todos, inboxTriage: rhythm.inboxTriage });
         const gentleStart = buildGentleStart({ todos, focus: rhythm.todayFocus });
         const focusCompanion = buildFocusCompanion(getFocusState());
         const homeCloseout = buildDayCloseout({ todos });
         const softSchedule = buildSoftSchedule({ todos });
+        const finishedMicroTasks = todos.filter((item) => todoBucket(item) === 'today' && hasFinishedMicroSteps(item));
         const gentleMicroStep = currentMicroStep(gentleStart.task);
         const scheduleMicroStep = currentMicroStep(softSchedule.task);
 
@@ -303,6 +305,103 @@ export const statsTab = {
                     el('span', {}, '留一点空白'),
                 ),
                 el('p', { class: 'gentle-start-copy' }, '想开始的时候，再从收件箱轻轻放一件到今天；现在什么都不做也没关系。'),
+            ));
+        }
+
+        const completeFinishedMicroTask = async (task) => {
+            const now = Date.now();
+            const completed = { ...task, completed: true, doneAt: now };
+            const items = todos.map((item) => item.id === task.id ? completed : item);
+            if (task.repeat && task.repeat !== 'none') {
+                const due = new Date(now);
+                due.setDate(due.getDate() + (task.repeat === 'daily' ? 1 : 7));
+                items.push({
+                    ...makeInboxTodo(task.title, task.note),
+                    microSteps: resetMicroSteps(task.microSteps),
+                    dueAt: due.toISOString(), repeat: task.repeat, bucket: 'later',
+                });
+            }
+            const event = {
+                id: `rhythm-${now}-${Math.random().toString(36).slice(2, 8)}`,
+                type: 'task-complete', at: now, title: task.title, taskId: task.id, minutes: 0,
+            };
+            await setSettings({
+                todos: { items },
+                rhythm: { ...rhythm, events: [...(rhythm.events || []), event].slice(-360) },
+            });
+            refreshCurrent();
+        };
+        const placeFinishedMicroTask = async (task, action) => {
+            if (action === 'today') return;
+            const patch = action === 'next'
+                ? nextSoftTimeBlockPatch(new Date())
+                : dayCloseoutPatch('tomorrow');
+            await setSettings({
+                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...patch } : item) },
+            });
+            refreshCurrent();
+        };
+        const finishedMicroRow = (task) => {
+            const input = el('input', {
+                class: 'task-closeout-input', type: 'text', maxlength: 120,
+                placeholder: '还想继续哪一小步？', 'aria-label': `${task.title} 的下一条微步骤`,
+            });
+            let addButton;
+            const addNextMicroStep = () => runAsync(addButton, () => setSettings({
+                todos: { items: todos.map((item) => item.id === task.id ? {
+                    ...item, ...beginNextMicroStepPatch(input.value),
+                } : item) },
+            }).then(() => refreshCurrent()), {
+                announce,
+                success: '新的这一小步已经放好，想继续时再从这里开始。',
+                failure: (error) => error?.message || '先写下想继续的这一小步。',
+            });
+            addButton = el('button', { class: 'task-closeout-add', type: 'button', onclick: addNextMicroStep }, '补一条小步骤');
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') { event.preventDefault(); addNextMicroStep(); }
+            });
+            let completeButton;
+            completeButton = el('button', {
+                class: 'task-closeout-action complete', type: 'button',
+                onclick: () => runAsync(completeButton, () => completeFinishedMicroTask(task), {
+                    announce, success: `已标记完成：${task.title}`, failure: (error) => error?.message || '暂时没能完成这件事。',
+                }),
+            }, '标记完成');
+            const placeButtons = [
+                ['today', '留在今天', '好，它会继续安静留在今天。'],
+                ['next', '留到下一段', '已留给下一段；不用现在决定更多。'],
+                ['tomorrow', '留给明天', '已留给明天；它会和这组小步骤一起等你。'],
+            ].map(([action, label, success]) => {
+                let button;
+                button = el('button', {
+                    class: `task-closeout-action ${action}`, type: 'button',
+                    onclick: () => runAsync(button, () => placeFinishedMicroTask(task, action), {
+                        announce, success, failure: (error) => error?.message || '暂时没能安放这件事。',
+                    }),
+                }, label);
+                return button;
+            });
+            return el('article', { class: 'task-closeout-row' },
+                el('div', { class: 'task-closeout-copy' },
+                    el('strong', {}, task.title),
+                    el('small', {}, '这几步已经走完了；整件事不必现在也结束。'),
+                ),
+                el('div', { class: 'task-closeout-entry' }, input, addButton),
+                el('div', { class: 'task-closeout-actions' }, completeButton, ...placeButtons),
+            );
+        };
+        if (finishedMicroTasks.length) {
+            root.appendChild(sectionTitle('这几步已经走完了'));
+            root.appendChild(el('section', { class: 'card task-closeout-card' },
+                el('div', { class: 'task-closeout-head' },
+                    el('div', {},
+                        el('span', { class: 'task-closeout-kicker' }, 'A QUIET CHECKPOINT'),
+                        el('h3', {}, '停在这里，也已经很好'),
+                    ),
+                    el('span', { class: 'task-closeout-badge' }, '不自动结束'),
+                ),
+                el('p', { class: 'task-closeout-description' }, '你可以标记完成、补一条新的微步骤，或只是把它留在合适的时间。没有进度条，也不用马上决定。'),
+                el('div', { class: 'task-closeout-list' }, ...finishedMicroTasks.slice(0, 3).map(finishedMicroRow)),
             ));
         }
 
@@ -1004,6 +1103,7 @@ export const feedTab = {
                     el('strong', {}, task.title),
                     el('small', {}, activeMicroStep
                         ? `当前一小步 · ${activeMicroStep.text}`
+                        : hasFinishedMicroSteps(task) ? '这几步已经走完了 · 任务仍由你决定何时结束'
                         : task.note ? `下一步 · ${task.note}` : task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
                 ),
                 el('div', { class: 'todo-board-actions' }, ...actions),

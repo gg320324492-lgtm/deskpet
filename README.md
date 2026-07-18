@@ -266,3 +266,10 @@ the current unfinished action, never a percentage or a required checklist. A
 focus landing can put away that one action and reveal the next, while the task
 itself remains under the user's control. All micro steps stay local and travel
 with the task when it moves to another soft window or tomorrow.
+
+## 1.3.0 Task Closeout
+
+When a small set of micro steps is fully put away, the task remains open and
+the home page offers a quiet checkpoint instead of a completion score or popup.
+You can explicitly finish the task, begin a fresh one-step set, or simply leave
+it for today, the next soft window, or tomorrow.

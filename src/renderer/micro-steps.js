@@ -27,6 +27,12 @@ export function currentMicroStep(task = {}) {
     return steps.find((step) => !step.completed) || null;
 }
 
+/** A finished set is a quiet checkpoint, never an implicit completion of its parent task. */
+export function hasFinishedMicroSteps(task = {}) {
+    const steps = normalizeMicroSteps(task?.microSteps);
+    return steps.length > 0 && steps.every((step) => step.completed);
+}
+
 /** Mark one tiny action, leaving the parent task and every other action intact. */
 export function completeMicroStepPatch(task = {}, id) {
     const target = String(id || '');
@@ -34,6 +40,15 @@ export function completeMicroStepPatch(task = {}, id) {
         microSteps: normalizeMicroSteps(task.microSteps).map((step) => step.id === target
             ? { ...step, completed: true }
             : step),
+    };
+}
+
+/** Start a fresh tiny-action set after the previous one has been put away. */
+export function beginNextMicroStepPatch(text) {
+    const nextText = normalizeMicroStepText(text);
+    if (!nextText) throw new TypeError('先写下想继续的这一小步。');
+    return {
+        microSteps: [{ id: 'micro-1', text: nextText, completed: false }],
     };
 }
 

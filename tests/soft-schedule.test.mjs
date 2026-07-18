@@ -59,3 +59,15 @@ test('a next-window handoff leaves the task and its saved next step intact', () 
     assert.deepEqual(carried.microSteps, [{ id: 'micro-1', text: '打开资料', completed: false }]);
     assert.equal(carried.timeBlock, 'evening');
 });
+
+test('soft schedule leaves a finished tiny-action set for its quiet closeout instead of suggesting it again', () => {
+    const schedule = buildSoftSchedule({
+        now: new Date(2026, 6, 18, 14, 20),
+        todos: [
+            { id: 'closed', title: '已收好小步', bucket: 'today', timeBlock: 'afternoon', completed: false, microSteps: [{ text: '打开资料', completed: true }] },
+            { id: 'next', title: '另一件轻事', bucket: 'today', completed: false },
+        ],
+    });
+    assert.equal(schedule.task.id, 'next');
+    assert.equal(schedule.currentCount, 0);
+});

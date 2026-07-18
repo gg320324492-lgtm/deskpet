@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { completeMicroStepPatch, currentMicroStep, normalizeMicroSteps, resetMicroSteps } from '../src/renderer/micro-steps.js';
+import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, normalizeMicroSteps, resetMicroSteps } from '../src/renderer/micro-steps.js';
 
 test('micro steps are optional, concise, and limited to three local actions', () => {
     const steps = normalizeMicroSteps(['  打开资料\u0000文件夹 ', '列出三个标题', '写第一段', '不应保留']);
@@ -32,4 +32,22 @@ test('a recurring task can carry its micro-step wording into a fresh recurrence'
     ]);
     assert.equal(reset.every((step) => step.completed === false), true);
     assert.deepEqual(reset.map((step) => step.text), ['打开资料', '列出标题']);
+});
+
+test('a finished micro-step set stays separate from parent completion and can begin one fresh step', () => {
+    const task = {
+        id: 'task-1',
+        completed: false,
+        microSteps: [
+            { id: 'micro-1', text: '打开资料', completed: true },
+            { id: 'micro-2', text: '列出标题', completed: true },
+        ],
+    };
+    assert.equal(hasFinishedMicroSteps(task), true);
+    assert.equal(hasFinishedMicroSteps({ microSteps: [] }), false);
+
+    const updated = { ...task, ...beginNextMicroStepPatch('写下第一句') };
+    assert.equal(updated.completed, false);
+    assert.equal(hasFinishedMicroSteps(updated), false);
+    assert.deepEqual(updated.microSteps, [{ id: 'micro-1', text: '写下第一句', completed: false }]);
 });

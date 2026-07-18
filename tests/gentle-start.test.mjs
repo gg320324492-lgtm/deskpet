@@ -72,3 +72,16 @@ test('a focus next step naturally returns as tomorrow\'s starting point after cl
     assert.equal(result.task.note, '先补上开头的三个小标题');
     assert.equal(result.isFollowUp, true);
 });
+
+test('a finished tiny-action set stays out of the next-start suggestion', () => {
+    const now = new Date(2026, 6, 18, 10);
+    const result = buildGentleStart({
+        now,
+        todos: [
+            { id: 'closed', title: '已收好小步', bucket: 'today', completed: false, priority: 3, microSteps: [{ text: '打开资料', completed: true }] },
+            { id: 'next', title: '另一件轻事', bucket: 'today', completed: false, priority: 1 },
+        ],
+    });
+    assert.equal(result.task.id, 'next');
+    assert.equal(result.todayCount, 2);
+});

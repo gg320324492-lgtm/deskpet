@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0 - 2026-07-18
+
+### Added
+
+- Added a quiet task closeout for a fully finished micro-step set. A task stays
+  open until you explicitly choose to mark it complete.
+- From the home page, choose to complete the task, begin a fresh one-step set,
+  keep it today, leave it for the next soft window, or leave it for tomorrow.
+
+### Improved
+
+- Fully finished micro-step sets no longer return as the next gentle-start or
+  soft-window suggestion. The task board labels them as quietly ready instead.
+- Repeating tasks keep the familiar micro-step wording and reset it for their
+  next recurrence after an explicit completion.
+
 ## 1.2.9 - 2026-07-18
 
 ### Added

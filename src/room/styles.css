@@ -1140,6 +1140,43 @@ select:focus-visible,
 .home-closeout-empty { margin: 0; border: 1px dashed rgba(202, 218, 255, 0.2); border-radius: 12px; color: #cad7ee; background: rgba(7, 14, 27, 0.2); padding: 13px; font-size: 12px; line-height: 1.55; }
 .home-closeout-note { margin: 11px 0 0; border-left: 2px solid #aebfff; color: #c6d4f0; padding-left: 8px; font-size: 11px; line-height: 1.55; }
 
+.task-closeout-card {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(159, 231, 199, 0.27);
+    background:
+        radial-gradient(circle at 93% 7%, rgba(139, 226, 190, 0.14), transparent 30%),
+        linear-gradient(135deg, rgba(31, 55, 54, 0.99), rgba(34, 45, 61, 0.99));
+}
+.task-closeout-card::after { position: absolute; top: -35px; right: 8%; width: 112px; height: 112px; border: 1px solid rgba(184, 244, 216, 0.14); border-radius: 50%; box-shadow: 0 0 0 18px rgba(184, 244, 216, 0.026); content: ''; }
+.task-closeout-head, .task-closeout-description, .task-closeout-list { position: relative; z-index: 1; }
+.task-closeout-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.task-closeout-head h3 { margin: 3px 0 0; font-size: 19px; }
+.task-closeout-kicker { color: #baf0d3; font-size: 10px; font-weight: 900; letter-spacing: .15em; }
+.task-closeout-badge { flex: 0 0 auto; border: 1px solid rgba(186, 240, 211, .28); border-radius: 999px; color: #d7f8e5; background: rgba(127, 215, 173, .1); padding: 5px 8px; font-size: 11px; font-weight: 750; }
+.task-closeout-description { max-width: 65ch; margin: 8px 0 14px; color: #c7dcd5; font-size: 12px; line-height: 1.55; }
+.task-closeout-list { display: grid; gap: 8px; }
+.task-closeout-row { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(220px, .9fr) auto; align-items: center; gap: 10px; border: 1px solid rgba(192, 239, 218, .15); border-radius: 12px; background: rgba(9, 26, 29, .29); padding: 11px 12px; }
+.task-closeout-copy { min-width: 0; }
+.task-closeout-copy strong, .task-closeout-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-closeout-copy strong { color: #f0fff7; font-size: 12px; }
+.task-closeout-copy small { margin-top: 4px; color: #b9d8ca; font-size: 10px; }
+.task-closeout-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.task-closeout-input { min-width: 0; min-height: 34px; border: 1px solid rgba(184, 239, 211, .25); border-radius: 9px; color: var(--room-text); background: rgba(9, 23, 26, .58); padding: 6px 9px; font: inherit; font-size: 11px; }
+.task-closeout-input::placeholder { color: #9fbdb0; }
+.task-closeout-input:focus-visible { outline: 2px solid #b7efd1; outline-offset: 2px; }
+.task-closeout-add, .task-closeout-action { min-height: 32px; border-radius: 8px; cursor: pointer; padding: 5px 8px; font: inherit; font-size: 10px; font-weight: 800; }
+.task-closeout-add { border: 1px solid rgba(174, 239, 205, .6); color: #112a20; background: #bff2d6; white-space: nowrap; }
+.task-closeout-add:hover { background: #defaea; }
+.task-closeout-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.task-closeout-action { border: 1px solid rgba(203, 230, 224, .22); color: #d7eee5; background: rgba(255, 255, 255, .05); }
+.task-closeout-action:hover { border-color: rgba(218, 250, 238, .62); background: rgba(129, 218, 177, .15); }
+.task-closeout-action.complete { border-color: rgba(255, 215, 147, .58); color: #2f2110; background: #ffd890; }
+.task-closeout-action.complete:hover { background: #ffe9bd; }
+.task-closeout-action.next { border-color: rgba(164, 222, 255, .42); color: #cdeeff; }
+.task-closeout-action.tomorrow { border-color: rgba(198, 185, 255, .42); color: #dfd8ff; }
+.task-closeout-add:focus-visible, .task-closeout-action:focus-visible { outline: 2px solid #f1fffa; outline-offset: 2px; }
+
 .soft-schedule-card {
     position: relative;
     overflow: hidden;
@@ -2603,6 +2640,13 @@ select {
     .home-closeout-action {
         flex: 1 1 0;
     }
+
+    .task-closeout-card { padding: 15px; }
+    .task-closeout-row { grid-template-columns: 1fr; align-items: stretch; }
+    .task-closeout-entry { grid-template-columns: 1fr; }
+    .task-closeout-add { width: 100%; }
+    .task-closeout-actions { justify-content: flex-start; }
+    .task-closeout-action { flex: 1 1 0; }
 
     .soft-schedule-card {
         padding: 15px;

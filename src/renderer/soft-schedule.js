@@ -1,6 +1,7 @@
 import { localDateKey } from './rhythm.js';
 import { timeBlockForHour, timeBlockLabel } from './time-blocks.js';
 import { todoBucket } from './todo.js';
+import { hasFinishedMicroSteps } from './micro-steps.js';
 
 const BLOCK_ORDER = ['morning', 'afternoon', 'evening'];
 
@@ -51,7 +52,9 @@ export function buildSoftSchedule({ todos = [], now = new Date() } = {}) {
     const currentId = timeBlockForHour(date.getHours());
     const currentIndex = BLOCK_ORDER.indexOf(currentId);
     const list = Array.isArray(todos) ? todos : [];
-    const todayTasks = list.filter((task) => todoBucket(task, todayKey) === 'today').sort(taskOrder);
+    const todayTasks = list
+        .filter((task) => todoBucket(task, todayKey) === 'today' && !hasFinishedMicroSteps(task))
+        .sort(taskOrder);
     const assigned = currentId ? todayTasks.filter((task) => task.timeBlock === currentId) : [];
     const unassigned = todayTasks.filter((task) => !task.timeBlock);
     const task = assigned[0] || unassigned[0] || null;
