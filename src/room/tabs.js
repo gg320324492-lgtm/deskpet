@@ -1243,6 +1243,8 @@ export const feedTab = {
             ));
         }
         if (companion.phase !== 'idle') {
+            const companionTask = companion.task ? allTodos.find((item) => item.id === companion.task.id && !item.completed) : null;
+            const companionMicroStep = currentMicroStep(companionTask);
             const companionActions = [];
             if (companion.mode === 'work' || companion.mode === 'paused') {
                 let toggleButton;
@@ -1303,15 +1305,19 @@ export const feedTab = {
                 if (linkedTask) {
                     const activeMicroStep = currentMicroStep(linkedTask);
                     if (activeMicroStep) {
+                        const microNoteInput = el('input', {
+                            class: 'focus-micro-note-input', type: 'text', maxlength: 160,
+                            placeholder: '这一段推进了什么？（可选）', 'aria-label': '这一小步的小记',
+                        });
                         let completeMicroButton;
                         completeMicroButton = el('button', {
                             class: 'focus-micro-step-complete', type: 'button',
                             onclick: () => runAsync(completeMicroButton, () => applyTodoPatch(
                                 linkedTask.id,
-                                completeMicroStepPatch(linkedTask, activeMicroStep.id),
+                                { ...completeMicroStepPatch(linkedTask, activeMicroStep.id), ...appendMicroNotePatch(linkedTask, microNoteInput.value) },
                             ), {
                                 announce,
-                                success: '这一小步已经收好，下一步会自然出现。',
+                                success: '这一小步已经收好；最后一步也不会自动完成整件事。',
                                 failure: (error) => error?.message || '暂时没能更新这一小步。',
                             }),
                         }, '收好这一小步');
@@ -1321,6 +1327,7 @@ export const feedTab = {
                                 el('strong', {}, activeMicroStep.text),
                                 el('small', {}, '不等于完成整件事；只把眼前这一小步收好。'),
                             ),
+                            microNoteInput,
                             completeMicroButton,
                         );
                     }
@@ -1397,6 +1404,10 @@ export const feedTab = {
                 el('span', { 'data-focus-remaining': 'true' }, companion.remaining),
             ),
             el('p', { class: 'focus-companion-message', 'data-focus-message': 'true' }, companion.message || '不需要冲刺，只陪你把眼前这一段走完。'),
+            companionMicroStep && companion.active ? el('div', { class: 'focus-active-micro' },
+                el('span', {}, 'THIS ROUND'),
+                el('strong', {}, `这次陪你：${companionMicroStep.text}`),
+            ) : null,
             captureControl,
             microStepControl,
             nextStepControl,

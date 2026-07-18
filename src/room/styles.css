@@ -989,11 +989,17 @@ select:focus-visible,
 .focus-next-step-schedule:hover { border-color:rgba(255,226,176,.72); background:rgba(255,197,112,.16); }
 .focus-next-step-schedule:focus-visible { outline:2px solid #ffe2aa; outline-offset:2px; }
 .focus-micro-step-control { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:13px; border:1px solid rgba(156,235,197,.24); border-radius:12px; background:rgba(94,186,137,.08); padding:10px; }
+.focus-active-micro { position:relative; z-index:1; display:grid; gap:3px; margin-top:12px; border-left:2px solid rgba(157,235,197,.7); color:#c8f3dc; padding-left:9px; }
+.focus-active-micro span { color:#a9e8c7; font-size:10px; font-weight:900; letter-spacing:.12em; }
+.focus-active-micro strong { overflow:hidden; color:#effff7; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
 .focus-micro-step-copy { min-width:0; }
 .focus-micro-step-copy span { display:block; color:#b7f1d1; font-size:10px; font-weight:900; letter-spacing:.12em; }
 .focus-micro-step-copy strong { display:block; overflow:hidden; margin-top:4px; color:#effff7; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
 .focus-micro-step-copy small { display:block; margin-top:4px; color:#c6d9cf; font-size:11px; line-height:1.4; }
 .focus-micro-step-complete { flex:0 0 auto; min-height:34px; border:1px solid rgba(166,238,203,.62); border-radius:9px; color:#112a20; background:#bff2d6; cursor:pointer; padding:6px 10px; font:inherit; font-size:11px; font-weight:850; }
+.focus-micro-note-input { min-width:150px; min-height:34px; border:1px solid rgba(184,238,210,.23); border-radius:9px; color:var(--room-text); background:rgba(11,28,25,.48); padding:6px 9px; font:inherit; font-size:11px; }
+.focus-micro-note-input::placeholder { color:#acc6b5; }
+.focus-micro-note-input:focus-visible { outline:2px solid #b9f0d2; outline-offset:2px; }
 .focus-micro-step-complete:hover { background:#ddfae9; }
 .focus-micro-step-complete:focus-visible { outline:2px solid #b9f0d2; outline-offset:2px; }
 .focus-companion-actions { position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:8px; margin-top:15px; }
@@ -2605,6 +2611,7 @@ select {
     .focus-next-step-schedule { width:100%; }
     .focus-micro-step-control { align-items:stretch; flex-direction:column; }
     .focus-micro-step-complete { width:100%; }
+    .focus-micro-note-input { width:100%; }
     .focus-reflection-control { grid-template-columns:1fr; }
     .focus-reflection-save { width:100%; }
     .focus-companion-actions { display:grid; grid-template-columns:1fr 1fr; }

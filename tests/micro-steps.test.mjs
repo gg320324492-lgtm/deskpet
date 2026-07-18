@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, normalizeMicroSteps, resetMicroSteps } from '../src/renderer/micro-steps.js';
+import { appendMicroNotePatch, latestMicroNote } from '../src/renderer/micro-notes.js';
 
 test('micro steps are optional, concise, and limited to three local actions', () => {
     const steps = normalizeMicroSteps(['  打开资料\u0000文件夹 ', '列出三个标题', '写第一段', '不应保留']);
@@ -50,4 +51,23 @@ test('a finished micro-step set stays separate from parent completion and can be
     assert.equal(updated.completed, false);
     assert.equal(hasFinishedMicroSteps(updated), false);
     assert.deepEqual(updated.microSteps, [{ id: 'micro-1', text: '写下第一句', completed: false }]);
+});
+
+test('putting away the last focus micro step can keep one note without completing its task', () => {
+    const task = {
+        id: 'task-1',
+        title: '整理提纲',
+        completed: false,
+        microSteps: [{ id: 'micro-1', text: '列出标题', completed: false }],
+        microNotes: [],
+    };
+    const updated = {
+        ...task,
+        ...completeMicroStepPatch(task, 'micro-1'),
+        ...appendMicroNotePatch(task, '标题已经排好顺序', 7),
+    };
+
+    assert.equal(updated.completed, false);
+    assert.equal(hasFinishedMicroSteps(updated), true);
+    assert.equal(latestMicroNote(updated).text, '标题已经排好顺序');
 });

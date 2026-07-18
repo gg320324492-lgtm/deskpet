@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.2 - 2026-07-18
+
+### Added
+
+- Active focus now names the one unfinished micro step it is accompanying.
+- At the end of a focus segment, that micro step can be put away together with
+  one optional local note.
+
+### Improved
+
+- Putting away a final micro step still leaves the parent task open and routes
+  it only to the existing quiet checkpoint; nothing is auto-completed.
+
 ## 1.3.1 - 2026-07-18
 
 ### Added

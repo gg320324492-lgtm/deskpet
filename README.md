@@ -280,3 +280,11 @@ At a micro-step checkpoint, an optional one-line note can quietly capture what
 the finished set moved forward. Notes remain local and bounded to the latest
 three per task. Active task cards surface only the newest note, while the
 completion review preserves the short trace alongside its existing undo paths.
+
+## 1.3.2 Focus-to-Step Continuity
+
+An active focus companion now explicitly names the one unfinished micro step it
+is accompanying. When that focus segment ends, you can put the same step away
+and optionally leave one local note in the same small action. Even when it is
+the last step, the parent task remains open and enters the existing quiet
+checkpoint rather than being auto-completed.
