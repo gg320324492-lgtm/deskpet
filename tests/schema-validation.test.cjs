@@ -104,6 +104,26 @@ test('today focus stores one dated local task selection or can be cleared', () =
     }), /todayFocus/);
 });
 
+test('daily inbox triage stores at most three local task ids', () => {
+    assert.doesNotThrow(() => validateDomainPatch('rhythm', {
+        inboxTriage: {
+            '2026-07-18': { taskIds: ['task-1', 'task-2'], updatedAt: 1_784_534_400_000 },
+        },
+    }));
+    assert.throws(() => validateDomainPatch('rhythm', {
+        inboxTriage: {
+            '2026-07-18': { taskIds: ['one', 'two', 'three', 'four'], updatedAt: 1 },
+        },
+    }), /at most 3 items/);
+});
+
+test('older rhythm data receives an empty inbox triage history', () => {
+    const normalized = sanitizeDomain('rhythm', {
+        events: [], reflections: {}, weeklyPlans: {}, todayFocus: null,
+    });
+    assert.deepEqual(normalized.inboxTriage, {});
+});
+
 test('versioned backup parser accepts complete snapshots and rejects drift', () => {
     const snapshot = createBackupSnapshot(defaultsByDomain(), {
         appVersion: '1.0.0',

@@ -16,6 +16,7 @@ import { completedToday, restoreCompletedTaskPatch } from '../renderer/task-comp
 import { buildTodayFocus, clearTodayFocusPatch, todayFocusPatch } from '../renderer/today-focus.js';
 import { buildFocusCompanion } from '../renderer/focus-companion.js';
 import { buildTodayFocusEchoes, focusReflectionPatch } from '../renderer/focus-reflection.js';
+import { buildInboxTriage, inboxTriageRecordPatch } from '../renderer/inbox-triage.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -101,7 +102,7 @@ function makeInboxTodo(title, note = '') {
 
 // ============ Stats ============
 export const statsTab = {
-    render(root, { getSettings, setSettings, announce }) {
+    render(root, { getSettings, setSettings, announce, refreshCurrent }) {
         const mood = getSettings().mood || {};
         const pomodoro = getSettings().pomodoro || {};
         const stats = getSettings().stats || {};
@@ -111,6 +112,7 @@ export const statsTab = {
         const weeklyReview = buildWeeklyReview({ rhythm });
         const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos });
         const nextFocusTask = todayFocus.task || todos.find((item) => todoBucket(item) === 'today');
+        const inboxTriage = buildInboxTriage({ todos, inboxTriage: rhythm.inboxTriage });
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -161,6 +163,81 @@ export const statsTab = {
                 el('strong', {}, `${rhythmSummary.focusMinutes} 分钟`),
                 el('small', {}, nextFocusTask ? `下一项：${nextFocusTask.title}` : '没有待开始的今日任务'),
             ),
+        ));
+
+        const decideCapturedThought = async (task, destination) => {
+            const patch = destination === 'today'
+                ? { bucket: 'today', dueAt: new Date().toISOString(), timeBlock: '', tomorrowPlan: '' }
+                : destination === 'later'
+                    ? { bucket: 'later', dueAt: null, timeBlock: '', tomorrowPlan: '' }
+                    : { bucket: 'archive', dueAt: null, timeBlock: '', tomorrowPlan: '' };
+            const nextTriage = inboxTriageRecordPatch({
+                inboxTriage: rhythm.inboxTriage,
+                date: inboxTriage.todayKey,
+                taskIds: inboxTriage.offeredIds,
+                now: Date.now(),
+            });
+            await setSettings({
+                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...patch } : item) },
+                rhythm: { ...rhythm, inboxTriage: nextTriage },
+            });
+            refreshCurrent();
+        };
+        const triageRow = (task) => {
+            let todayButton;
+            todayButton = el('button', {
+                class: 'inbox-landing-action today', type: 'button',
+                onclick: () => runAsync(todayButton, () => decideCapturedThought(task, 'today'), {
+                    announce, success: '已轻轻放进今天。', failure: (error) => error?.message || '暂时没能更新这件事。',
+                }),
+            }, '放进今天');
+            let laterButton;
+            laterButton = el('button', {
+                class: 'inbox-landing-action later', type: 'button',
+                onclick: () => runAsync(laterButton, () => decideCapturedThought(task, 'later'), {
+                    announce, success: '已留在以后。', failure: (error) => error?.message || '暂时没能更新这件事。',
+                }),
+            }, '留在以后');
+            let archiveButton;
+            archiveButton = el('button', {
+                class: 'inbox-landing-action archive', type: 'button',
+                onclick: () => runAsync(archiveButton, () => decideCapturedThought(task, 'archive'), {
+                    announce, success: '已归档，想找回时仍在。', failure: (error) => error?.message || '暂时没能更新这件事。',
+                }),
+            }, '归档');
+            return el('article', { class: 'inbox-landing-row' },
+                el('div', { class: 'inbox-landing-copy' },
+                    el('span', {}, 'PARKED THOUGHT'),
+                    el('strong', {}, task.title),
+                    task.note ? el('small', {}, '专注时收下 · 现在再决定也来得及') : null,
+                ),
+                el('div', { class: 'inbox-landing-actions' }, todayButton, laterButton, archiveButton),
+            );
+        };
+        root.appendChild(sectionTitle('收下的念头'));
+        root.appendChild(el('section', { class: 'card inbox-landing-card' },
+            el('div', { class: 'inbox-landing-head' },
+                el('div', {},
+                    el('span', { class: 'inbox-landing-kicker' }, 'A SOFT INBOX'),
+                    el('h3', {}, inboxTriage.count ? `有 ${inboxTriage.count} 件事在等你有空再看` : '收件箱现在很轻'),
+                ),
+                el('span', { class: 'inbox-landing-badge' }, inboxTriage.count ? `稍后再看 · ${inboxTriage.count}` : '没有催办'),
+            ),
+            inboxTriage.latest
+                ? el('div', { class: 'inbox-landing-latest' },
+                    el('span', {}, '最近收下'),
+                    el('strong', {}, inboxTriage.latest.title),
+                )
+                : el('p', { class: 'inbox-landing-empty' }, '专注时想到的事会先安静放在这里，不需要马上处理。'),
+            inboxTriage.candidates.length
+                ? el('div', { class: 'inbox-landing-list' },
+                    el('p', { class: 'inbox-landing-description' }, `今天只邀请你看看这 ${inboxTriage.candidates.length} 件；不处理也完全没关系。`),
+                    ...inboxTriage.candidates.map(triageRow),
+                )
+                : inboxTriage.hasDailySelection
+                    ? el('p', { class: 'inbox-landing-done' }, '今天这一小组已经整理完了。其余念头继续安心待着，明天再说也很好。')
+                    : null,
+            el('p', { class: 'inbox-landing-note' }, '没有倒计时、没有连续提醒；它们会一直留在本机，等你想决定的时候。'),
         ));
 
         const weekDays = rhythmSummary.week.map((day) => el('article', {

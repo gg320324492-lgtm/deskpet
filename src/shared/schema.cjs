@@ -114,6 +114,7 @@ const DOMAIN_DEFAULTS = Object.freeze({
         reflections: {},
         weeklyPlans: {},
         todayFocus: null,
+        inboxTriage: {},
     }),
 });
 
@@ -401,6 +402,21 @@ function validateTodayFocus(value) {
     assertNumber(value.updatedAt, 'rhythm.todayFocus.updatedAt', { min: 0, max: 8_640_000_000_000_000, integer: true });
 }
 
+function validateInboxTriage(value) {
+    assertPlainRecord(value, 'rhythm.inboxTriage');
+    if (Object.keys(value).length > 90) throw new RangeError('rhythm.inboxTriage must contain at most 90 days');
+    for (const [date, entry] of Object.entries(value)) {
+        assertDate(date, `rhythm.inboxTriage.${date}`);
+        assertPlainRecord(entry, `rhythm.inboxTriage.${date}`);
+        assertKnownKeys(entry, ['taskIds', 'updatedAt'], `rhythm.inboxTriage.${date}`);
+        if (!Array.isArray(entry.taskIds) || entry.taskIds.length > 3) {
+            throw new RangeError(`rhythm.inboxTriage.${date}.taskIds must contain at most 3 items`);
+        }
+        entry.taskIds.forEach((id, index) => assertString(id, `rhythm.inboxTriage.${date}.taskIds[${index}]`, 80, { allowEmpty: false }));
+        assertNumber(entry.updatedAt, `rhythm.inboxTriage.${date}.updatedAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
+    }
+}
+
 const FIELD_VALIDATORS = {
     settings: {
         volume: (v) => assertNumber(v, 'settings.volume', { min: 0, max: 1 }),
@@ -494,6 +510,7 @@ const FIELD_VALIDATORS = {
         reflections: validateRhythmReflections,
         weeklyPlans: validateWeeklyPlans,
         todayFocus: validateTodayFocus,
+        inboxTriage: validateInboxTriage,
     },
 };
 
@@ -567,6 +584,8 @@ function sanitizeDomain(domain, data) {
                 out.reflections = sanitizeMap(data.reflections, validateRhythmReflections);
             } else if (domain === 'rhythm' && key === 'weeklyPlans') {
                 out.weeklyPlans = sanitizeMap(data.weeklyPlans, validateWeeklyPlans);
+            } else if (domain === 'rhythm' && key === 'inboxTriage') {
+                out.inboxTriage = sanitizeMap(data.inboxTriage, validateInboxTriage);
             }
         }
     }

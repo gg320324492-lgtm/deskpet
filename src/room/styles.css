@@ -286,6 +286,62 @@ select:focus-visible,
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.inbox-landing-card {
+    position: relative;
+    overflow: hidden;
+    margin-top: 12px;
+    border-color: rgba(142, 202, 255, 0.32);
+    background:
+        radial-gradient(circle at 92% 4%, rgba(132, 207, 255, 0.16), transparent 28%),
+        linear-gradient(135deg, rgba(35, 48, 68, 0.99), rgba(37, 43, 60, 0.99));
+}
+.inbox-landing-card::after {
+    position: absolute;
+    right: -35px;
+    bottom: -48px;
+    width: 132px;
+    height: 132px;
+    border: 1px solid rgba(177, 221, 255, 0.14);
+    border-radius: 50%;
+    box-shadow: -15px -15px 0 rgba(177, 221, 255, 0.035);
+    content: '';
+}
+.inbox-landing-head,
+.inbox-landing-latest,
+.inbox-landing-list,
+.inbox-landing-empty,
+.inbox-landing-done,
+.inbox-landing-note { position: relative; z-index: 1; }
+.inbox-landing-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.inbox-landing-kicker { color:#afe3ff; font-size:10px; font-weight:850; letter-spacing:.15em; }
+.inbox-landing-head h3 { margin:3px 0 0; color:var(--room-text); font-size:19px; }
+.inbox-landing-badge { flex:0 0 auto; padding:5px 8px; border:1px solid rgba(173,225,255,.34); border-radius:999px; color:#d5efff; background:rgba(143,211,252,.1); font-size:11px; font-weight:750; }
+.inbox-landing-latest { display:grid; gap:2px; margin-top:12px; padding:9px 11px; border-left:3px solid rgba(151,217,255,.8); border-radius:0 10px 10px 0; background:rgba(8,20,33,.32); }
+.inbox-landing-latest span,
+.inbox-landing-copy span { color:#a9dcff; font-size:10px; font-weight:850; letter-spacing:.11em; }
+.inbox-landing-latest strong { overflow:hidden; color:var(--room-text); font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
+.inbox-landing-description,
+.inbox-landing-empty,
+.inbox-landing-done,
+.inbox-landing-note { color:var(--room-muted); font-size:12px; line-height:1.55; }
+.inbox-landing-list { display:grid; gap:7px; margin-top:12px; }
+.inbox-landing-description { margin-bottom:2px; }
+.inbox-landing-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 11px; border:1px solid rgba(207,230,248,.14); border-radius:11px; background:rgba(8,18,30,.35); }
+.inbox-landing-copy { display:grid; min-width:0; gap:3px; }
+.inbox-landing-copy strong { overflow:hidden; color:var(--room-text); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.inbox-landing-copy small { overflow:hidden; color:#bed5e7; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.inbox-landing-actions { display:flex; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+.inbox-landing-action { min-height:29px; border:1px solid rgba(206,229,249,.25); border-radius:8px; color:#d9e9f8; background:rgba(255,255,255,.05); cursor:pointer; padding:4px 8px; font:inherit; font-size:10px; font-weight:800; }
+.inbox-landing-action.today { border-color:rgba(255,197,148,.44); color:#ffe0bd; }
+.inbox-landing-action.later { border-color:rgba(148,221,189,.4); color:#c6f0dc; }
+.inbox-landing-action.archive { border-color:rgba(203,181,250,.38); color:#e2d6ff; }
+.inbox-landing-action.today:hover { background:rgba(255,197,148,.14); }
+.inbox-landing-action.later:hover { background:rgba(148,221,189,.13); }
+.inbox-landing-action.archive:hover { background:rgba(203,181,250,.13); }
+.inbox-landing-empty { margin-top:12px; }
+.inbox-landing-done { margin-top:12px; padding:9px 11px; border-radius:10px; color:#c9e7d8; background:rgba(121,214,173,.08); }
+.inbox-landing-note { margin-top:12px; color:#b6c9d8; }
+
 .metric-label,
 .summary-label {
     color: var(--room-muted);
@@ -2252,6 +2308,11 @@ select {
     .summary-grid {
         grid-template-columns: 1fr;
     }
+
+    .inbox-landing-card { padding:15px; }
+    .inbox-landing-row { align-items:stretch; flex-direction:column; }
+    .inbox-landing-actions { width:100%; justify-content:stretch; }
+    .inbox-landing-action { flex:1 1 0; }
 
     .rhythm-card {
         padding: 15px;

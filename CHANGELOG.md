@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.4 - 2026-07-18
+
+### Added
+
+- Added a home-page view of in-focus captured thoughts: see the current
+  "later" count and the most recently saved thought at a glance.
+- Added one calm daily set of up to three captured thoughts, each of which can
+  be moved to Today, kept for later, or archived without a deadline or popup.
+
+### Improved
+
+- The daily set is fixed after the first choice, so working through one item
+  never immediately replaces it with another; untouched items simply wait.
+
 ## 1.2.3 - 2026-07-18
 
 ### Added
