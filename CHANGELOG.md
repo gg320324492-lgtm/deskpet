@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.3 - 2026-07-19
+
+### Added
+
+- Added a compact quiet-closeout review for a finished micro-step set. It shows
+  the one-to-three steps already walked and up to three recent local notes
+  before the task is placed or explicitly completed.
+
+### Improved
+
+- The review is local and descriptive only: it adds no score, progress target,
+  deadline pressure, or automatic parent-task completion.
+
 ## 1.3.2 - 2026-07-18
 
 ### Added

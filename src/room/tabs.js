@@ -21,6 +21,7 @@ import { buildGentleStart } from '../renderer/gentle-start.js';
 import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '../renderer/soft-schedule.js';
 import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, resetMicroSteps } from '../renderer/micro-steps.js';
 import { appendMicroNotePatch, latestMicroNote, normalizeMicroNotes } from '../renderer/micro-notes.js';
+import { buildTaskCloseoutReview } from '../renderer/task-closeout-review.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -350,6 +351,7 @@ export const statsTab = {
             refreshCurrent();
         };
         const finishedMicroRow = (task) => {
+            const review = buildTaskCloseoutReview(task);
             const input = el('input', {
                 class: 'task-closeout-input', type: 'text', maxlength: 120,
                 placeholder: '还想继续哪一小步？', 'aria-label': `${task.title} 的下一条微步骤`,
@@ -393,11 +395,28 @@ export const statsTab = {
                 }, label);
                 return button;
             });
+            const trace = el('aside', { class: 'task-closeout-trace', 'aria-label': `${task.title} 的本轮回看` },
+                el('div', { class: 'task-closeout-trace-head' },
+                    el('span', {}, 'JUST WALKED'),
+                    el('small', {}, '这件事已经推进了这些'),
+                ),
+                el('ol', { class: 'task-closeout-trace-steps' }, ...review.steps.map((step, index) => el('li', {},
+                    el('span', {}, String(index + 1).padStart(2, '0')),
+                    el('strong', {}, step.text),
+                ))),
+                review.notes.length
+                    ? el('ul', { class: 'task-closeout-trace-notes' }, ...review.notes.map((note) => el('li', {},
+                        el('span', {}, '小记'),
+                        el('p', {}, note.text),
+                    )))
+                    : el('p', { class: 'task-closeout-trace-empty' }, '这一轮还没有留小记，也不用补。'),
+            );
             return el('article', { class: 'task-closeout-row' },
                 el('div', { class: 'task-closeout-copy' },
                     el('strong', {}, task.title),
                     el('small', {}, '这几步已经走完了；整件事不必现在也结束。'),
                 ),
+                trace,
                 el('div', { class: 'task-closeout-entry' }, input, addButton),
                 el('div', { class: 'task-closeout-actions' }, completeButton, ...placeButtons),
                 el('label', { class: 'task-closeout-note-entry' },

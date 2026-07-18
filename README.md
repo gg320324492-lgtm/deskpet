@@ -288,3 +288,10 @@ is accompanying. When that focus segment ends, you can put the same step away
 and optionally leave one local note in the same small action. Even when it is
 the last step, the parent task remains open and enters the existing quiet
 checkpoint rather than being auto-completed.
+
+## 1.3.3 Quiet Closeout Review
+
+Before choosing where a finished micro-step set belongs, the quiet checkpoint
+now shows its short local path: the one-to-three steps already walked and up to
+three recent micro notes. It is a descriptive trace, not a score or completion
+target; the task still moves only when you explicitly choose its next place.
