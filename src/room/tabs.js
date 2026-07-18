@@ -89,6 +89,7 @@ function makeInboxTodo(title, note = '') {
         id: `t${Date.now()}${Math.random().toString(36).slice(2, 7)}`,
         title: String(title || '').trim().slice(0, 120),
         note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
+        nextStepAt: 0,
         priority: 1,
         dueAt: null,
         repeat: 'none',
@@ -276,15 +277,15 @@ export const statsTab = {
             root.appendChild(el('section', { class: 'card gentle-start-card' },
                 el('div', { class: 'gentle-start-head' },
                     el('div', {},
-                        el('span', {}, gentleStart.isMainline ? 'TODAY\'S THREAD' : 'ONE SMALL STEP'),
-                        el('h3', {}, gentleStart.isMainline ? '今天先陪这一件走一小段' : '只需要从这一件开始'),
+                        el('span', {}, gentleStart.isFollowUp ? 'PICK UP HERE' : gentleStart.isMainline ? 'TODAY\'S THREAD' : 'ONE SMALL STEP'),
+                        el('h3', {}, gentleStart.isFollowUp ? '上次留的这一步，从这里接着走' : gentleStart.isMainline ? '今天先陪这一件走一小段' : '只需要从这一件开始'),
                     ),
-                    el('span', {}, gentleStart.isMainline ? '今日主线' : `今天 ${gentleStart.todayCount} 件`),
+                    el('span', {}, gentleStart.isFollowUp ? '下一步' : gentleStart.isMainline ? '今日主线' : `今天 ${gentleStart.todayCount} 件`),
                 ),
                 el('strong', { class: 'gentle-start-task' }, gentleStart.task.title),
                 el('p', { class: 'gentle-start-copy' }, gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
                 el('div', { class: 'gentle-start-actions' }, startButton, laterButton),
-                el('small', { class: 'gentle-start-note' }, '不会自动开始，也不会因为暂时不做而提醒你。'),
+                el('small', { class: 'gentle-start-note' }, gentleStart.isFollowUp ? '这是上次专注后留下的下一步；点击才会开始。' : '不会自动开始，也不会因为暂时不做而提醒你。'),
             ));
         } else {
             root.appendChild(el('section', { class: 'card gentle-start-card empty' },
@@ -669,6 +670,18 @@ export const feedTab = {
             refreshCurrent();
             return todo;
         };
+        const saveFocusNextStep = async (task, note) => {
+            const nextStep = String(note || '').replace(/\u0000/g, '').trim().slice(0, 240);
+            if (!nextStep) throw new Error('先写下一句想从哪里开始。');
+            const current = allTodos.find((item) => item.id === task?.id && !item.completed);
+            if (!current) throw new Error('这件事已经不在待办里了。');
+            await setSettings({ todos: {
+                items: allTodos.map((item) => item.id === current.id
+                    ? { ...item, note: nextStep, nextStepAt: Date.now() }
+                    : item),
+            } });
+            refreshCurrent();
+        };
         const saveDayCloseout = async () => {
             const now = Date.now();
             const previous = rhythm.reflections?.[dayCloseout.todayKey] || {};
@@ -967,6 +980,33 @@ export const feedTab = {
                 }, '留下一句');
                 reflectionControl = el('div', { class: 'focus-reflection-control' }, reflectionInput, reflectionSave);
             }
+            let nextStepControl = null;
+            if (companion.mode === 'decision' && companion.task) {
+                const linkedTask = allTodos.find((item) => item.id === companion.task.id && !item.completed);
+                if (linkedTask) {
+                    const nextStepInput = el('input', {
+                        class: 'focus-next-step-input', type: 'text', maxlength: 240,
+                        placeholder: '下一步想从哪里开始？（可选）', 'aria-label': '下一步想从哪里开始', value: linkedTask.note || '',
+                    });
+                    let nextStepSave;
+                    const saveNextStep = () => runAsync(nextStepSave, () => saveFocusNextStep(linkedTask, nextStepInput.value), {
+                        announce,
+                        success: '下一步已留给下次开始。',
+                        failure: (error) => error?.message || '暂时没能留下这一步。',
+                    });
+                    nextStepSave = el('button', { class: 'focus-next-step-save', type: 'button', onclick: saveNextStep }, '留给下次');
+                    nextStepInput.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') { event.preventDefault(); saveNextStep(); }
+                    });
+                    nextStepControl = el('div', { class: 'focus-next-step-control' },
+                        el('div', { class: 'focus-next-step-copy' },
+                            el('span', {}, 'THE NEXT TINY STEP'),
+                            el('small', {}, '不必现在做完；留一句可执行的开始就好。'),
+                        ),
+                        el('div', { class: 'focus-next-step-entry' }, nextStepInput, nextStepSave),
+                    );
+                }
+            }
             let captureControl = null;
             if (companion.active) {
                 const captureInput = el('input', {
@@ -1007,6 +1047,7 @@ export const feedTab = {
             ),
             el('p', { class: 'focus-companion-message', 'data-focus-message': 'true' }, companion.message || '不需要冲刺，只陪你把眼前这一段走完。'),
             captureControl,
+            nextStepControl,
             reflectionControl,
             companion.mode === 'decision' && companion.capturedCount
                 ? el('p', { class: 'focus-capture-summary' }, `刚才收下了 ${companion.capturedCount} 件事，已经放进收件箱，稍后再看就好。`)

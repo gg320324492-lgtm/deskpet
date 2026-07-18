@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.6 - 2026-07-18
+
+### Added
+
+- Added an optional next-tiny-step field to the completed-focus landing card.
+  Saving it keeps one executable starting point on the unfinished task.
+
+### Improved
+
+- The home-page gentle start now prioritizes a next step saved after focus,
+  then the selected Today mainline. Completing a task still needs no summary
+  and naturally flows into the existing daily review.
+
 ## 1.2.5 - 2026-07-18
 
 ### Added

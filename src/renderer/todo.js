@@ -8,7 +8,7 @@
  *
  * Item shape:
  *   { id, title, priority: 1|2|3, dueAt, repeat: 'none'|'daily'|'weekly',
- *     bucket: 'inbox'|'today'|'later', note: '', timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
+ *     bucket: 'inbox'|'today'|'later', note: '', nextStepAt: 0, timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
  */
 
 const REPEAT_DEFAULT = 'none';
@@ -62,6 +62,7 @@ export class TodoList {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: String(title || '').trim().slice(0, 120),
             note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
+            nextStepAt: 0,
             priority: Number(priority) || 1,
             dueAt: dueAt || null,
             repeat,
@@ -134,6 +135,7 @@ export class TodoList {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: done.title,
             note: done.note || '',
+            nextStepAt: 0,
             priority: done.priority,
             dueAt: due.toISOString(),
             repeat,

@@ -2,6 +2,8 @@ import { todoBucket } from './todo.js';
 import { buildTodayFocus } from './today-focus.js';
 
 function taskOrder(left, right) {
+    const nextStep = Number(right?.nextStepAt || 0) - Number(left?.nextStepAt || 0);
+    if (nextStep) return nextStep;
     const priority = Number(right?.priority || 1) - Number(left?.priority || 1);
     if (priority) return priority;
     return Number(left?.createdAt || 0) - Number(right?.createdAt || 0);
@@ -13,10 +15,12 @@ export function buildGentleStart({ todos = [], focus = null, now = new Date() } 
     const todayTasks = list
         .filter((task) => todoBucket(task) === 'today')
         .sort(taskOrder);
-    const task = todayFocus.task || todayTasks[0] || null;
+    const followUp = todayTasks.find((item) => Number(item?.nextStepAt || 0) > 0) || null;
+    const task = followUp || todayFocus.task || todayTasks[0] || null;
     return {
         task,
-        isMainline: !!todayFocus.task,
+        isMainline: !!todayFocus.task && task?.id === todayFocus.task.id,
+        isFollowUp: !!followUp && task?.id === followUp.id,
         todayCount: todayTasks.length,
     };
 }

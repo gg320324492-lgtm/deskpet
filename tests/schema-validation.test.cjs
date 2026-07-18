@@ -47,6 +47,7 @@ test('collection sanitization keeps valid records and normalizes optional fields
         id: 'a',
         title: '保留我',
         note: '',
+        nextStepAt: 0,
         priority: 2,
         dueAt: null,
         repeat: 'none',
@@ -79,6 +80,9 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
     assert.throws(() => validateDomainPatch('todos', {
         items: [{ id: 't1', title: '备注过长', note: 'x'.repeat(241) }],
     }), /up to 240 characters/);
+    assert.throws(() => validateDomainPatch('todos', {
+        items: [{ id: 't1', title: '错误下一步时间', nextStepAt: -1 }],
+    }), /allowed range/);
 });
 
 test('weekly plans accept up to three concise goals and reject malformed entries', () => {
