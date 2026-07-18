@@ -8,7 +8,7 @@
  *
  * Item shape:
  *   { id, title, priority: 1|2|3, dueAt, repeat: 'none'|'daily'|'weekly',
- *     bucket: 'inbox'|'today'|'later', note: '', nextStepAt: 0, microSteps: [], microNotes: [], timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
+ *     bucket: 'inbox'|'today'|'later', note: '', nextStepAt: 0, resumeAcknowledgedAt: 0, microSteps: [], microNotes: [], timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
  */
 
 import { normalizeMicroSteps, resetMicroSteps } from './micro-steps.js';
@@ -66,6 +66,7 @@ export class TodoList {
             title: String(title || '').trim().slice(0, 120),
             note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
             nextStepAt: 0,
+            resumeAcknowledgedAt: 0,
             microSteps: normalizeMicroSteps(microSteps),
             microNotes: normalizeMicroNotes(microNotes),
             priority: Number(priority) || 1,
@@ -141,6 +142,7 @@ export class TodoList {
             title: done.title,
             note: done.note || '',
             nextStepAt: 0,
+            resumeAcknowledgedAt: 0,
             microSteps: resetMicroSteps(done.microSteps),
             microNotes: [],
             priority: done.priority,

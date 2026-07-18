@@ -22,7 +22,7 @@ import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '..
 import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, resetMicroSteps } from '../renderer/micro-steps.js';
 import { appendMicroNotePatch, latestMicroNote, normalizeMicroNotes } from '../renderer/micro-notes.js';
 import { buildTaskCloseoutReview } from '../renderer/task-closeout-review.js';
-import { hasResumeHint, resumeContinuationPatch, resumeHintPatch } from '../renderer/task-resume.js';
+import { hasPendingResumeHint, hasResumeHint, resumeAcknowledgementPatch, resumeContinuationPatch, resumeHintPatch } from '../renderer/task-resume.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -95,6 +95,7 @@ function makeInboxTodo(title, note = '') {
         title: String(title || '').trim().slice(0, 120),
         note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
         nextStepAt: 0,
+        resumeAcknowledgedAt: 0,
         microSteps: [],
         microNotes: [],
         priority: 1,
@@ -300,7 +301,7 @@ export const statsTab = {
             if (!current) throw new Error('这件事已经不在待办里了。');
             await setSettings({
                 todos: { items: todos.map((item) => item.id === current.id
-                    ? { ...item, ...resumeContinuationPatch(item, microStepText) }
+                    ? { ...item, ...resumeContinuationPatch(item, microStepText), ...resumeAcknowledgementPatch(item) }
                     : item) },
                 rhythm: { ...rhythm, todayFocus: todayFocusPatch(current) },
             });
@@ -344,7 +345,9 @@ export const statsTab = {
                 el('strong', { class: 'gentle-start-task' }, gentleStart.task.title),
                 el('p', { class: 'gentle-start-copy' }, gentleMicroStep
                     ? `现在这一小步：${gentleMicroStep.text}`
-                    : gentleStart.isFollowUp ? `下次从这里开始：${gentleStart.task.note}` : gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
+                    : gentleStart.isFollowUp ? `下次从这里开始：${gentleStart.task.note}`
+                        : hasResumeHint(gentleStart.task) ? `上次起点：${gentleStart.task.note}`
+                            : gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
                 gentleReconnect,
                 el('div', { class: 'gentle-start-actions' }, startButton, laterButton),
                 el('small', { class: 'gentle-start-note' }, gentleStart.isFollowUp ? '这是上次专注后留下的下一步；点击才会开始。' : '不会自动开始，也不会因为暂时不做而提醒你。'),
@@ -516,7 +519,7 @@ export const statsTab = {
         };
         root.appendChild(sectionTitle('现在这段时间'));
         if (softSchedule.currentId && softSchedule.task) {
-            const scheduleReconnect = hasResumeHint(softSchedule.task) && todayFocus.task?.id !== softSchedule.task.id
+            const scheduleReconnect = hasPendingResumeHint(softSchedule.task) && todayFocus.task?.id !== softSchedule.task.id
                 ? resumeReconnectEntry(softSchedule.task, { announce, onResume: resumeTaskIntoToday, surface: 'soft-schedule-reconnect' })
                 : null;
             let startWindowFocus;
@@ -559,7 +562,7 @@ export const statsTab = {
                 el('strong', { class: 'soft-schedule-task' }, softSchedule.task.title),
                 el('p', { class: 'soft-schedule-copy' }, softSchedule.nearEnd
                     ? `还没开始也没关系；它可以安静留给${softSchedule.next?.tomorrow ? '明天上午' : softSchedule.next?.label || '下一段'}。`
-                    : (scheduleMicroStep ? `现在这一小步：${scheduleMicroStep.text}` : hasResumeHint(softSchedule.task) ? `下次从这里开始：${softSchedule.task.note}` : softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
+                    : (scheduleMicroStep ? `现在这一小步：${scheduleMicroStep.text}` : hasPendingResumeHint(softSchedule.task) ? `下次从这里开始：${softSchedule.task.note}` : hasResumeHint(softSchedule.task) ? `上次起点：${softSchedule.task.note}` : softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
                 scheduleReconnect,
                 el('div', { class: 'soft-schedule-actions' }, startWindowFocus, scheduleCurrent, moveNext),
                 el('small', { class: 'soft-schedule-note' }, '只在首页静静出现；不会发通知，也不会替你开始。'),
@@ -933,14 +936,14 @@ export const feedTab = {
         const rhythm = getSettings().rhythm || {};
         const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
         const todayTasks = allTodos
-            .filter((item) => todoBucket(item) === 'today' && (!hasFinishedMicroSteps(item) || hasResumeHint(item)))
-            .sort((left, right) => Number(hasResumeHint(right)) - Number(hasResumeHint(left))
-                || Number(right.nextStepAt || 0) - Number(left.nextStepAt || 0));
+            .filter((item) => todoBucket(item) === 'today' && (!hasFinishedMicroSteps(item) || hasPendingResumeHint(item)))
+            .sort((left, right) => Number(hasPendingResumeHint(right)) - Number(hasPendingResumeHint(left))
+                || (hasPendingResumeHint(right) ? Number(right.nextStepAt || 0) : 0) - (hasPendingResumeHint(left) ? Number(left.nextStepAt || 0) : 0));
         const storedTodayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos: allTodos });
-        const todayFocus = storedTodayFocus.task && (!hasFinishedMicroSteps(storedTodayFocus.task) || hasResumeHint(storedTodayFocus.task))
+        const todayFocus = storedTodayFocus.task && (!hasFinishedMicroSteps(storedTodayFocus.task) || hasPendingResumeHint(storedTodayFocus.task))
             ? storedTodayFocus
             : { ...storedTodayFocus, task: null };
-        const todayResumeTask = todayFocus.task ? null : todayTasks.find((task) => hasResumeHint(task)) || null;
+        const todayResumeTask = todayFocus.task ? null : todayTasks.find((task) => hasPendingResumeHint(task)) || null;
         const companion = buildFocusCompanion(getFocusState());
         const focusEchoes = buildTodayFocusEchoes({ rhythm, todayFocus });
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
@@ -1004,7 +1007,7 @@ export const feedTab = {
             if (!current) throw new Error('这件事已经不在待办里了。');
             await setSettings({
                 todos: { items: allTodos.map((item) => item.id === current.id
-                    ? { ...item, ...resumeContinuationPatch(item, microStepText) }
+                    ? { ...item, ...resumeContinuationPatch(item, microStepText), ...resumeAcknowledgementPatch(item) }
                     : item) },
                 rhythm: { ...rhythm, todayFocus: todayFocusPatch(current) },
             });
@@ -1070,13 +1073,23 @@ export const feedTab = {
             refreshCurrent();
         };
         const openTaskEditor = (task) => {
+            const noteLabel = hasPendingResumeHint(task)
+                ? '下次起点（还会在首页轻轻出现）'
+                : hasResumeHint(task)
+                    ? '上次起点（已接上，可改）'
+                    : '下一步（可选）';
+            const noteHint = hasPendingResumeHint(task)
+                ? '这句还在等你自然接上；保存可改写它。'
+                : hasResumeHint(task)
+                    ? '这句会留作上次起点，不会再反复抢占建议。'
+                    : '想留下的话，它会在下一次收束时成为起点。';
             const titleInput = el('input', {
                 class: 'task-editor-input', id: 'task-editor-title', type: 'text', maxlength: 120,
                 value: task.title || '', 'aria-label': '任务标题',
             });
             const noteInput = el('textarea', {
                 class: 'task-editor-note', maxlength: 240, rows: 3,
-                placeholder: '例如：先找三份参考资料', 'aria-label': '下一步（可选）', value: task.note || '',
+                placeholder: '例如：先找三份参考资料', 'aria-label': noteLabel, value: task.note || '',
             });
             const microStepInputs = [0, 1, 2].map((index) => el('input', {
                 class: 'task-editor-micro-input', type: 'text', maxlength: 120,
@@ -1115,8 +1128,9 @@ export const feedTab = {
             ),
             el('label', { class: 'task-editor-label', for: 'task-editor-title' }, '任务标题'),
             titleInput,
-            el('label', { class: 'task-editor-label', for: 'task-editor-note' }, '下一步（可选）'),
+            el('label', { class: 'task-editor-label', for: 'task-editor-note' }, noteLabel),
             noteInput,
+            el('small', { class: 'task-editor-note-hint' }, noteHint),
             el('div', { class: 'task-editor-micro' },
                 el('div', { class: 'task-editor-micro-head' },
                     el('span', {}, 'TINY ACTIONS · 可选'),
@@ -1341,7 +1355,9 @@ export const feedTab = {
                 todayResumeTask ? el('p', { class: 'today-mainline-resume' }, el('span', {}, '候选'), el('strong', {}, todayResumeTask.title)) : null,
                 el('p', { class: 'today-mainline-copy' }, currentMicroStep(mainlineDisplayTask)
                     ? `当前一小步：${currentMicroStep(mainlineDisplayTask).text}`
-                    : hasResumeHint(mainlineDisplayTask) ? `下次从这里开始：${mainlineDisplayTask.note}` : mainlineDisplayTask?.note || (mainlineDisplayTask ? mainlineDisplayTask.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
+                    : hasPendingResumeHint(mainlineDisplayTask) ? `下次从这里开始：${mainlineDisplayTask.note}`
+                        : hasResumeHint(mainlineDisplayTask) ? `上次起点：${mainlineDisplayTask.note}`
+                            : mainlineDisplayTask?.note || (mainlineDisplayTask ? mainlineDisplayTask.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
                 mainlineReconnect,
                 el('div', { class: 'today-mainline-controls' }, focusPicker, startButton, clearButton),
             ));

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.6 - 2026-07-19
+
+### Added
+
+- A locally stored acknowledgement now distinguishes a fresh return cue from an
+  older, already-picked-up starting point.
+
+### Improved
+
+- Picking up a cue keeps its words as “last starting point,” but removes only
+  its suggestion priority. The current tiny action and ordinary mainline rules
+  take over naturally.
+- A new cue saved at the next quiet closeout becomes pending again. The task
+  editor keeps either state visible and editable without adding reminders,
+  notifications, or automatic focus.
+
 ## 1.3.5 - 2026-07-19
 
 ### Added

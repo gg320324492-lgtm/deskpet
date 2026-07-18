@@ -2,7 +2,7 @@ import { localDateKey } from './rhythm.js';
 import { timeBlockForHour, timeBlockLabel } from './time-blocks.js';
 import { todoBucket } from './todo.js';
 import { hasFinishedMicroSteps } from './micro-steps.js';
-import { hasResumeHint } from './task-resume.js';
+import { hasPendingResumeHint } from './task-resume.js';
 
 const BLOCK_ORDER = ['morning', 'afternoon', 'evening'];
 
@@ -12,7 +12,8 @@ function asDate(value) {
 }
 
 function taskOrder(left, right) {
-    const nextStep = Number(right?.nextStepAt || 0) - Number(left?.nextStepAt || 0);
+    const nextStep = (hasPendingResumeHint(right) ? Number(right?.nextStepAt || 0) : 0)
+        - (hasPendingResumeHint(left) ? Number(left?.nextStepAt || 0) : 0);
     if (nextStep) return nextStep;
     const priority = Number(right?.priority || 1) - Number(left?.priority || 1);
     if (priority) return priority;
@@ -54,11 +55,11 @@ export function buildSoftSchedule({ todos = [], now = new Date() } = {}) {
     const currentIndex = BLOCK_ORDER.indexOf(currentId);
     const list = Array.isArray(todos) ? todos : [];
     const todayTasks = list
-        .filter((task) => todoBucket(task, todayKey) === 'today' && (!hasFinishedMicroSteps(task) || hasResumeHint(task)))
+        .filter((task) => todoBucket(task, todayKey) === 'today' && (!hasFinishedMicroSteps(task) || hasPendingResumeHint(task)))
         .sort(taskOrder);
     const assigned = currentId ? todayTasks.filter((task) => task.timeBlock === currentId) : [];
     const unassigned = todayTasks.filter((task) => !task.timeBlock);
-    const resumeTask = todayTasks.find((task) => hasResumeHint(task)) || null;
+    const resumeTask = todayTasks.find((task) => hasPendingResumeHint(task)) || null;
     const task = resumeTask || assigned[0] || unassigned[0] || null;
     const minutes = date.getHours() * 60 + date.getMinutes();
     const endMinutes = currentId === 'morning' ? 12 * 60 : currentId === 'afternoon' ? 18 * 60 : currentId === 'evening' ? 23 * 60 : 0;

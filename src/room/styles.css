@@ -1236,6 +1236,7 @@ select:focus-visible,
 .resume-reconnect-action.quiet:hover { border-color: rgba(213, 233, 255, 0.56); background: rgba(202, 223, 255, 0.1); }
 .resume-reconnect-action:focus-visible { outline: 2px solid #e3f2ff; outline-offset: 2px; }
 .resume-reconnect-note { grid-column: 1 / -1; color: #bbcadb; font-size: 10px; line-height: 1.45; }
+.task-editor-note-hint { display:block; margin:5px 0 1px; color:#afc1db; font-size:10px; line-height:1.45; }
 .gentle-start-reconnect { border-color: rgba(182, 214, 255, 0.27); background: rgba(92, 127, 178, 0.1); }
 .soft-schedule-reconnect { border-color: rgba(255, 212, 158, 0.28); background: rgba(150, 106, 67, 0.12); }
 .soft-schedule-reconnect .resume-reconnect-label > span { color: #ffe0af; }

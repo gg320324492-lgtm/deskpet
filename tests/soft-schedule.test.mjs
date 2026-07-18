@@ -84,3 +84,14 @@ test('soft schedule prioritizes a deliberately saved resume hint without complet
     assert.equal(schedule.task.id, 'resume');
     assert.equal(schedule.task.completed, false);
 });
+
+test('an acknowledged return cue no longer jumps ahead of the current soft-window task', () => {
+    const schedule = buildSoftSchedule({
+        now: new Date(2026, 6, 18, 14, 20),
+        todos: [
+            { id: 'assigned', title: '当前安排', bucket: 'today', timeBlock: 'afternoon', completed: false },
+            { id: 'history', title: '整理提纲', note: '先补开头', nextStepAt: 8, resumeAcknowledgedAt: 9, bucket: 'today', completed: false, priority: 3, microSteps: [{ text: '写第一句', completed: false }] },
+        ],
+    });
+    assert.equal(schedule.task.id, 'assigned');
+});

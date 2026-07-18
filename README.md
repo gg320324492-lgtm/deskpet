@@ -310,3 +310,12 @@ the soft-window suggestion, and the Today mainline cue. You may confirm or
 rewrite one small action for this pass, then explicitly choose it as today's
 mainline. It keeps the saved return hint and its existing placement, never
 starts focus on its own, and remains easy to clear or replace with another task.
+
+## 1.3.6 Return Cue Settling
+
+Once you deliberately pick up a return cue, its wording remains available as a
+quiet “last starting point,” while its priority naturally steps aside for the
+current tiny action and ordinary Today choices. At the next closeout, a newly
+saved cue becomes the only fresh return invitation again. You can still view
+and edit the stored wording in the task editor; nothing sends a reminder or
+starts focus automatically.

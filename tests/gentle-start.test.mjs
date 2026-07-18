@@ -98,3 +98,16 @@ test('a finished tiny-action set returns only after a deliberate resume hint is 
     assert.equal(result.task.id, 'closed');
     assert.equal(result.isFollowUp, true);
 });
+
+test('an acknowledged return cue stays as history without taking gentle-start priority again', () => {
+    const now = new Date(2026, 6, 18, 10);
+    const result = buildGentleStart({
+        now,
+        todos: [
+            { id: 'history', title: '整理提纲', note: '先补开头', nextStepAt: 8, resumeAcknowledgedAt: 9, bucket: 'today', completed: false, priority: 1, microSteps: [{ text: '写第一句', completed: false }] },
+            { id: 'main', title: '当前主线', bucket: 'today', completed: false, priority: 3 },
+        ],
+    });
+    assert.equal(result.task.id, 'main');
+    assert.equal(result.isFollowUp, false);
+});

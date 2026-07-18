@@ -11,12 +11,24 @@ export function hasResumeHint(task = {}) {
     return Boolean(normalizeResumeHintText(task?.note) && Number(task?.nextStepAt) > 0);
 }
 
+/** A return cue is pending only until the person deliberately picks it up. */
+export function hasPendingResumeHint(task = {}) {
+    return hasResumeHint(task) && Number(task?.nextStepAt) > Number(task?.resumeAcknowledgedAt || 0);
+}
+
 /** Reuse the task's existing next-step fields without changing its completion state. */
 export function resumeHintPatch(text, now = Date.now()) {
     const note = normalizeResumeHintText(text);
     if (!note) return {};
     const at = Number.isFinite(Number(now)) ? Math.max(0, Math.round(Number(now))) : Date.now();
-    return { note, nextStepAt: at };
+    return { note, nextStepAt: at, resumeAcknowledgedAt: 0 };
+}
+
+/** Preserve the words as a local history, while taking them out of suggestion priority. */
+export function resumeAcknowledgementPatch(task = {}, now = Date.now()) {
+    if (!hasResumeHint(task)) return {};
+    const at = Number.isFinite(Number(now)) ? Math.max(0, Math.round(Number(now))) : Date.now();
+    return { resumeAcknowledgedAt: Math.max(Number(task.nextStepAt) || 0, at) };
 }
 
 /**

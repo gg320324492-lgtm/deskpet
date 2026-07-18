@@ -1,14 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { hasResumeHint, normalizeResumeHintText, resumeContinuationPatch, resumeHintPatch } from '../src/renderer/task-resume.js';
+import { hasPendingResumeHint, hasResumeHint, normalizeResumeHintText, resumeAcknowledgementPatch, resumeContinuationPatch, resumeHintPatch } from '../src/renderer/task-resume.js';
 
 test('a resume hint reuses the existing next-step fields and remains optional', () => {
     assert.equal(normalizeResumeHintText('  从开头继续\u0000  '), '从开头继续');
     assert.deepEqual(resumeHintPatch('   ', 7), {});
-    assert.deepEqual(resumeHintPatch('从开头继续', 7), { note: '从开头继续', nextStepAt: 7 });
+    assert.deepEqual(resumeHintPatch('从开头继续', 7), { note: '从开头继续', nextStepAt: 7, resumeAcknowledgedAt: 0 });
     assert.equal(hasResumeHint({ note: '从开头继续', nextStepAt: 7 }), true);
     assert.equal(hasResumeHint({ note: '从开头继续', nextStepAt: 0 }), false);
+});
+
+test('an acknowledged cue remains visible as history but no longer counts as a pending return', () => {
+    const task = { note: '从开头继续', nextStepAt: 7, resumeAcknowledgedAt: 0, completed: false };
+    const acknowledged = { ...task, ...resumeAcknowledgementPatch(task, 9) };
+    assert.equal(acknowledged.note, '从开头继续');
+    assert.equal(acknowledged.nextStepAt, 7);
+    assert.equal(acknowledged.resumeAcknowledgedAt, 9);
+    assert.equal(hasResumeHint(acknowledged), true);
+    assert.equal(hasPendingResumeHint(acknowledged), false);
+
+    const fresh = { ...acknowledged, ...resumeHintPatch('下次从资料页继续', 12) };
+    assert.equal(fresh.resumeAcknowledgedAt, 0);
+    assert.equal(hasPendingResumeHint(fresh), true);
 });
 
 test('resuming keeps the saved cue and only creates or edits an explicitly confirmed tiny action', () => {

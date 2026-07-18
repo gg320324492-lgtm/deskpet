@@ -240,11 +240,12 @@ function assertJsonValue(value, name, depth = 0) {
 function validateTodoItem(item, index = 0) {
     const name = `todos.items[${index}]`;
     assertPlainRecord(item, name);
-    assertKnownKeys(item, ['id', 'title', 'note', 'nextStepAt', 'microSteps', 'microNotes', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
+    assertKnownKeys(item, ['id', 'title', 'note', 'nextStepAt', 'resumeAcknowledgedAt', 'microSteps', 'microNotes', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
     assertString(item.id, `${name}.id`, 80, { allowEmpty: false });
     assertString(item.title, `${name}.title`, 120, { allowEmpty: false });
     if (Object.hasOwn(item, 'note')) assertString(item.note, `${name}.note`, 240);
     if (Object.hasOwn(item, 'nextStepAt')) assertNumber(item.nextStepAt, `${name}.nextStepAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
+    if (Object.hasOwn(item, 'resumeAcknowledgedAt')) assertNumber(item.resumeAcknowledgedAt, `${name}.resumeAcknowledgedAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
     if (Object.hasOwn(item, 'microSteps')) validateMicroSteps(item.microSteps, `${name}.microSteps`);
     if (Object.hasOwn(item, 'microNotes')) validateMicroNotes(item.microNotes, `${name}.microNotes`);
     if (Object.hasOwn(item, 'priority')) assertEnum(item.priority, [1, 2, 3], `${name}.priority`);
@@ -287,6 +288,7 @@ function normalizeTodoItem(item, index) {
         title: item.title,
         note: item.note ?? '',
         nextStepAt: item.nextStepAt ?? 0,
+        resumeAcknowledgedAt: item.resumeAcknowledgedAt ?? 0,
         microSteps: item.microSteps ?? [],
         microNotes: item.microNotes ?? [],
         priority: item.priority ?? 1,
