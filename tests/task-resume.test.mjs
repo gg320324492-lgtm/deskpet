@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { hasResumeHint, normalizeResumeHintText, resumeHintPatch } from '../src/renderer/task-resume.js';
+import { hasResumeHint, normalizeResumeHintText, resumeContinuationPatch, resumeHintPatch } from '../src/renderer/task-resume.js';
 
 test('a resume hint reuses the existing next-step fields and remains optional', () => {
     assert.equal(normalizeResumeHintText('  从开头继续\u0000  '), '从开头继续');
@@ -9,4 +9,26 @@ test('a resume hint reuses the existing next-step fields and remains optional', 
     assert.deepEqual(resumeHintPatch('从开头继续', 7), { note: '从开头继续', nextStepAt: 7 });
     assert.equal(hasResumeHint({ note: '从开头继续', nextStepAt: 7 }), true);
     assert.equal(hasResumeHint({ note: '从开头继续', nextStepAt: 0 }), false);
+});
+
+test('resuming keeps the saved cue and only creates or edits an explicitly confirmed tiny action', () => {
+    const closed = {
+        note: '下次从开头继续', nextStepAt: 7, completed: false,
+        microSteps: [{ id: 'micro-1', text: '列出标题', completed: true }],
+    };
+    const resumed = { ...closed, ...resumeContinuationPatch(closed, '先写一句开头') };
+    assert.equal(resumed.note, '下次从开头继续');
+    assert.equal(resumed.nextStepAt, 7);
+    assert.equal(resumed.completed, false);
+    assert.deepEqual(resumed.microSteps, [{ id: 'micro-1', text: '先写一句开头', completed: false }]);
+
+    const active = {
+        note: '继续整理', nextStepAt: 8,
+        microSteps: [{ id: 'micro-1', text: '打开资料', completed: false }, { id: 'micro-2', text: '列标题', completed: false }],
+    };
+    assert.deepEqual(resumeContinuationPatch(active, ''), {});
+    assert.deepEqual(resumeContinuationPatch(active, '先定位上次段落').microSteps, [
+        { id: 'micro-1', text: '先定位上次段落', completed: false },
+        { id: 'micro-2', text: '列标题', completed: false },
+    ]);
 });

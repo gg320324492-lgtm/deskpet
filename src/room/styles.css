@@ -1210,6 +1210,42 @@ select:focus-visible,
 .task-closeout-action.tomorrow { border-color: rgba(198, 185, 255, .42); color: #dfd8ff; }
 .task-closeout-add:focus-visible, .task-closeout-action:focus-visible { outline: 2px solid #f1fffa; outline-offset: 2px; }
 
+.resume-reconnect-entry {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    margin-top: 13px;
+    border: 1px solid rgba(168, 211, 255, 0.24);
+    border-radius: 11px;
+    background: rgba(77, 126, 179, 0.09);
+    padding: 10px;
+}
+.resume-reconnect-label { display: grid; min-width: 0; gap: 5px; }
+.resume-reconnect-label > span { color: #bddbff; font-size: 10px; font-weight: 850; letter-spacing: .05em; }
+.resume-reconnect-input { min-width: 0; min-height: 33px; border: 1px solid rgba(177, 220, 255, 0.3); border-radius: 8px; color: #f0f7ff; background: rgba(9, 22, 41, 0.46); padding: 6px 8px; font: inherit; font-size: 11px; }
+.resume-reconnect-input::placeholder { color: #a8bed6; }
+.resume-reconnect-input:focus-visible { outline: 2px solid #b8e1ff; outline-offset: 2px; }
+.resume-reconnect-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; }
+.resume-reconnect-action { min-height: 33px; border-radius: 8px; cursor: pointer; padding: 6px 9px; font: inherit; font-size: 10px; font-weight: 850; transition: transform 160ms ease-out, border-color 160ms ease-out, background 160ms ease-out; }
+.resume-reconnect-action:hover { transform: translateY(-1px); }
+.resume-reconnect-action.primary { border: 1px solid rgba(184, 224, 255, 0.76); color: #11233a; background: #c2e2ff; box-shadow: 0 6px 14px rgba(75, 153, 222, 0.16); }
+.resume-reconnect-action.primary:hover { background: #dceeff; }
+.resume-reconnect-action.quiet { border: 1px solid rgba(202, 222, 246, 0.24); color: #dbe7f7; background: rgba(255, 255, 255, 0.045); }
+.resume-reconnect-action.quiet:hover { border-color: rgba(213, 233, 255, 0.56); background: rgba(202, 223, 255, 0.1); }
+.resume-reconnect-action:focus-visible { outline: 2px solid #e3f2ff; outline-offset: 2px; }
+.resume-reconnect-note { grid-column: 1 / -1; color: #bbcadb; font-size: 10px; line-height: 1.45; }
+.gentle-start-reconnect { border-color: rgba(182, 214, 255, 0.27); background: rgba(92, 127, 178, 0.1); }
+.soft-schedule-reconnect { border-color: rgba(255, 212, 158, 0.28); background: rgba(150, 106, 67, 0.12); }
+.soft-schedule-reconnect .resume-reconnect-label > span { color: #ffe0af; }
+.soft-schedule-reconnect .resume-reconnect-input { border-color: rgba(255, 222, 173, 0.28); color: #fff4e4; background: rgba(53, 36, 34, 0.43); }
+.soft-schedule-reconnect .resume-reconnect-input::placeholder { color: #d8bea0; }
+.soft-schedule-reconnect .resume-reconnect-input:focus-visible { outline-color: #ffe0ad; }
+.soft-schedule-reconnect .resume-reconnect-action.primary { border-color: rgba(255, 218, 161, 0.76); color: #36200e; background: #ffdaa1; box-shadow: 0 6px 14px rgba(225, 154, 70, 0.16); }
+.soft-schedule-reconnect .resume-reconnect-action.primary:hover { background: #ffe8c4; }
+.soft-schedule-reconnect .resume-reconnect-note { color: #dbc9b3; }
+
 .soft-schedule-card {
     position: relative;
     overflow: hidden;
@@ -2535,6 +2571,9 @@ select {
     .gentle-start-card { padding:15px; }
     .gentle-start-actions { display:grid; grid-template-columns:1fr; }
     .gentle-start-button, .gentle-start-later { width:100%; }
+    .resume-reconnect-entry { grid-template-columns:1fr; }
+    .resume-reconnect-actions { display:grid; grid-template-columns:1fr 1fr; }
+    .resume-reconnect-action { width:100%; }
 
     .rhythm-card {
         padding: 15px;

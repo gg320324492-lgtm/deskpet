@@ -22,7 +22,7 @@ import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '..
 import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, resetMicroSteps } from '../renderer/micro-steps.js';
 import { appendMicroNotePatch, latestMicroNote, normalizeMicroNotes } from '../renderer/micro-notes.js';
 import { buildTaskCloseoutReview } from '../renderer/task-closeout-review.js';
-import { hasResumeHint, resumeHintPatch } from '../renderer/task-resume.js';
+import { hasResumeHint, resumeContinuationPatch, resumeHintPatch } from '../renderer/task-resume.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -107,6 +107,38 @@ function makeInboxTodo(title, note = '') {
         doneAt: null,
         createdAt: Date.now(),
     };
+}
+
+/** A shared, user-confirmed bridge from a saved return cue back to Today. */
+function resumeReconnectEntry(task, { announce, onResume, surface }) {
+    const current = currentMicroStep(task);
+    const input = el('input', {
+        class: 'resume-reconnect-input', type: 'text', maxlength: 120,
+        value: current?.text || task.note || '',
+        placeholder: '这一轮只做什么？（可改）',
+        'aria-label': `${task.title} 的这一轮小步骤`,
+    });
+    let resumeButton;
+    resumeButton = el('button', {
+        class: 'resume-reconnect-action primary', type: 'button',
+        onclick: () => runAsync(resumeButton, () => onResume(input.value), {
+            announce,
+            success: `已接上「${task.title}」；这一轮只陪它走一点。`,
+            failure: (error) => error?.message || '暂时没能接上这件事。',
+        }),
+    }, '接上这件事');
+    const laterButton = el('button', {
+        class: 'resume-reconnect-action quiet', type: 'button',
+        onclick: () => announce('先不接也没关系；这句提示会留在这里。'),
+    }, '暂时不接');
+    return el('div', { class: `resume-reconnect-entry ${surface}` },
+        el('label', { class: 'resume-reconnect-label' },
+            el('span', {}, '这一轮只做 · 可改'),
+            input,
+        ),
+        el('div', { class: 'resume-reconnect-actions' }, resumeButton, laterButton),
+        el('small', { class: 'resume-reconnect-note' }, '接上后只会设为今日主线；不会自动开始专注，也不会改动原来的安放。'),
+    );
 }
 
 // ============ Stats ============
@@ -263,6 +295,17 @@ export const statsTab = {
             await setSettings({ rhythm: { ...rhythm, todayFocus: todayFocusPatch(task) } });
             refreshCurrent();
         };
+        const resumeTaskIntoToday = async (task, microStepText) => {
+            const current = todos.find((item) => item.id === task?.id && !item.completed);
+            if (!current) throw new Error('这件事已经不在待办里了。');
+            await setSettings({
+                todos: { items: todos.map((item) => item.id === current.id
+                    ? { ...item, ...resumeContinuationPatch(item, microStepText) }
+                    : item) },
+                rhythm: { ...rhythm, todayFocus: todayFocusPatch(current) },
+            });
+            refreshCurrent();
+        };
         root.appendChild(sectionTitle('现在这一小段'));
         if (focusCompanion.phase !== 'idle') {
             root.appendChild(el('section', { class: 'card gentle-start-card active' },
@@ -277,12 +320,15 @@ export const statsTab = {
         } else if (gentleStart.task) {
             let startButton;
             let laterButton;
+            const gentleReconnect = gentleStart.isFollowUp && todayFocus.task?.id !== gentleStart.task.id
+                ? resumeReconnectEntry(gentleStart.task, { announce, onResume: resumeTaskIntoToday, surface: 'gentle-start-reconnect' })
+                : null;
             startButton = el('button', {
                 class: 'gentle-start-button', type: 'button',
                 onclick: () => runAsync(startButton, () => startGentleFocus(gentleStart.task), {
                     announce, success: `开始一小段：${gentleStart.task.title}`, failure: (error) => error?.message || '无法开始专注。',
                 }),
-            }, '开始一小段');
+            }, gentleReconnect ? '直接开始一小段' : '开始一小段');
             laterButton = el('button', {
                 class: 'gentle-start-later', type: 'button',
                 onclick: () => announce('先放在这里也很好，等你准备好了再开始。'),
@@ -299,6 +345,7 @@ export const statsTab = {
                 el('p', { class: 'gentle-start-copy' }, gentleMicroStep
                     ? `现在这一小步：${gentleMicroStep.text}`
                     : gentleStart.isFollowUp ? `下次从这里开始：${gentleStart.task.note}` : gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
+                gentleReconnect,
                 el('div', { class: 'gentle-start-actions' }, startButton, laterButton),
                 el('small', { class: 'gentle-start-note' }, gentleStart.isFollowUp ? '这是上次专注后留下的下一步；点击才会开始。' : '不会自动开始，也不会因为暂时不做而提醒你。'),
             ));
@@ -469,13 +516,16 @@ export const statsTab = {
         };
         root.appendChild(sectionTitle('现在这段时间'));
         if (softSchedule.currentId && softSchedule.task) {
+            const scheduleReconnect = hasResumeHint(softSchedule.task) && todayFocus.task?.id !== softSchedule.task.id
+                ? resumeReconnectEntry(softSchedule.task, { announce, onResume: resumeTaskIntoToday, surface: 'soft-schedule-reconnect' })
+                : null;
             let startWindowFocus;
             startWindowFocus = el('button', {
                 class: 'soft-schedule-action primary', type: 'button',
                 onclick: () => runAsync(startWindowFocus, () => startGentleFocus(softSchedule.task), {
                     announce, success: `开始一小段：${softSchedule.task.title}`, failure: (error) => error?.message || '无法开始专注。',
                 }),
-            }, '开始一小段');
+            }, scheduleReconnect ? '直接开始一小段' : '开始一小段');
             let scheduleCurrent;
             if (!softSchedule.taskIsAssigned) {
                 scheduleCurrent = el('button', {
@@ -510,6 +560,7 @@ export const statsTab = {
                 el('p', { class: 'soft-schedule-copy' }, softSchedule.nearEnd
                     ? `还没开始也没关系；它可以安静留给${softSchedule.next?.tomorrow ? '明天上午' : softSchedule.next?.label || '下一段'}。`
                     : (scheduleMicroStep ? `现在这一小步：${scheduleMicroStep.text}` : hasResumeHint(softSchedule.task) ? `下次从这里开始：${softSchedule.task.note}` : softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
+                scheduleReconnect,
                 el('div', { class: 'soft-schedule-actions' }, startWindowFocus, scheduleCurrent, moveNext),
                 el('small', { class: 'soft-schedule-note' }, '只在首页静静出现；不会发通知，也不会替你开始。'),
             ));
@@ -948,6 +999,17 @@ export const feedTab = {
             await setSettings({ rhythm: { ...rhythm, todayFocus: task ? todayFocusPatch(task) : clearTodayFocusPatch() } });
             refreshCurrent();
         };
+        const resumeTaskIntoToday = async (task, microStepText) => {
+            const current = allTodos.find((item) => item.id === task?.id && !item.completed);
+            if (!current) throw new Error('这件事已经不在待办里了。');
+            await setSettings({
+                todos: { items: allTodos.map((item) => item.id === current.id
+                    ? { ...item, ...resumeContinuationPatch(item, microStepText) }
+                    : item) },
+                rhythm: { ...rhythm, todayFocus: todayFocusPatch(current) },
+            });
+            refreshCurrent();
+        };
         const startTodayFocus = async (task) => {
             const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
             if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
@@ -1268,6 +1330,9 @@ export const feedTab = {
                 onclick: () => runAsync(clearButton, () => setTodayFocus(null), { announce, success: '今日主线已清空。' }),
             }, '清空');
             const mainlineDisplayTask = todayFocus.task || todayResumeTask;
+            const mainlineReconnect = todayResumeTask
+                ? resumeReconnectEntry(todayResumeTask, { announce, onResume: resumeTaskIntoToday, surface: 'today-mainline-reconnect' })
+                : null;
             root.appendChild(el('section', { class: `card today-mainline-card ${todayFocus.task ? 'has-mainline' : ''} ${todayResumeTask ? 'has-resume-cue' : ''}` },
                 el('div', { class: 'today-mainline-head' },
                     el('div', {}, el('span', {}, 'TODAY\'S THREAD'), el('h3', {}, todayFocus.task ? '先陪这一件走一小段' : todayResumeTask ? '上次留在这里，要不要接上？' : '今天，想先陪哪一件？')),
@@ -1277,6 +1342,7 @@ export const feedTab = {
                 el('p', { class: 'today-mainline-copy' }, currentMicroStep(mainlineDisplayTask)
                     ? `当前一小步：${currentMicroStep(mainlineDisplayTask).text}`
                     : hasResumeHint(mainlineDisplayTask) ? `下次从这里开始：${mainlineDisplayTask.note}` : mainlineDisplayTask?.note || (mainlineDisplayTask ? mainlineDisplayTask.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
+                mainlineReconnect,
                 el('div', { class: 'today-mainline-controls' }, focusPicker, startButton, clearButton),
             ));
         }

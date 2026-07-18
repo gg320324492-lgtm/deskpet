@@ -302,3 +302,11 @@ While placing a finished micro-step set, you can optionally keep one “start
 here next time” hint. The existing next-step fields store that local cue, which
 then gets quiet priority in gentle start and soft-window suggestions; Today
 shows it as a candidate without selecting or starting anything for you.
+
+## 1.3.5 Gentle Re-entry
+
+When you are ready, the same calm “Pick this up” entry appears in gentle start,
+the soft-window suggestion, and the Today mainline cue. You may confirm or
+rewrite one small action for this pass, then explicitly choose it as today's
+mainline. It keeps the saved return hint and its existing placement, never
+starts focus on its own, and remains easy to clear or replace with another task.

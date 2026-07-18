@@ -1,3 +1,5 @@
+import { beginNextMicroStepPatch, currentMicroStep, normalizeMicroSteps, normalizeMicroStepText } from './micro-steps.js';
+
 const MAX_RESUME_HINT_TEXT = 240;
 
 export function normalizeResumeHintText(value) {
@@ -15,4 +17,22 @@ export function resumeHintPatch(text, now = Date.now()) {
     if (!note) return {};
     const at = Number.isFinite(Number(now)) ? Math.max(0, Math.round(Number(now))) : Date.now();
     return { note, nextStepAt: at };
+}
+
+/**
+ * Keep a return cue intact while the person explicitly chooses the one small
+ * action for this new pass. An unfinished action can be renamed; a finished
+ * set receives one fresh action. Empty text deliberately changes nothing.
+ */
+export function resumeContinuationPatch(task = {}, text) {
+    const nextText = normalizeMicroStepText(text);
+    if (!nextText) return {};
+    const current = currentMicroStep(task);
+    if (!current) return beginNextMicroStepPatch(nextText);
+    if (current.text === nextText) return {};
+    return {
+        microSteps: normalizeMicroSteps(task.microSteps).map((step) => step.id === current.id
+            ? { ...step, text: nextText }
+            : step),
+    };
 }

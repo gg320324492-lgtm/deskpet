@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.5 - 2026-07-19
+
+### Added
+
+- A saved return cue can now be explicitly picked up from gentle start, the
+  soft-window suggestion, or the Today mainline cue.
+- The shared pickup entry lets you confirm or rewrite one tiny action for this
+  pass before choosing the task as Today's mainline.
+
+### Improved
+
+- Picking up a task preserves its saved return cue and soft-window placement;
+  it never starts focus, completes the parent task, or forces a tiny action.
+- You can leave the cue alone, clear the resulting mainline, or choose another
+  task at any time.
+
 ## 1.3.4 - 2026-07-19
 
 ### Added
