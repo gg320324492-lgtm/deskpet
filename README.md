@@ -258,3 +258,11 @@ The home page can quietly offer one suitable Today task during the active
 window. Near a window's end, an unfinished task can be left for the next
 window, while a completed focus can carry its next step forward with one click.
 Nothing starts automatically or sends a new notification.
+
+## 1.2.9 Micro Steps
+
+Any task can optionally hold one to three tiny actions. The room surfaces only
+the current unfinished action, never a percentage or a required checklist. A
+focus landing can put away that one action and reveal the next, while the task
+itself remains under the user's control. All micro steps stay local and travel
+with the task when it moves to another soft window or tomorrow.

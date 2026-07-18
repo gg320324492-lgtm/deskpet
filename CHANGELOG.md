@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.9 - 2026-07-18
+
+### Added
+
+- Added optional local micro steps: split a task into one to three tiny,
+  executable actions from the task editor.
+- The home page, soft-window suggestion, and Today mainline now show only the
+  current unfinished micro step when a task has them.
+
+### Improved
+
+- A completed-focus landing can now mark just the current micro step done;
+  the next one appears naturally without auto-completing the parent task.
+- Moving a task between Today, later windows, and tomorrow keeps its unfinished
+  micro steps together. Repeating tasks start their next recurrence fresh.
+
 ## 1.2.8 - 2026-07-18
 
 ### Added

@@ -19,6 +19,7 @@ import { buildTodayFocusEchoes, focusReflectionPatch } from '../renderer/focus-r
 import { buildInboxTriage, inboxTriageRecordPatch } from '../renderer/inbox-triage.js';
 import { buildGentleStart } from '../renderer/gentle-start.js';
 import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '../renderer/soft-schedule.js';
+import { completeMicroStepPatch, currentMicroStep } from '../renderer/micro-steps.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -91,6 +92,7 @@ function makeInboxTodo(title, note = '') {
         title: String(title || '').trim().slice(0, 120),
         note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
         nextStepAt: 0,
+        microSteps: [],
         priority: 1,
         dueAt: null,
         repeat: 'none',
@@ -120,6 +122,8 @@ export const statsTab = {
         const focusCompanion = buildFocusCompanion(getFocusState());
         const homeCloseout = buildDayCloseout({ todos });
         const softSchedule = buildSoftSchedule({ todos });
+        const gentleMicroStep = currentMicroStep(gentleStart.task);
+        const scheduleMicroStep = currentMicroStep(softSchedule.task);
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -286,7 +290,9 @@ export const statsTab = {
                     el('span', {}, gentleStart.isFollowUp ? '下一步' : gentleStart.isMainline ? '今日主线' : `今天 ${gentleStart.todayCount} 件`),
                 ),
                 el('strong', { class: 'gentle-start-task' }, gentleStart.task.title),
-                el('p', { class: 'gentle-start-copy' }, gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
+                el('p', { class: 'gentle-start-copy' }, gentleMicroStep
+                    ? `现在这一小步：${gentleMicroStep.text}`
+                    : gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
                 el('div', { class: 'gentle-start-actions' }, startButton, laterButton),
                 el('small', { class: 'gentle-start-note' }, gentleStart.isFollowUp ? '这是上次专注后留下的下一步；点击才会开始。' : '不会自动开始，也不会因为暂时不做而提醒你。'),
             ));
@@ -359,7 +365,7 @@ export const statsTab = {
                 el('strong', { class: 'soft-schedule-task' }, softSchedule.task.title),
                 el('p', { class: 'soft-schedule-copy' }, softSchedule.nearEnd
                     ? `还没开始也没关系；它可以安静留给${softSchedule.next?.tomorrow ? '明天上午' : softSchedule.next?.label || '下一段'}。`
-                    : (softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
+                    : (scheduleMicroStep ? `现在这一小步：${scheduleMicroStep.text}` : softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
                 el('div', { class: 'soft-schedule-actions' }, startWindowFocus, scheduleCurrent, moveNext),
                 el('small', { class: 'soft-schedule-note' }, '只在首页静静出现；不会发通知，也不会替你开始。'),
             ));
@@ -410,8 +416,10 @@ export const statsTab = {
             return el('article', { class: 'home-closeout-row' },
                 el('div', { class: 'home-closeout-copy' },
                     el('strong', {}, task.title),
-                    task.note
-                        ? el('small', {}, `下一步：${task.note}`)
+                    currentMicroStep(task)
+                        ? el('small', {}, `当前一小步：${currentMicroStep(task).text}`)
+                        : task.note
+                            ? el('small', {}, `下一步：${task.note}`)
                         : el('small', {}, '不必现在做完，先决定它待在哪里。'),
                 ),
                 el('div', { class: 'home-closeout-actions' }, ...actions),
@@ -857,6 +865,12 @@ export const feedTab = {
                 class: 'task-editor-note', maxlength: 240, rows: 3,
                 placeholder: '例如：先找三份参考资料', 'aria-label': '下一步（可选）', value: task.note || '',
             });
+            const microStepInputs = [0, 1, 2].map((index) => el('input', {
+                class: 'task-editor-micro-input', type: 'text', maxlength: 120,
+                placeholder: index === 0 ? '例如：打开资料文件夹' : '再留一件小事（可选）',
+                value: task.microSteps?.[index]?.text || '',
+                'aria-label': `微步骤 ${index + 1}（可选）`,
+            }));
             const bucketInput = el('select', { class: 'task-editor-location', 'aria-label': '任务位置', value: todoBucket(task) },
                 el('option', { value: 'inbox' }, '收件箱'),
                 el('option', { value: 'today' }, '今天'),
@@ -871,7 +885,14 @@ export const feedTab = {
                 onsubmit: (event) => {
                     event.preventDefault();
                     runAsync(saveButton, () => applyTodoPatch(task.id, taskEditorPatch({
-                        task, title: titleInput.value, note: noteInput.value, bucket: bucketInput.value,
+                        task,
+                        title: titleInput.value,
+                        note: noteInput.value,
+                        microSteps: microStepInputs.map((input, index) => ({
+                            text: input.value,
+                            completed: task.microSteps?.[index]?.completed === true,
+                        })),
+                        bucket: bucketInput.value,
                     })), { announce, success: '任务已轻轻更新。', failure: (error) => error?.message || '无法保存任务。' });
                 },
             },
@@ -883,8 +904,15 @@ export const feedTab = {
             titleInput,
             el('label', { class: 'task-editor-label', for: 'task-editor-note' }, '下一步（可选）'),
             noteInput,
+            el('div', { class: 'task-editor-micro' },
+                el('div', { class: 'task-editor-micro-head' },
+                    el('span', {}, 'TINY ACTIONS · 可选'),
+                    el('small', {}, '留 1～3 件够小、够容易开始的事'),
+                ),
+                ...microStepInputs,
+            ),
             el('label', { class: 'task-editor-label' }, '放在哪里', bucketInput),
-            el('p', { class: 'task-editor-hint' }, '调整位置不会删除任务；放到今天会保留为今天可做的一件事。'),
+            el('p', { class: 'task-editor-hint' }, '微步骤不计分，也不会自动完成任务；只会让当前的一小步更容易看见。'),
             el('div', { class: 'task-editor-actions' },
                 el('button', { class: 'task-editor-cancel', type: 'button', onclick: close }, '先不改'),
                 saveButton = el('button', { class: 'task-editor-save', type: 'submit' }, '保存修改'),
@@ -898,12 +926,28 @@ export const feedTab = {
         };
         const laneRow = (task, lane) => {
             const actions = [];
+            const activeMicroStep = currentMicroStep(task);
             let completeButton;
             completeButton = el('button', {
                 class: 'todo-complete-button', type: 'button',
                 onclick: () => runAsync(completeButton, () => completeTodo(task), { announce, success: `已完成：${task.title}` }),
             }, '完成');
             actions.push(completeButton);
+            if (activeMicroStep) {
+                let completeMicroButton;
+                completeMicroButton = el('button', {
+                    class: 'todo-lane-button todo-micro-step-button', type: 'button',
+                    onclick: () => runAsync(completeMicroButton, () => applyTodoPatch(
+                        task.id,
+                        completeMicroStepPatch(task, activeMicroStep.id),
+                    ), {
+                        announce,
+                        success: '这一小步已经收好，下一步会自然出现。',
+                        failure: (error) => error?.message || '暂时没能更新这一小步。',
+                    }),
+                }, '收好小步');
+                actions.push(completeMicroButton);
+            }
             if (lane !== 'today') {
                 let todayButton;
                 todayButton = el('button', {
@@ -958,7 +1002,9 @@ export const feedTab = {
             return el('article', { class: `todo-board-row lane-${lane}` },
                 el('div', { class: 'todo-board-copy' },
                     el('strong', {}, task.title),
-                    el('small', {}, task.note ? `下一步 · ${task.note}` : task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
+                    el('small', {}, activeMicroStep
+                        ? `当前一小步 · ${activeMicroStep.text}`
+                        : task.note ? `下一步 · ${task.note}` : task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
                 ),
                 el('div', { class: 'todo-board-actions' }, ...actions),
             );
@@ -1072,7 +1118,9 @@ export const feedTab = {
                     el('div', {}, el('span', {}, 'TODAY\'S THREAD'), el('h3', {}, todayFocus.task ? '先陪这一件走一小段' : '今天，想先陪哪一件？')),
                     el('span', {}, todayFocus.task ? '已选主线' : '随时可换'),
                 ),
-                el('p', { class: 'today-mainline-copy' }, todayFocus.task?.note || (todayFocus.task ? todayFocus.task.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
+                el('p', { class: 'today-mainline-copy' }, currentMicroStep(todayFocus.task)
+                    ? `当前一小步：${currentMicroStep(todayFocus.task).text}`
+                    : todayFocus.task?.note || (todayFocus.task ? todayFocus.task.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
                 el('div', { class: 'today-mainline-controls' }, focusPicker, startButton, clearButton),
             ));
         }
@@ -1130,10 +1178,34 @@ export const feedTab = {
                 }, '留下一句');
                 reflectionControl = el('div', { class: 'focus-reflection-control' }, reflectionInput, reflectionSave);
             }
+            let microStepControl = null;
             let nextStepControl = null;
             if (companion.mode === 'decision' && companion.task) {
                 const linkedTask = allTodos.find((item) => item.id === companion.task.id && !item.completed);
                 if (linkedTask) {
+                    const activeMicroStep = currentMicroStep(linkedTask);
+                    if (activeMicroStep) {
+                        let completeMicroButton;
+                        completeMicroButton = el('button', {
+                            class: 'focus-micro-step-complete', type: 'button',
+                            onclick: () => runAsync(completeMicroButton, () => applyTodoPatch(
+                                linkedTask.id,
+                                completeMicroStepPatch(linkedTask, activeMicroStep.id),
+                            ), {
+                                announce,
+                                success: '这一小步已经收好，下一步会自然出现。',
+                                failure: (error) => error?.message || '暂时没能更新这一小步。',
+                            }),
+                        }, '收好这一小步');
+                        microStepControl = el('div', { class: 'focus-micro-step-control' },
+                            el('div', { class: 'focus-micro-step-copy' },
+                                el('span', {}, 'ONE TINY ACTION'),
+                                el('strong', {}, activeMicroStep.text),
+                                el('small', {}, '不等于完成整件事；只把眼前这一小步收好。'),
+                            ),
+                            completeMicroButton,
+                        );
+                    }
                     const nextStepInput = el('input', {
                         class: 'focus-next-step-input', type: 'text', maxlength: 240,
                         placeholder: '下一步想从哪里开始？（可选）', 'aria-label': '下一步想从哪里开始', value: linkedTask.note || '',
@@ -1208,6 +1280,7 @@ export const feedTab = {
             ),
             el('p', { class: 'focus-companion-message', 'data-focus-message': 'true' }, companion.message || '不需要冲刺，只陪你把眼前这一段走完。'),
             captureControl,
+            microStepControl,
             nextStepControl,
             reflectionControl,
             companion.mode === 'decision' && companion.capturedCount

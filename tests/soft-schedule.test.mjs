@@ -49,11 +49,13 @@ test('the next soft window moves forward within today, then safely carries eveni
 test('a next-window handoff leaves the task and its saved next step intact', () => {
     const task = {
         id: 'carry', title: '整理提纲', note: '先补上开头', nextStepAt: 123,
+        microSteps: [{ id: 'micro-1', text: '打开资料', completed: false }],
         bucket: 'today', timeBlock: 'afternoon', completed: false,
     };
     const carried = { ...task, ...nextSoftTimeBlockPatch(new Date(2026, 6, 18, 17, 20)) };
     assert.equal(carried.title, '整理提纲');
     assert.equal(carried.note, '先补上开头');
     assert.equal(carried.nextStepAt, 123);
+    assert.deepEqual(carried.microSteps, [{ id: 'micro-1', text: '打开资料', completed: false }]);
     assert.equal(carried.timeBlock, 'evening');
 });

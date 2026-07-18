@@ -240,11 +240,12 @@ function assertJsonValue(value, name, depth = 0) {
 function validateTodoItem(item, index = 0) {
     const name = `todos.items[${index}]`;
     assertPlainRecord(item, name);
-    assertKnownKeys(item, ['id', 'title', 'note', 'nextStepAt', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
+    assertKnownKeys(item, ['id', 'title', 'note', 'nextStepAt', 'microSteps', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
     assertString(item.id, `${name}.id`, 80, { allowEmpty: false });
     assertString(item.title, `${name}.title`, 120, { allowEmpty: false });
     if (Object.hasOwn(item, 'note')) assertString(item.note, `${name}.note`, 240);
     if (Object.hasOwn(item, 'nextStepAt')) assertNumber(item.nextStepAt, `${name}.nextStepAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
+    if (Object.hasOwn(item, 'microSteps')) validateMicroSteps(item.microSteps, `${name}.microSteps`);
     if (Object.hasOwn(item, 'priority')) assertEnum(item.priority, [1, 2, 3], `${name}.priority`);
     if (Object.hasOwn(item, 'dueAt')) assertOptionalDateTime(item.dueAt, `${name}.dueAt`);
     if (Object.hasOwn(item, 'repeat')) assertEnum(item.repeat, ['none', 'daily', 'weekly'], `${name}.repeat`);
@@ -256,6 +257,17 @@ function validateTodoItem(item, index = 0) {
     if (Object.hasOwn(item, 'createdAt')) assertNumber(item.createdAt, `${name}.createdAt`, { integer: true });
 }
 
+function validateMicroSteps(value, name) {
+    if (!Array.isArray(value) || value.length > 3) throw new RangeError(`${name} must contain at most 3 items`);
+    value.forEach((step, index) => {
+        assertPlainRecord(step, `${name}[${index}]`);
+        assertKnownKeys(step, ['id', 'text', 'completed'], `${name}[${index}]`);
+        assertString(step.id, `${name}[${index}].id`, 32, { allowEmpty: false });
+        assertString(step.text, `${name}[${index}].text`, 120, { allowEmpty: false });
+        assertBoolean(step.completed, `${name}[${index}].completed`);
+    });
+}
+
 function normalizeTodoItem(item, index) {
     validateTodoItem(item, index);
     return {
@@ -263,6 +275,7 @@ function normalizeTodoItem(item, index) {
         title: item.title,
         note: item.note ?? '',
         nextStepAt: item.nextStepAt ?? 0,
+        microSteps: item.microSteps ?? [],
         priority: item.priority ?? 1,
         dueAt: item.dueAt ?? null,
         repeat: item.repeat ?? 'none',
