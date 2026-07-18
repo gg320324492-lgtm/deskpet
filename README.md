@@ -273,3 +273,10 @@ When a small set of micro steps is fully put away, the task remains open and
 the home page offers a quiet checkpoint instead of a completion score or popup.
 You can explicitly finish the task, begin a fresh one-step set, or simply leave
 it for today, the next soft window, or tomorrow.
+
+## 1.3.1 Micro Notes
+
+At a micro-step checkpoint, an optional one-line note can quietly capture what
+the finished set moved forward. Notes remain local and bounded to the latest
+three per task. Active task cards surface only the newest note, while the
+completion review preserves the short trace alongside its existing undo paths.

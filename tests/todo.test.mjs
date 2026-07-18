@@ -51,9 +51,11 @@ test('a repeating task keeps its optional next step and resets its micro steps w
     const task = list.add({
         title: '复习资料', note: '先打开上次的提纲', repeat: 'daily',
         microSteps: [{ text: '打开提纲', completed: true }, { text: '列出问题', completed: false }],
+        microNotes: [{ id: 'note-1', text: '整理了上次的引用', at: 1 }],
     });
     assert.equal(list.complete(task.id), true);
     const next = settings.todos.items.find((item) => item.id !== task.id);
     assert.equal(next.note, '先打开上次的提纲');
     assert.equal(next.microSteps.every((step) => step.completed === false), true);
+    assert.deepEqual(next.microNotes, []);
 });

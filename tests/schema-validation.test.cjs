@@ -49,6 +49,7 @@ test('collection sanitization keeps valid records and normalizes optional fields
         note: '',
         nextStepAt: 0,
         microSteps: [],
+        microNotes: [],
         priority: 2,
         dueAt: null,
         repeat: 'none',
@@ -90,6 +91,12 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
             { id: 'b', text: '二', completed: false },
             { id: 'c', text: '三', completed: false },
             { id: 'd', text: '四', completed: false },
+        ] }],
+    }), /at most 3 items/);
+    assert.throws(() => validateDomainPatch('todos', {
+        items: [{ id: 't1', title: '太多小记', microNotes: [
+            { id: 'a', text: '一', at: 1 }, { id: 'b', text: '二', at: 2 },
+            { id: 'c', text: '三', at: 3 }, { id: 'd', text: '四', at: 4 },
         ] }],
     }), /at most 3 items/);
 });

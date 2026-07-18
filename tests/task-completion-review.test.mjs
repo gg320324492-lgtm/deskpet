@@ -14,13 +14,17 @@ test('completion review keeps only tasks completed on the local current day and 
 });
 
 test('completion review restores a task to today or inbox without removing its other task fields', () => {
-    const task = { id: 'done', timeBlock: 'afternoon', note: '先把资料摊开' };
+    const task = {
+        id: 'done', timeBlock: 'afternoon', note: '先把资料摊开',
+        microNotes: [{ id: 'note-1', text: '整理了开头', at: 1 }],
+    };
     const now = new Date(2026, 6, 18, 10);
     const today = restoreCompletedTaskPatch(task, 'today', now);
     assert.equal(today.completed, false);
     assert.equal(today.bucket, 'today');
     assert.equal(today.timeBlock, 'afternoon');
     assert.equal(today.dueAt, now.toISOString());
+    assert.deepEqual({ ...task, ...today }.microNotes, task.microNotes);
     assert.deepEqual(restoreCompletedTaskPatch(task, 'inbox', now), {
         completed: false, doneAt: null, bucket: 'inbox', dueAt: null, timeBlock: '', tomorrowPlan: '',
     });

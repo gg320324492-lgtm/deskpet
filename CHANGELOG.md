@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.1 - 2026-07-18
+
+### Added
+
+- Added optional local micro notes to the task closeout: write one short line
+  about what that finished set moved forward, then choose the task's next place.
+- A task stores only its latest three micro notes. Task cards show just the most
+  recent one; the completion review shows the small set in full.
+
+### Improved
+
+- Restoring a completed task keeps its micro notes intact, while a repeating
+  task starts its next recurrence with a fresh, empty local trace.
+
 ## 1.3.0 - 2026-07-18
 
 ### Added

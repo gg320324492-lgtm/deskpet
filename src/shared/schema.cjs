@@ -240,12 +240,13 @@ function assertJsonValue(value, name, depth = 0) {
 function validateTodoItem(item, index = 0) {
     const name = `todos.items[${index}]`;
     assertPlainRecord(item, name);
-    assertKnownKeys(item, ['id', 'title', 'note', 'nextStepAt', 'microSteps', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
+    assertKnownKeys(item, ['id', 'title', 'note', 'nextStepAt', 'microSteps', 'microNotes', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
     assertString(item.id, `${name}.id`, 80, { allowEmpty: false });
     assertString(item.title, `${name}.title`, 120, { allowEmpty: false });
     if (Object.hasOwn(item, 'note')) assertString(item.note, `${name}.note`, 240);
     if (Object.hasOwn(item, 'nextStepAt')) assertNumber(item.nextStepAt, `${name}.nextStepAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
     if (Object.hasOwn(item, 'microSteps')) validateMicroSteps(item.microSteps, `${name}.microSteps`);
+    if (Object.hasOwn(item, 'microNotes')) validateMicroNotes(item.microNotes, `${name}.microNotes`);
     if (Object.hasOwn(item, 'priority')) assertEnum(item.priority, [1, 2, 3], `${name}.priority`);
     if (Object.hasOwn(item, 'dueAt')) assertOptionalDateTime(item.dueAt, `${name}.dueAt`);
     if (Object.hasOwn(item, 'repeat')) assertEnum(item.repeat, ['none', 'daily', 'weekly'], `${name}.repeat`);
@@ -268,6 +269,17 @@ function validateMicroSteps(value, name) {
     });
 }
 
+function validateMicroNotes(value, name) {
+    if (!Array.isArray(value) || value.length > 3) throw new RangeError(`${name} must contain at most 3 items`);
+    value.forEach((note, index) => {
+        assertPlainRecord(note, `${name}[${index}]`);
+        assertKnownKeys(note, ['id', 'text', 'at'], `${name}[${index}]`);
+        assertString(note.id, `${name}[${index}].id`, 48, { allowEmpty: false });
+        assertString(note.text, `${name}[${index}].text`, 160, { allowEmpty: false });
+        assertNumber(note.at, `${name}[${index}].at`, { min: 0, max: 8_640_000_000_000_000, integer: true });
+    });
+}
+
 function normalizeTodoItem(item, index) {
     validateTodoItem(item, index);
     return {
@@ -276,6 +288,7 @@ function normalizeTodoItem(item, index) {
         note: item.note ?? '',
         nextStepAt: item.nextStepAt ?? 0,
         microSteps: item.microSteps ?? [],
+        microNotes: item.microNotes ?? [],
         priority: item.priority ?? 1,
         dueAt: item.dueAt ?? null,
         repeat: item.repeat ?? 'none',

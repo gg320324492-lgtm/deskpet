@@ -8,10 +8,11 @@
  *
  * Item shape:
  *   { id, title, priority: 1|2|3, dueAt, repeat: 'none'|'daily'|'weekly',
- *     bucket: 'inbox'|'today'|'later', note: '', nextStepAt: 0, microSteps: [], timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
+ *     bucket: 'inbox'|'today'|'later', note: '', nextStepAt: 0, microSteps: [], microNotes: [], timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
  */
 
 import { normalizeMicroSteps, resetMicroSteps } from './micro-steps.js';
+import { normalizeMicroNotes } from './micro-notes.js';
 
 const REPEAT_DEFAULT = 'none';
 const TODO_BUCKETS = new Set(['inbox', 'today', 'later', 'archive']);
@@ -59,13 +60,14 @@ export class TodoList {
         };
     }
 
-    add({ title, note = '', microSteps = [], priority = 1, dueAt = null, repeat = REPEAT_DEFAULT, bucket = 'inbox', timeBlock = '', tomorrowPlan = '' }) {
+    add({ title, note = '', microSteps = [], microNotes = [], priority = 1, dueAt = null, repeat = REPEAT_DEFAULT, bucket = 'inbox', timeBlock = '', tomorrowPlan = '' }) {
         const item = {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: String(title || '').trim().slice(0, 120),
             note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
             nextStepAt: 0,
             microSteps: normalizeMicroSteps(microSteps),
+            microNotes: normalizeMicroNotes(microNotes),
             priority: Number(priority) || 1,
             dueAt: dueAt || null,
             repeat,
@@ -140,6 +142,7 @@ export class TodoList {
             note: done.note || '',
             nextStepAt: 0,
             microSteps: resetMicroSteps(done.microSteps),
+            microNotes: [],
             priority: done.priority,
             dueAt: due.toISOString(),
             repeat,

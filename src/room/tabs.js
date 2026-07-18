@@ -20,6 +20,7 @@ import { buildInboxTriage, inboxTriageRecordPatch } from '../renderer/inbox-tria
 import { buildGentleStart } from '../renderer/gentle-start.js';
 import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '../renderer/soft-schedule.js';
 import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, resetMicroSteps } from '../renderer/micro-steps.js';
+import { appendMicroNotePatch, latestMicroNote, normalizeMicroNotes } from '../renderer/micro-notes.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -93,6 +94,7 @@ function makeInboxTodo(title, note = '') {
         note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
         nextStepAt: 0,
         microSteps: [],
+        microNotes: [],
         priority: 1,
         dueAt: null,
         repeat: 'none',
@@ -308,9 +310,9 @@ export const statsTab = {
             ));
         }
 
-        const completeFinishedMicroTask = async (task) => {
+        const completeFinishedMicroTask = async (task, microNote = '') => {
             const now = Date.now();
-            const completed = { ...task, completed: true, doneAt: now };
+            const completed = { ...task, ...appendMicroNotePatch(task, microNote, now), completed: true, doneAt: now };
             const items = todos.map((item) => item.id === task.id ? completed : item);
             if (task.repeat && task.repeat !== 'none') {
                 const due = new Date(now);
@@ -331,13 +333,19 @@ export const statsTab = {
             });
             refreshCurrent();
         };
-        const placeFinishedMicroTask = async (task, action) => {
-            if (action === 'today') return;
+        const placeFinishedMicroTask = async (task, action, microNote = '') => {
+            const notePatch = appendMicroNotePatch(task, microNote);
+            if (action === 'today') {
+                if (!Object.keys(notePatch).length) return;
+                await setSettings({ todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...notePatch } : item) } });
+                refreshCurrent();
+                return;
+            }
             const patch = action === 'next'
                 ? nextSoftTimeBlockPatch(new Date())
                 : dayCloseoutPatch('tomorrow');
             await setSettings({
-                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...patch } : item) },
+                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...notePatch, ...patch } : item) },
             });
             refreshCurrent();
         };
@@ -346,10 +354,14 @@ export const statsTab = {
                 class: 'task-closeout-input', type: 'text', maxlength: 120,
                 placeholder: '还想继续哪一小步？', 'aria-label': `${task.title} 的下一条微步骤`,
             });
+            const microNoteInput = el('input', {
+                class: 'task-closeout-note-input', type: 'text', maxlength: 160,
+                placeholder: '这一轮推进了什么？（可选）', 'aria-label': `${task.title} 的这一轮小记`,
+            });
             let addButton;
             const addNextMicroStep = () => runAsync(addButton, () => setSettings({
                 todos: { items: todos.map((item) => item.id === task.id ? {
-                    ...item, ...beginNextMicroStepPatch(input.value),
+                    ...item, ...beginNextMicroStepPatch(input.value), ...appendMicroNotePatch(task, microNoteInput.value),
                 } : item) },
             }).then(() => refreshCurrent()), {
                 announce,
@@ -363,7 +375,7 @@ export const statsTab = {
             let completeButton;
             completeButton = el('button', {
                 class: 'task-closeout-action complete', type: 'button',
-                onclick: () => runAsync(completeButton, () => completeFinishedMicroTask(task), {
+                onclick: () => runAsync(completeButton, () => completeFinishedMicroTask(task, microNoteInput.value), {
                     announce, success: `已标记完成：${task.title}`, failure: (error) => error?.message || '暂时没能完成这件事。',
                 }),
             }, '标记完成');
@@ -375,7 +387,7 @@ export const statsTab = {
                 let button;
                 button = el('button', {
                     class: `task-closeout-action ${action}`, type: 'button',
-                    onclick: () => runAsync(button, () => placeFinishedMicroTask(task, action), {
+                    onclick: () => runAsync(button, () => placeFinishedMicroTask(task, action, microNoteInput.value), {
                         announce, success, failure: (error) => error?.message || '暂时没能安放这件事。',
                     }),
                 }, label);
@@ -388,6 +400,10 @@ export const statsTab = {
                 ),
                 el('div', { class: 'task-closeout-entry' }, input, addButton),
                 el('div', { class: 'task-closeout-actions' }, completeButton, ...placeButtons),
+                el('label', { class: 'task-closeout-note-entry' },
+                    el('span', {}, '这一轮小记 · 可选'),
+                    microNoteInput,
+                ),
             );
         };
         if (finishedMicroTasks.length) {
@@ -1026,6 +1042,7 @@ export const feedTab = {
         const laneRow = (task, lane) => {
             const actions = [];
             const activeMicroStep = currentMicroStep(task);
+            const recentMicroNote = latestMicroNote(task);
             let completeButton;
             completeButton = el('button', {
                 class: 'todo-complete-button', type: 'button',
@@ -1105,6 +1122,7 @@ export const feedTab = {
                         ? `当前一小步 · ${activeMicroStep.text}`
                         : hasFinishedMicroSteps(task) ? '这几步已经走完了 · 任务仍由你决定何时结束'
                         : task.note ? `下一步 · ${task.note}` : task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
+                    recentMicroNote ? el('small', { class: 'todo-micro-note' }, `最近小记 · ${recentMicroNote.text}`) : null,
                 ),
                 el('div', { class: 'todo-board-actions' }, ...actions),
             );
@@ -1641,8 +1659,15 @@ export const feedTab = {
                 const detail = task.note
                     ? `完成于 ${formatRhythmTime(task.doneAt)} · 下一步：${task.note}`
                     : `完成于 ${formatRhythmTime(task.doneAt)}`;
+                const microNotes = normalizeMicroNotes(task.microNotes).slice().reverse();
                 return el('article', { class: 'completion-review-row' },
-                    el('div', { class: 'completion-review-copy' }, el('strong', {}, task.title), el('small', {}, detail)),
+                    el('div', { class: 'completion-review-copy' },
+                        el('strong', {}, task.title),
+                        el('small', {}, detail),
+                        microNotes.length ? el('ul', { class: 'completion-review-notes', 'aria-label': `${task.title} 的小步留痕` },
+                            ...microNotes.map((note) => el('li', {}, note.text)),
+                        ) : null,
+                    ),
                     el('div', { class: 'completion-review-actions' }, todayButton, inboxButton),
                 );
             });
