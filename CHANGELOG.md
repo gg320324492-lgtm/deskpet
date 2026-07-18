@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.5 - 2026-07-18
+
+### Added
+
+- Added a calm home-page "one small step" card that offers one current task
+  for a user-initiated focus start, preferring the chosen Today mainline.
+
+### Improved
+
+- Starting from the home page also saves that task as today's mainline. The
+  card never auto-starts focus, and it switches to a simple status view while
+  a focus period is already active.
+
 ## 1.2.4 - 2026-07-18
 
 ### Added

@@ -17,6 +17,7 @@ import { buildTodayFocus, clearTodayFocusPatch, todayFocusPatch } from '../rende
 import { buildFocusCompanion } from '../renderer/focus-companion.js';
 import { buildTodayFocusEchoes, focusReflectionPatch } from '../renderer/focus-reflection.js';
 import { buildInboxTriage, inboxTriageRecordPatch } from '../renderer/inbox-triage.js';
+import { buildGentleStart } from '../renderer/gentle-start.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -102,7 +103,7 @@ function makeInboxTodo(title, note = '') {
 
 // ============ Stats ============
 export const statsTab = {
-    render(root, { getSettings, setSettings, announce, refreshCurrent }) {
+    render(root, { getSettings, setSettings, announce, refreshCurrent, focusCommand, getFocusState }) {
         const mood = getSettings().mood || {};
         const pomodoro = getSettings().pomodoro || {};
         const stats = getSettings().stats || {};
@@ -113,6 +114,8 @@ export const statsTab = {
         const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos });
         const nextFocusTask = todayFocus.task || todos.find((item) => todoBucket(item) === 'today');
         const inboxTriage = buildInboxTriage({ todos, inboxTriage: rhythm.inboxTriage });
+        const gentleStart = buildGentleStart({ todos, focus: rhythm.todayFocus });
+        const focusCompanion = buildFocusCompanion(getFocusState());
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -239,6 +242,59 @@ export const statsTab = {
                     : null,
             el('p', { class: 'inbox-landing-note' }, '没有倒计时、没有连续提醒；它们会一直留在本机，等你想决定的时候。'),
         ));
+
+        const startGentleFocus = async (task) => {
+            const result = await focusCommand({ action: 'start', task: { id: task.id, title: task.title } });
+            if (!result?.ok) throw new Error('桌面宠物未就绪，请稍后重试。');
+            await setSettings({ rhythm: { ...rhythm, todayFocus: todayFocusPatch(task) } });
+            refreshCurrent();
+        };
+        root.appendChild(sectionTitle('现在这一小段'));
+        if (focusCompanion.phase !== 'idle') {
+            root.appendChild(el('section', { class: 'card gentle-start-card active' },
+                el('div', { class: 'gentle-start-head' },
+                    el('div', {}, el('span', {}, 'ONE SMALL STEP'), el('h3', {}, '这一段已经开始了')),
+                    el('span', {}, focusCompanion.mode === 'paused' ? '暂停中' : '专注中'),
+                ),
+                el('p', { class: 'gentle-start-copy' }, focusCompanion.task?.title
+                    ? `正陪你走「${focusCompanion.task.title}」。不用再安排别的。`
+                    : '这一段正安静进行；想到了什么，也可以先收进收件箱。'),
+            ));
+        } else if (gentleStart.task) {
+            let startButton;
+            let laterButton;
+            startButton = el('button', {
+                class: 'gentle-start-button', type: 'button',
+                onclick: () => runAsync(startButton, () => startGentleFocus(gentleStart.task), {
+                    announce, success: `开始一小段：${gentleStart.task.title}`, failure: (error) => error?.message || '无法开始专注。',
+                }),
+            }, '开始一小段');
+            laterButton = el('button', {
+                class: 'gentle-start-later', type: 'button',
+                onclick: () => announce('先放在这里也很好，等你准备好了再开始。'),
+            }, '先放着');
+            root.appendChild(el('section', { class: 'card gentle-start-card' },
+                el('div', { class: 'gentle-start-head' },
+                    el('div', {},
+                        el('span', {}, gentleStart.isMainline ? 'TODAY\'S THREAD' : 'ONE SMALL STEP'),
+                        el('h3', {}, gentleStart.isMainline ? '今天先陪这一件走一小段' : '只需要从这一件开始'),
+                    ),
+                    el('span', {}, gentleStart.isMainline ? '今日主线' : `今天 ${gentleStart.todayCount} 件`),
+                ),
+                el('strong', { class: 'gentle-start-task' }, gentleStart.task.title),
+                el('p', { class: 'gentle-start-copy' }, gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
+                el('div', { class: 'gentle-start-actions' }, startButton, laterButton),
+                el('small', { class: 'gentle-start-note' }, '不会自动开始，也不会因为暂时不做而提醒你。'),
+            ));
+        } else {
+            root.appendChild(el('section', { class: 'card gentle-start-card empty' },
+                el('div', { class: 'gentle-start-head' },
+                    el('div', {}, el('span', {}, 'ONE SMALL STEP'), el('h3', {}, '今天还没有需要开始的事')),
+                    el('span', {}, '留一点空白'),
+                ),
+                el('p', { class: 'gentle-start-copy' }, '想开始的时候，再从收件箱轻轻放一件到今天；现在什么都不做也没关系。'),
+            ));
+        }
 
         const weekDays = rhythmSummary.week.map((day) => el('article', {
             class: `rhythm-day level-${day.level} ${day.date === rhythmSummary.todayKey ? 'today' : ''}`,
