@@ -2,6 +2,7 @@ import { localDateKey } from './rhythm.js';
 import { timeBlockForHour, timeBlockLabel } from './time-blocks.js';
 import { todoBucket } from './todo.js';
 import { hasFinishedMicroSteps } from './micro-steps.js';
+import { hasResumeHint } from './task-resume.js';
 
 const BLOCK_ORDER = ['morning', 'afternoon', 'evening'];
 
@@ -53,11 +54,12 @@ export function buildSoftSchedule({ todos = [], now = new Date() } = {}) {
     const currentIndex = BLOCK_ORDER.indexOf(currentId);
     const list = Array.isArray(todos) ? todos : [];
     const todayTasks = list
-        .filter((task) => todoBucket(task, todayKey) === 'today' && !hasFinishedMicroSteps(task))
+        .filter((task) => todoBucket(task, todayKey) === 'today' && (!hasFinishedMicroSteps(task) || hasResumeHint(task)))
         .sort(taskOrder);
     const assigned = currentId ? todayTasks.filter((task) => task.timeBlock === currentId) : [];
     const unassigned = todayTasks.filter((task) => !task.timeBlock);
-    const task = assigned[0] || unassigned[0] || null;
+    const resumeTask = todayTasks.find((task) => hasResumeHint(task)) || null;
+    const task = resumeTask || assigned[0] || unassigned[0] || null;
     const minutes = date.getHours() * 60 + date.getMinutes();
     const endMinutes = currentId === 'morning' ? 12 * 60 : currentId === 'afternoon' ? 18 * 60 : currentId === 'evening' ? 23 * 60 : 0;
     const nearEnd = !!currentId && endMinutes - minutes <= 60;

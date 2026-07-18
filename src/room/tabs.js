@@ -22,6 +22,7 @@ import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '..
 import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasFinishedMicroSteps, resetMicroSteps } from '../renderer/micro-steps.js';
 import { appendMicroNotePatch, latestMicroNote, normalizeMicroNotes } from '../renderer/micro-notes.js';
 import { buildTaskCloseoutReview } from '../renderer/task-closeout-review.js';
+import { hasResumeHint, resumeHintPatch } from '../renderer/task-resume.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -297,7 +298,7 @@ export const statsTab = {
                 el('strong', { class: 'gentle-start-task' }, gentleStart.task.title),
                 el('p', { class: 'gentle-start-copy' }, gentleMicroStep
                     ? `现在这一小步：${gentleMicroStep.text}`
-                    : gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
+                    : gentleStart.isFollowUp ? `下次从这里开始：${gentleStart.task.note}` : gentleStart.task.note || '不用完成全部。点一下，先给自己一小段安静的开始。'),
                 el('div', { class: 'gentle-start-actions' }, startButton, laterButton),
                 el('small', { class: 'gentle-start-note' }, gentleStart.isFollowUp ? '这是上次专注后留下的下一步；点击才会开始。' : '不会自动开始，也不会因为暂时不做而提醒你。'),
             ));
@@ -334,11 +335,12 @@ export const statsTab = {
             });
             refreshCurrent();
         };
-        const placeFinishedMicroTask = async (task, action, microNote = '') => {
+        const placeFinishedMicroTask = async (task, action, microNote = '', resumeHint = '') => {
             const notePatch = appendMicroNotePatch(task, microNote);
+            const resumePatch = resumeHintPatch(resumeHint);
             if (action === 'today') {
-                if (!Object.keys(notePatch).length) return;
-                await setSettings({ todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...notePatch } : item) } });
+                if (!Object.keys(notePatch).length && !Object.keys(resumePatch).length) return;
+                await setSettings({ todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...notePatch, ...resumePatch } : item) } });
                 refreshCurrent();
                 return;
             }
@@ -346,7 +348,7 @@ export const statsTab = {
                 ? nextSoftTimeBlockPatch(new Date())
                 : dayCloseoutPatch('tomorrow');
             await setSettings({
-                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...notePatch, ...patch } : item) },
+                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...notePatch, ...resumePatch, ...patch } : item) },
             });
             refreshCurrent();
         };
@@ -360,10 +362,14 @@ export const statsTab = {
                 class: 'task-closeout-note-input', type: 'text', maxlength: 160,
                 placeholder: '这一轮推进了什么？（可选）', 'aria-label': `${task.title} 的这一轮小记`,
             });
+            const resumeHintInput = el('input', {
+                class: 'task-closeout-resume-input', type: 'text', maxlength: 240,
+                placeholder: '下次想从哪里接上？（可选）', value: task.note || '', 'aria-label': `${task.title} 的下次开始提示`,
+            });
             let addButton;
             const addNextMicroStep = () => runAsync(addButton, () => setSettings({
                 todos: { items: todos.map((item) => item.id === task.id ? {
-                    ...item, ...beginNextMicroStepPatch(input.value), ...appendMicroNotePatch(task, microNoteInput.value),
+                    ...item, ...beginNextMicroStepPatch(input.value), ...appendMicroNotePatch(task, microNoteInput.value), ...resumeHintPatch(resumeHintInput.value),
                 } : item) },
             }).then(() => refreshCurrent()), {
                 announce,
@@ -389,7 +395,7 @@ export const statsTab = {
                 let button;
                 button = el('button', {
                     class: `task-closeout-action ${action}`, type: 'button',
-                    onclick: () => runAsync(button, () => placeFinishedMicroTask(task, action, microNoteInput.value), {
+                    onclick: () => runAsync(button, () => placeFinishedMicroTask(task, action, microNoteInput.value, resumeHintInput.value), {
                         announce, success, failure: (error) => error?.message || '暂时没能安放这件事。',
                     }),
                 }, label);
@@ -417,6 +423,10 @@ export const statsTab = {
                     el('small', {}, '这几步已经走完了；整件事不必现在也结束。'),
                 ),
                 trace,
+                el('label', { class: 'task-closeout-resume-entry' },
+                    el('span', {}, '下次从这里开始 · 可选'),
+                    resumeHintInput,
+                ),
                 el('div', { class: 'task-closeout-entry' }, input, addButton),
                 el('div', { class: 'task-closeout-actions' }, completeButton, ...placeButtons),
                 el('label', { class: 'task-closeout-note-entry' },
@@ -499,7 +509,7 @@ export const statsTab = {
                 el('strong', { class: 'soft-schedule-task' }, softSchedule.task.title),
                 el('p', { class: 'soft-schedule-copy' }, softSchedule.nearEnd
                     ? `还没开始也没关系；它可以安静留给${softSchedule.next?.tomorrow ? '明天上午' : softSchedule.next?.label || '下一段'}。`
-                    : (scheduleMicroStep ? `现在这一小步：${scheduleMicroStep.text}` : softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
+                    : (scheduleMicroStep ? `现在这一小步：${scheduleMicroStep.text}` : hasResumeHint(softSchedule.task) ? `下次从这里开始：${softSchedule.task.note}` : softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
                 el('div', { class: 'soft-schedule-actions' }, startWindowFocus, scheduleCurrent, moveNext),
                 el('small', { class: 'soft-schedule-note' }, '只在首页静静出现；不会发通知，也不会替你开始。'),
             ));
@@ -871,8 +881,15 @@ export const feedTab = {
         const allTodos = getSettings().todos?.items || [];
         const rhythm = getSettings().rhythm || {};
         const inboxTasks = allTodos.filter((item) => todoBucket(item) === 'inbox');
-        const todayTasks = allTodos.filter((item) => todoBucket(item) === 'today');
-        const todayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos: allTodos });
+        const todayTasks = allTodos
+            .filter((item) => todoBucket(item) === 'today' && (!hasFinishedMicroSteps(item) || hasResumeHint(item)))
+            .sort((left, right) => Number(hasResumeHint(right)) - Number(hasResumeHint(left))
+                || Number(right.nextStepAt || 0) - Number(left.nextStepAt || 0));
+        const storedTodayFocus = buildTodayFocus({ focus: rhythm.todayFocus, todos: allTodos });
+        const todayFocus = storedTodayFocus.task && (!hasFinishedMicroSteps(storedTodayFocus.task) || hasResumeHint(storedTodayFocus.task))
+            ? storedTodayFocus
+            : { ...storedTodayFocus, task: null };
+        const todayResumeTask = todayFocus.task ? null : todayTasks.find((task) => hasResumeHint(task)) || null;
         const companion = buildFocusCompanion(getFocusState());
         const focusEchoes = buildTodayFocusEchoes({ rhythm, todayFocus });
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
@@ -1250,14 +1267,16 @@ export const feedTab = {
                 class: 'today-mainline-clear', type: 'button', disabled: !todayFocus.task,
                 onclick: () => runAsync(clearButton, () => setTodayFocus(null), { announce, success: '今日主线已清空。' }),
             }, '清空');
-            root.appendChild(el('section', { class: `card today-mainline-card ${todayFocus.task ? 'has-mainline' : ''}` },
+            const mainlineDisplayTask = todayFocus.task || todayResumeTask;
+            root.appendChild(el('section', { class: `card today-mainline-card ${todayFocus.task ? 'has-mainline' : ''} ${todayResumeTask ? 'has-resume-cue' : ''}` },
                 el('div', { class: 'today-mainline-head' },
-                    el('div', {}, el('span', {}, 'TODAY\'S THREAD'), el('h3', {}, todayFocus.task ? '先陪这一件走一小段' : '今天，想先陪哪一件？')),
-                    el('span', {}, todayFocus.task ? '已选主线' : '随时可换'),
+                    el('div', {}, el('span', {}, 'TODAY\'S THREAD'), el('h3', {}, todayFocus.task ? '先陪这一件走一小段' : todayResumeTask ? '上次留在这里，要不要接上？' : '今天，想先陪哪一件？')),
+                    el('span', {}, todayFocus.task ? '已选主线' : todayResumeTask ? '回到这里' : '随时可换'),
                 ),
-                el('p', { class: 'today-mainline-copy' }, currentMicroStep(todayFocus.task)
-                    ? `当前一小步：${currentMicroStep(todayFocus.task).text}`
-                    : todayFocus.task?.note || (todayFocus.task ? todayFocus.task.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
+                todayResumeTask ? el('p', { class: 'today-mainline-resume' }, el('span', {}, '候选'), el('strong', {}, todayResumeTask.title)) : null,
+                el('p', { class: 'today-mainline-copy' }, currentMicroStep(mainlineDisplayTask)
+                    ? `当前一小步：${currentMicroStep(mainlineDisplayTask).text}`
+                    : hasResumeHint(mainlineDisplayTask) ? `下次从这里开始：${mainlineDisplayTask.note}` : mainlineDisplayTask?.note || (mainlineDisplayTask ? mainlineDisplayTask.title : '不是排名，也不需要完成所有事。只选一件现在愿意开始的。')),
                 el('div', { class: 'today-mainline-controls' }, focusPicker, startButton, clearButton),
             ));
         }

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.4 - 2026-07-19
+
+### Added
+
+- A quiet closeout can now keep one optional “start here next time” hint using
+  the task's existing next-step fields.
+
+### Improved
+
+- A deliberately saved hint makes the task the first quiet candidate in gentle
+  start and soft-window suggestions, and gives it a visible, unselected cue in
+  the Today mainline picker.
+- No hint triggers a notification, automatic focus, automatic mainline choice,
+  or parent-task completion.
+
 ## 1.3.3 - 2026-07-19
 
 ### Added

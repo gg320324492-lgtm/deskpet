@@ -85,3 +85,16 @@ test('a finished tiny-action set stays out of the next-start suggestion', () => 
     assert.equal(result.task.id, 'next');
     assert.equal(result.todayCount, 2);
 });
+
+test('a finished tiny-action set returns only after a deliberate resume hint is saved', () => {
+    const now = new Date(2026, 6, 18, 10);
+    const result = buildGentleStart({
+        now,
+        todos: [
+            { id: 'closed', title: '整理提纲', note: '下次先补开头', nextStepAt: now.valueOf(), bucket: 'today', completed: false, microSteps: [{ text: '列出标题', completed: true }] },
+            { id: 'other', title: '另一件轻事', bucket: 'today', completed: false, priority: 3 },
+        ],
+    });
+    assert.equal(result.task.id, 'closed');
+    assert.equal(result.isFollowUp, true);
+});

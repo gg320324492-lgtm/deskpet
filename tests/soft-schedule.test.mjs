@@ -71,3 +71,16 @@ test('soft schedule leaves a finished tiny-action set for its quiet closeout ins
     assert.equal(schedule.task.id, 'next');
     assert.equal(schedule.currentCount, 0);
 });
+
+test('soft schedule prioritizes a deliberately saved resume hint without completing the task', () => {
+    const now = new Date(2026, 6, 18, 14, 20);
+    const schedule = buildSoftSchedule({
+        now,
+        todos: [
+            { id: 'assigned', title: '当前安排', bucket: 'today', timeBlock: 'afternoon', completed: false },
+            { id: 'resume', title: '整理提纲', note: '下次先补开头', nextStepAt: now.valueOf(), bucket: 'today', completed: false, microSteps: [{ text: '列出标题', completed: true }] },
+        ],
+    });
+    assert.equal(schedule.task.id, 'resume');
+    assert.equal(schedule.task.completed, false);
+});

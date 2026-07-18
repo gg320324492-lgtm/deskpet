@@ -295,3 +295,10 @@ Before choosing where a finished micro-step set belongs, the quiet checkpoint
 now shows its short local path: the one-to-three steps already walked and up to
 three recent micro notes. It is a descriptive trace, not a score or completion
 target; the task still moves only when you explicitly choose its next place.
+
+## 1.3.4 Gentle Return Cue
+
+While placing a finished micro-step set, you can optionally keep one “start
+here next time” hint. The existing next-step fields store that local cue, which
+then gets quiet priority in gentle start and soft-window suggestions; Today
+shows it as a candidate without selecting or starting anything for you.
