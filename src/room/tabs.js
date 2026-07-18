@@ -117,6 +117,7 @@ export const statsTab = {
         const inboxTriage = buildInboxTriage({ todos, inboxTriage: rhythm.inboxTriage });
         const gentleStart = buildGentleStart({ todos, focus: rhythm.todayFocus });
         const focusCompanion = buildFocusCompanion(getFocusState());
+        const homeCloseout = buildDayCloseout({ todos });
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -296,6 +297,68 @@ export const statsTab = {
                 el('p', { class: 'gentle-start-copy' }, '想开始的时候，再从收件箱轻轻放一件到今天；现在什么都不做也没关系。'),
             ));
         }
+
+        const placeCloseoutTask = async (task, action) => {
+            if (action === 'today') return;
+            const patch = dayCloseoutPatch(action);
+            await setSettings({
+                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...patch } : item) },
+            });
+            refreshCurrent();
+        };
+        const homeCloseoutRow = (task) => {
+            const actions = [
+                ['today', '留在今天'],
+                ['tomorrow', '放到明天'],
+                ['inbox', '回收件箱'],
+            ].map(([action, label]) => {
+                let button;
+                button = el('button', {
+                    class: `home-closeout-action ${action}`, type: 'button',
+                    onclick: () => runAsync(button, () => placeCloseoutTask(task, action), {
+                        announce,
+                        success: action === 'today'
+                            ? '好，它还留在今天。'
+                            : action === 'tomorrow'
+                                ? '已留给明天；下一步也会一起等你。'
+                                : '已送回收件箱。',
+                        failure: (error) => error?.message || '暂时没能更新这件事。',
+                    }),
+                }, label);
+                return button;
+            });
+            return el('article', { class: 'home-closeout-row' },
+                el('div', { class: 'home-closeout-copy' },
+                    el('strong', {}, task.title),
+                    task.note
+                        ? el('small', {}, `下一步：${task.note}`)
+                        : el('small', {}, '不必现在做完，先决定它待在哪里。'),
+                ),
+                el('div', { class: 'home-closeout-actions' }, ...actions),
+            );
+        };
+        root.appendChild(sectionTitle('今天先收到这里'));
+        root.appendChild(el('section', { class: 'card home-closeout-card' },
+            el('div', { class: 'home-closeout-head' },
+                el('div', {},
+                    el('span', { class: 'home-closeout-kicker' }, 'A QUIET LANDING'),
+                    el('h3', {}, homeCloseout.inProgress ? '今天，先轻轻收在这里' : '今天已经安稳落下了'),
+                ),
+                el('span', { class: 'home-closeout-badge' }, '不打扰'),
+            ),
+            el('div', { class: 'home-closeout-counts', 'aria-label': `今天已完成 ${homeCloseout.completed} 件，正在进行 ${homeCloseout.inProgress} 件，留待以后 ${homeCloseout.later} 件` },
+                el('span', {}, '已完成', el('strong', {}, String(homeCloseout.completed))),
+                el('span', {}, '正在进行', el('strong', {}, String(homeCloseout.inProgress))),
+                el('span', {}, '留待以后', el('strong', {}, String(homeCloseout.later))),
+            ),
+            homeCloseout.pending.length
+                ? el('div', { class: 'home-closeout-list' },
+                    el('p', { class: 'home-closeout-description' }, '还在路上的事，给它一个去处就够了。'),
+                    ...homeCloseout.pending.slice(0, 3).map(homeCloseoutRow),
+                )
+                : el('p', { class: 'home-closeout-empty' }, '没有正在等待归位的任务。留一点余白，也很好。'),
+            el('p', { class: 'home-closeout-note' }, '不会自动弹出。专注后留下的下一步，会跟着任务自然续到明天。'),
+        ));
 
         const weekDays = rhythmSummary.week.map((day) => el('article', {
             class: `rhythm-day level-${day.level} ${day.date === rhythmSummary.todayKey ? 'today' : ''}`,
@@ -629,7 +692,9 @@ export const feedTab = {
             });
             refreshCurrent();
         };
-        const closeoutTask = (task, action) => applyTodoPatch(task.id, dayCloseoutPatch(action));
+        const closeoutTask = (task, action) => action === 'today'
+            ? Promise.resolve()
+            : applyTodoPatch(task.id, dayCloseoutPatch(action));
         const planTomorrowTask = (task, role) => {
             if (!canPlanTomorrow({ todos: allTodos, role })) throw new Error(role === 'important'
                 ? '明天已经有一件最重要的事了。'
@@ -1081,16 +1146,16 @@ export const feedTab = {
         root.appendChild(timeBlockCard);
         const closeoutRows = dayCloseout.pending.slice(0, 5).map((task) => {
             const actions = [
+                ['today', '留在今天'],
                 ['tomorrow', '放到明天'],
                 ['inbox', '回收件箱'],
-                ['later', '留在稍后'],
             ].map(([action, label]) => {
                 let button;
                 button = el('button', {
                     class: `day-closeout-action ${action}`, type: 'button',
                     onclick: () => runAsync(button, () => closeoutTask(task, action), {
                         announce,
-                        success: action === 'tomorrow' ? '已留给明天。' : action === 'inbox' ? '已送回收件箱。' : '已留到稍后。',
+                        success: action === 'today' ? '好，它还留在今天。' : action === 'tomorrow' ? '已留给明天。' : '已送回收件箱。',
                     }),
                 }, label);
                 return button;

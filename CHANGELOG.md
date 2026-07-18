@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.7 - 2026-07-18
+
+### Added
+
+- Added a quiet home-page daily landing with descriptive counts for completed,
+  in-progress, and later tasks—without a score or completion-rate pressure.
+- Unfinished Today tasks can now stay today, move to tomorrow, or return to
+  the inbox directly from the home page, without a popup.
+
+### Improved
+
+- A focus next step is shown while closing out a task and remains attached when
+  it moves to tomorrow, where the gentle start naturally offers it again.
+- The existing task-page closeout now uses the same three calm destinations.
+
 ## 1.2.6 - 2026-07-18
 
 ### Added

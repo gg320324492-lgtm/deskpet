@@ -8,10 +8,11 @@ export function buildDayCloseout({ todos = [], now = new Date() } = {}) {
     const items = Array.isArray(todos) ? todos : [];
     const pending = items.filter((task) => todoBucket(task, todayKey) === 'today');
     const completed = items.filter((task) => task?.completed && localDateKey(task.doneAt) === todayKey).length;
+    const later = items.filter((task) => todoBucket(task, todayKey) === 'later').length;
     const summary = pending.length
         ? `今天完成了 ${completed} 件；还有 ${pending.length} 件可以慢慢归位。`
         : `今天完成了 ${completed} 件；其余任务已经妥善归位。`;
-    return { todayKey, pending, completed, summary };
+    return { todayKey, pending, completed, inProgress: pending.length, later, summary };
 }
 
 export function tomorrowDueAt(now = new Date()) {

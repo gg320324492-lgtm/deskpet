@@ -1091,6 +1091,41 @@ select:focus-visible,
 .day-closeout-empty { position: relative; z-index: 1; margin: 0; padding: 13px; border: 1px dashed rgba(194, 239, 224, 0.2); border-radius: 12px; color: #b8d6cf; background: rgba(10, 22, 29, 0.25); font-size: 12px; line-height: 1.55; }
 .day-closeout-saved { margin: 11px 0 0; border-left: 2px solid #91dfc1; color: #c9e7de; font-size: 11px; line-height: 1.55; padding-left: 8px; }
 
+.home-closeout-card {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(183, 205, 255, 0.18);
+    background:
+        radial-gradient(circle at 91% 8%, rgba(147, 174, 255, 0.16), transparent 29%),
+        linear-gradient(135deg, rgba(29, 38, 59, 0.98), rgba(31, 46, 58, 0.98));
+}
+.home-closeout-card::after { position: absolute; top: 13px; right: 24px; width: 82px; height: 82px; border: 1px solid rgba(191, 209, 255, 0.14); border-radius: 50%; content: ''; transform: translate(35%, -50%); }
+.home-closeout-head,
+.home-closeout-counts,
+.home-closeout-list,
+.home-closeout-empty,
+.home-closeout-note { position: relative; z-index: 1; }
+.home-closeout-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.home-closeout-head h3 { margin: 3px 0 0; font-size: 19px; }
+.home-closeout-kicker { color: #c6d6ff; font-size: 10px; font-weight: 850; letter-spacing: 0.15em; }
+.home-closeout-badge { flex: 0 0 auto; border: 1px solid rgba(198, 214, 255, 0.28); border-radius: 999px; color: #e2eaff; background: rgba(158, 181, 255, 0.1); padding: 5px 8px; font-size: 11px; font-weight: 750; }
+.home-closeout-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 15px 0 13px; }
+.home-closeout-counts span { display: grid; gap: 2px; min-width: 0; border: 1px solid rgba(202, 218, 255, 0.13); border-radius: 11px; color: #b7c8e9; background: rgba(7, 14, 27, 0.23); padding: 9px 10px; font-size: 10px; line-height: 1.25; }
+.home-closeout-counts strong { color: #f1f5ff; font-size: 20px; line-height: 1; }
+.home-closeout-list { display: grid; gap: 8px; }
+.home-closeout-description { margin: 0 0 2px; color: var(--room-muted); font-size: 12px; }
+.home-closeout-row { display: grid; grid-template-columns: minmax(150px, 1fr) auto; align-items: center; gap: 12px; border: 1px solid rgba(202, 218, 255, 0.13); border-radius: 12px; background: rgba(7, 14, 27, 0.26); padding: 11px 12px; }
+.home-closeout-copy { min-width: 0; }
+.home-closeout-copy strong { display: block; overflow: hidden; color: var(--room-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.home-closeout-copy small { display: block; overflow: hidden; margin-top: 3px; color: #bdcce9; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.home-closeout-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.home-closeout-action { min-height: 29px; border: 1px solid rgba(202, 218, 255, 0.2); border-radius: 8px; color: #d7e2ff; background: rgba(255, 255, 255, 0.045); cursor: pointer; padding: 4px 8px; font: inherit; font-size: 11px; font-weight: 750; transition: background 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out; }
+.home-closeout-action:hover { border-color: rgba(210, 223, 255, 0.64); color: #ffffff; background: rgba(158, 181, 255, 0.16); }
+.home-closeout-action.tomorrow { border-color: rgba(255, 211, 143, 0.38); color: #ffe2ab; }
+.home-closeout-action.inbox { border-color: rgba(164, 194, 255, 0.42); color: #dce8ff; }
+.home-closeout-empty { margin: 0; border: 1px dashed rgba(202, 218, 255, 0.2); border-radius: 12px; color: #cad7ee; background: rgba(7, 14, 27, 0.2); padding: 13px; font-size: 12px; line-height: 1.55; }
+.home-closeout-note { margin: 11px 0 0; border-left: 2px solid #aebfff; color: #c6d4f0; padding-left: 8px; font-size: 11px; line-height: 1.55; }
+
 .tomorrow-start-card {
     position: relative;
     margin-top: 18px;
@@ -2490,6 +2525,23 @@ select {
     .day-closeout-row {
         grid-template-columns: 1fr;
         align-items: stretch;
+    }
+
+    .home-closeout-card {
+        padding: 15px;
+    }
+
+    .home-closeout-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .home-closeout-actions {
+        justify-content: flex-start;
+    }
+
+    .home-closeout-action {
+        flex: 1 1 0;
     }
 
     .today-start-row {

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { dayCloseoutPatch } from '../src/renderer/day-closeout.js';
 import { buildGentleStart } from '../src/renderer/gentle-start.js';
 
 test('gentle start prefers the chosen today mainline', () => {
@@ -44,5 +45,30 @@ test('a next step saved after focus is prioritized over a different today mainli
     });
     assert.equal(result.task.id, 'follow-up');
     assert.equal(result.isMainline, false);
+    assert.equal(result.isFollowUp, true);
+});
+
+test('a focus next step naturally returns as tomorrow\'s starting point after closeout', () => {
+    const evening = new Date(2026, 6, 18, 20);
+    const nextDay = new Date(2026, 6, 19, 10);
+    const carried = {
+        id: 'carry',
+        title: '继续整理提纲',
+        note: '先补上开头的三个小标题',
+        nextStepAt: evening.valueOf(),
+        bucket: 'today',
+        completed: false,
+        createdAt: 1,
+        ...dayCloseoutPatch('tomorrow', evening),
+    };
+    const result = buildGentleStart({
+        now: nextDay,
+        todos: [
+            { id: 'other', title: '另一件明天的事', bucket: 'today', completed: false, priority: 3, createdAt: 2 },
+            carried,
+        ],
+    });
+    assert.equal(result.task.id, 'carry');
+    assert.equal(result.task.note, '先补上开头的三个小标题');
     assert.equal(result.isFollowUp, true);
 });

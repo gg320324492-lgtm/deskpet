@@ -16,6 +16,8 @@ test('day closeout includes only unfinished Today tasks and gives a gentle local
     assert.equal(closeout.pending.length, 1);
     assert.equal(closeout.pending[0].id, 'today');
     assert.equal(closeout.completed, 1);
+    assert.equal(closeout.inProgress, 1);
+    assert.equal(closeout.later, 1);
     assert.match(closeout.summary, /完成了 1 件/);
     assert.match(closeout.summary, /还有 1 件/);
 });

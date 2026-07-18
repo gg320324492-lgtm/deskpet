@@ -1,3 +1,4 @@
+import { localDateKey } from './rhythm.js';
 import { todoBucket } from './todo.js';
 import { buildTodayFocus } from './today-focus.js';
 
@@ -12,8 +13,9 @@ function taskOrder(left, right) {
 export function buildGentleStart({ todos = [], focus = null, now = new Date() } = {}) {
     const list = Array.isArray(todos) ? todos : [];
     const todayFocus = buildTodayFocus({ focus, todos: list, now });
+    const todayKey = localDateKey(now);
     const todayTasks = list
-        .filter((task) => todoBucket(task) === 'today')
+        .filter((task) => todoBucket(task, todayKey) === 'today')
         .sort(taskOrder);
     const followUp = todayTasks.find((item) => Number(item?.nextStepAt || 0) > 0) || null;
     const task = followUp || todayFocus.task || todayTasks[0] || null;

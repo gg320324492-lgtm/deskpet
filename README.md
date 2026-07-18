@@ -243,3 +243,10 @@ npm run release:win         # 强制签名并生成更新元数据、blockmap �
 ## 许可
 
 MIT
+
+## 1.2.7 Daily Landing
+
+The home page now has a quiet, non-scoring daily landing. It shows completed,
+in-progress, and later task counts, then offers unfinished Today tasks three
+gentle places: keep today, move to tomorrow, or return to the inbox. A focus
+next step stays with its task and is naturally offered again the next day.
