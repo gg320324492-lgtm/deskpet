@@ -982,6 +982,10 @@ select:focus-visible,
 .focus-next-step-input:focus-visible { outline:2px solid #b9f0d2; outline-offset:2px; }
 .focus-next-step-save { min-height:36px; border:1px solid rgba(167,237,202,.58); border-radius:9px; color:#112a20; background:#bff2d6; cursor:pointer; font:inherit; font-size:11px; font-weight:850; padding:7px 11px; }
 .focus-next-step-save:hover { background:#ddfae9; }
+.focus-next-step-actions { display:flex; justify-content:flex-end; margin-top:8px; }
+.focus-next-step-schedule { min-height:31px; border:1px solid rgba(255,213,150,.48); border-radius:8px; color:#ffe5b8; background:rgba(255,197,112,.09); cursor:pointer; padding:5px 9px; font:inherit; font-size:11px; font-weight:800; }
+.focus-next-step-schedule:hover { border-color:rgba(255,226,176,.72); background:rgba(255,197,112,.16); }
+.focus-next-step-schedule:focus-visible { outline:2px solid #ffe2aa; outline-offset:2px; }
 .focus-companion-actions { position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:8px; margin-top:15px; }
 .focus-companion-action { min-height:37px; border-radius:10px; cursor:pointer; font:inherit; font-size:12px; font-weight:850; padding:7px 12px; transition:transform 160ms ease, border-color 160ms ease, background 160ms ease; }
 .focus-companion-action:hover { transform:translateY(-1px); }
@@ -1125,6 +1129,43 @@ select:focus-visible,
 .home-closeout-action.inbox { border-color: rgba(164, 194, 255, 0.42); color: #dce8ff; }
 .home-closeout-empty { margin: 0; border: 1px dashed rgba(202, 218, 255, 0.2); border-radius: 12px; color: #cad7ee; background: rgba(7, 14, 27, 0.2); padding: 13px; font-size: 12px; line-height: 1.55; }
 .home-closeout-note { margin: 11px 0 0; border-left: 2px solid #aebfff; color: #c6d4f0; padding-left: 8px; font-size: 11px; line-height: 1.55; }
+
+.soft-schedule-card {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(255, 195, 138, 0.2);
+    background:
+        radial-gradient(circle at 90% 8%, rgba(255, 184, 109, 0.18), transparent 30%),
+        linear-gradient(135deg, rgba(57, 45, 52, 0.99), rgba(39, 46, 61, 0.99));
+}
+.soft-schedule-card.near-end { border-color: rgba(255, 212, 143, 0.36); background: radial-gradient(circle at 7% 110%, rgba(255, 181, 106, 0.15), transparent 34%), linear-gradient(135deg, rgba(62, 48, 49, 0.99), rgba(41, 45, 61, 0.99)); }
+.soft-schedule-card.empty { border-color: rgba(188, 204, 239, 0.16); background: radial-gradient(circle at 92% 0%, rgba(170, 191, 243, 0.12), transparent 28%), linear-gradient(135deg, rgba(39, 48, 65, 0.99), rgba(34, 43, 57, 0.99)); }
+.soft-schedule-card::after { position: absolute; top: -33px; right: 9%; width: 104px; height: 104px; border: 1px solid rgba(255, 227, 184, 0.13); border-radius: 50%; box-shadow: 0 0 0 16px rgba(255, 227, 184, 0.025), 0 0 0 33px rgba(255, 227, 184, 0.018); content: ''; }
+.soft-schedule-head,
+.soft-schedule-task,
+.soft-schedule-copy,
+.soft-schedule-actions,
+.soft-schedule-note { position: relative; z-index: 1; }
+.soft-schedule-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.soft-schedule-head h3 { margin: 3px 0 0; font-size: 19px; }
+.soft-schedule-kicker { color: #ffd2a0; font-size: 10px; font-weight: 900; letter-spacing: 0.15em; }
+.soft-schedule-card.empty .soft-schedule-kicker { color: #c7d8ff; }
+.soft-schedule-badge { flex: 0 0 auto; border: 1px solid rgba(255, 219, 170, 0.27); border-radius: 999px; color: #ffe3ba; background: rgba(255, 197, 117, 0.1); padding: 5px 8px; font-size: 11px; font-weight: 750; }
+.soft-schedule-card.empty .soft-schedule-badge { border-color: rgba(199, 216, 255, 0.26); color: #dce7ff; background: rgba(161, 186, 246, 0.09); }
+.soft-schedule-task { display: block; overflow: hidden; margin-top: 14px; color: #fff5e9; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.soft-schedule-copy { max-width: 62ch; margin: 7px 0 0; color: #d9d8e5; font-size: 12px; line-height: 1.55; }
+.soft-schedule-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.soft-schedule-action { min-height: 34px; border-radius: 9px; cursor: pointer; padding: 6px 10px; font: inherit; font-size: 11px; font-weight: 850; transition: transform 160ms ease-out, border-color 160ms ease-out, background 160ms ease-out; }
+.soft-schedule-action:hover { transform: translateY(-1px); }
+.soft-schedule-action.primary { border: 1px solid rgba(255, 217, 161, 0.75); color: #36200e; background: #ffdaa1; box-shadow: 0 7px 16px rgba(225, 154, 70, 0.16); }
+.soft-schedule-action.primary:hover { background: #ffe8c4; }
+.soft-schedule-action.quiet { border: 1px solid rgba(236, 220, 255, 0.25); color: #ede4f6; background: rgba(255, 255, 255, 0.055); }
+.soft-schedule-action.quiet:hover { border-color: rgba(236, 220, 255, 0.55); }
+.soft-schedule-action.next { border: 1px solid rgba(167, 237, 202, 0.49); color: #d5f6e3; background: rgba(92, 177, 134, 0.12); }
+.soft-schedule-action.next:hover { border-color: rgba(184, 248, 214, 0.72); background: rgba(92, 177, 134, 0.2); }
+.soft-schedule-action:focus-visible { outline: 2px solid #fff0c5; outline-offset: 2px; }
+.soft-schedule-note { display: block; margin-top: 12px; border-left: 2px solid #ffcd88; color: #dbd0bf; padding-left: 8px; font-size: 11px; line-height: 1.5; }
+.soft-schedule-card.empty .soft-schedule-copy { margin-bottom: 0; color: #cad5e7; }
 
 .tomorrow-start-card {
     position: relative;
@@ -2499,6 +2540,8 @@ select {
     .focus-capture-save { width:100%; }
     .focus-next-step-entry { grid-template-columns:1fr; }
     .focus-next-step-save { width:100%; }
+    .focus-next-step-actions { justify-content:stretch; }
+    .focus-next-step-schedule { width:100%; }
     .focus-reflection-control { grid-template-columns:1fr; }
     .focus-reflection-save { width:100%; }
     .focus-companion-actions { display:grid; grid-template-columns:1fr 1fr; }
@@ -2542,6 +2585,19 @@ select {
 
     .home-closeout-action {
         flex: 1 1 0;
+    }
+
+    .soft-schedule-card {
+        padding: 15px;
+    }
+
+    .soft-schedule-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .soft-schedule-action {
+        width: 100%;
     }
 
     .today-start-row {

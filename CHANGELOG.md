@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.8 - 2026-07-18
+
+### Added
+
+- Added a quiet home-page soft-window card for morning, afternoon, and evening.
+  It surfaces one suitable Today task when a window is active, without alerts.
+- Near the end of a window, unfinished work can be manually left for the next
+  window; evening handoffs safely become tomorrow morning.
+
+### Improved
+
+- The completed-focus next-step card now has a one-click handoff into the next
+  soft window, preserving the task and its optional next-step note locally.
+- Soft-window suggestions never start focus, show notifications, or impose a
+  minute-level schedule.
+
 ## 1.2.7 - 2026-07-18
 
 ### Added

@@ -18,6 +18,7 @@ import { buildFocusCompanion } from '../renderer/focus-companion.js';
 import { buildTodayFocusEchoes, focusReflectionPatch } from '../renderer/focus-reflection.js';
 import { buildInboxTriage, inboxTriageRecordPatch } from '../renderer/inbox-triage.js';
 import { buildGentleStart } from '../renderer/gentle-start.js';
+import { buildSoftSchedule, nextSoftTimeBlock, nextSoftTimeBlockPatch } from '../renderer/soft-schedule.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -118,6 +119,7 @@ export const statsTab = {
         const gentleStart = buildGentleStart({ todos, focus: rhythm.todayFocus });
         const focusCompanion = buildFocusCompanion(getFocusState());
         const homeCloseout = buildDayCloseout({ todos });
+        const softSchedule = buildSoftSchedule({ todos });
 
         root.appendChild(panelHeader('今日陪伴', '状态总览', '看看小糖现在的心情、精力和陪伴进度。'));
         root.appendChild(sectionTitle('身心状态'));
@@ -295,6 +297,84 @@ export const statsTab = {
                     el('span', {}, '留一点空白'),
                 ),
                 el('p', { class: 'gentle-start-copy' }, '想开始的时候，再从收件箱轻轻放一件到今天；现在什么都不做也没关系。'),
+            ));
+        }
+
+        const placeInCurrentWindow = async (task) => {
+            if (!softSchedule.currentId) return;
+            await setSettings({
+                todos: { items: todos.map((item) => item.id === task.id ? {
+                    ...item, bucket: 'today', dueAt: new Date().toISOString(), timeBlock: softSchedule.currentId, tomorrowPlan: '',
+                } : item) },
+            });
+            refreshCurrent();
+        };
+        const moveToNextWindow = async (task) => {
+            await setSettings({
+                todos: { items: todos.map((item) => item.id === task.id ? {
+                    ...item, ...nextSoftTimeBlockPatch(new Date()),
+                } : item) },
+            });
+            refreshCurrent();
+        };
+        root.appendChild(sectionTitle('现在这段时间'));
+        if (softSchedule.currentId && softSchedule.task) {
+            let startWindowFocus;
+            startWindowFocus = el('button', {
+                class: 'soft-schedule-action primary', type: 'button',
+                onclick: () => runAsync(startWindowFocus, () => startGentleFocus(softSchedule.task), {
+                    announce, success: `开始一小段：${softSchedule.task.title}`, failure: (error) => error?.message || '无法开始专注。',
+                }),
+            }, '开始一小段');
+            let scheduleCurrent;
+            if (!softSchedule.taskIsAssigned) {
+                scheduleCurrent = el('button', {
+                    class: 'soft-schedule-action quiet', type: 'button',
+                    onclick: () => runAsync(scheduleCurrent, () => placeInCurrentWindow(softSchedule.task), {
+                        announce, success: `已轻轻放进${softSchedule.currentLabel}。`, failure: (error) => error?.message || '暂时没能安排这件事。',
+                    }),
+                }, `放进${softSchedule.currentLabel}`);
+            }
+            let moveNext;
+            if (softSchedule.nearEnd && softSchedule.next) {
+                moveNext = el('button', {
+                    class: 'soft-schedule-action next', type: 'button',
+                    onclick: () => runAsync(moveNext, () => moveToNextWindow(softSchedule.task), {
+                        announce,
+                        success: softSchedule.next.tomorrow
+                            ? '已留给明天上午。'
+                            : `已留给${softSchedule.next.label}。`,
+                        failure: (error) => error?.message || '暂时没能把它留到下一段。',
+                    }),
+                }, softSchedule.next.tomorrow ? '留给明天上午' : `留给${softSchedule.next.label}`);
+            }
+            root.appendChild(el('section', { class: `card soft-schedule-card ${softSchedule.nearEnd ? 'near-end' : ''}` },
+                el('div', { class: 'soft-schedule-head' },
+                    el('div', {},
+                        el('span', { class: 'soft-schedule-kicker' }, softSchedule.nearEnd ? 'A GENTLE HANDOFF' : 'THIS SOFT WINDOW'),
+                        el('h3', {}, softSchedule.nearEnd ? `${softSchedule.currentLabel}快到尾声了` : `这会儿，适合先陪这一件走一小段`),
+                    ),
+                    el('span', { class: 'soft-schedule-badge' }, `${softSchedule.currentLabel} · ${softSchedule.currentCount} 件`),
+                ),
+                el('strong', { class: 'soft-schedule-task' }, softSchedule.task.title),
+                el('p', { class: 'soft-schedule-copy' }, softSchedule.nearEnd
+                    ? `还没开始也没关系；它可以安静留给${softSchedule.next?.tomorrow ? '明天上午' : softSchedule.next?.label || '下一段'}。`
+                    : (softSchedule.task.note || '不需要填满这一段。想开始时，先做一点点就好。')),
+                el('div', { class: 'soft-schedule-actions' }, startWindowFocus, scheduleCurrent, moveNext),
+                el('small', { class: 'soft-schedule-note' }, '只在首页静静出现；不会发通知，也不会替你开始。'),
+            ));
+        } else {
+            root.appendChild(el('section', { class: 'card soft-schedule-card empty' },
+                el('div', { class: 'soft-schedule-head' },
+                    el('div', {},
+                        el('span', { class: 'soft-schedule-kicker' }, 'A LITTLE OPEN SPACE'),
+                        el('h3', {}, softSchedule.currentId ? `${softSchedule.currentLabel}先留一点空白` : '此刻不在需要安排的时段'),
+                    ),
+                    el('span', { class: 'soft-schedule-badge' }, softSchedule.currentId ? '没有催促' : '自在一点'),
+                ),
+                el('p', { class: 'soft-schedule-copy' }, softSchedule.currentId
+                    ? '这一段没有待处理的安排。想休息、发呆，或晚点再回来都可以。'
+                    : '上午、下午和晚上之间本来就有留白；不需要把每一刻都安排起来。'),
             ));
         }
 
@@ -735,14 +815,19 @@ export const feedTab = {
             refreshCurrent();
             return todo;
         };
-        const saveFocusNextStep = async (task, note) => {
+        const saveFocusNextStep = async (task, note, { scheduleNext = false } = {}) => {
             const nextStep = String(note || '').replace(/\u0000/g, '').trim().slice(0, 240);
-            if (!nextStep) throw new Error('先写下一句想从哪里开始。');
+            if (!nextStep && !scheduleNext) throw new Error('先写下一句想从哪里开始。');
             const current = allTodos.find((item) => item.id === task?.id && !item.completed);
             if (!current) throw new Error('这件事已经不在待办里了。');
             await setSettings({ todos: {
                 items: allTodos.map((item) => item.id === current.id
-                    ? { ...item, note: nextStep, nextStepAt: Date.now() }
+                    ? {
+                        ...item,
+                        ...(scheduleNext ? nextSoftTimeBlockPatch(new Date()) : {}),
+                        note: nextStep || current.note || '',
+                        nextStepAt: Date.now(),
+                    }
                     : item),
             } });
             refreshCurrent();
@@ -1060,6 +1145,16 @@ export const feedTab = {
                         failure: (error) => error?.message || '暂时没能留下这一步。',
                     });
                     nextStepSave = el('button', { class: 'focus-next-step-save', type: 'button', onclick: saveNextStep }, '留给下次');
+                    const nextWindow = nextSoftTimeBlock(new Date());
+                    let nextWindowSave;
+                    nextWindowSave = el('button', {
+                        class: 'focus-next-step-schedule', type: 'button',
+                        onclick: () => runAsync(nextWindowSave, () => saveFocusNextStep(linkedTask, nextStepInput.value, { scheduleNext: true }), {
+                            announce,
+                            success: nextWindow.tomorrow ? '下一步已留给明天上午。' : `下一步已放进${nextWindow.label}。`,
+                            failure: (error) => error?.message || '暂时没能留到下一段。',
+                        }),
+                    }, nextWindow.tomorrow ? '留到明天上午' : `留到${nextWindow.label}`);
                     nextStepInput.addEventListener('keydown', (event) => {
                         if (event.key === 'Enter') { event.preventDefault(); saveNextStep(); }
                     });
@@ -1069,6 +1164,7 @@ export const feedTab = {
                             el('small', {}, '不必现在做完；留一句可执行的开始就好。'),
                         ),
                         el('div', { class: 'focus-next-step-entry' }, nextStepInput, nextStepSave),
+                        el('div', { class: 'focus-next-step-actions' }, nextWindowSave),
                     );
                 }
             }

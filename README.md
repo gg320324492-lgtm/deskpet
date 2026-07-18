@@ -250,3 +250,11 @@ The home page now has a quiet, non-scoring daily landing. It shows completed,
 in-progress, and later task counts, then offers unfinished Today tasks three
 gentle places: keep today, move to tomorrow, or return to the inbox. A focus
 next step stays with its task and is naturally offered again the next day.
+
+## 1.2.8 Soft Schedule Awareness
+
+Morning, afternoon, and evening remain soft windows rather than appointments.
+The home page can quietly offer one suitable Today task during the active
+window. Near a window's end, an unfinished task can be left for the next
+window, while a completed focus can carry its next step forward with one click.
+Nothing starts automatically or sends a new notification.
