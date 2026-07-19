@@ -1,8 +1,8 @@
 import { localDateKey } from './rhythm.js';
 import { todoBucket } from './todo.js';
 
-const SEARCHABLE_BUCKETS = new Set(['inbox', 'today', 'later', 'archive']);
-const BUCKET_ORDER = Object.freeze({ today: 0, inbox: 1, later: 2, archive: 3 });
+const SEARCHABLE_BUCKETS = new Set(['inbox', 'today', 'later', 'waiting', 'archive']);
+const BUCKET_ORDER = Object.freeze({ today: 0, inbox: 1, later: 2, waiting: 3, archive: 4 });
 
 export function normalizeTaskSearchQuery(value) {
     return String(value ?? '').trim().toLocaleLowerCase();

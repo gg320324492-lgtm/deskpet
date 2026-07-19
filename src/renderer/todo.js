@@ -8,14 +8,14 @@
  *
  * Item shape:
  *   { id, title, priority: 1|2|3, dueAt, repeat: 'none'|'daily'|'weekly',
- *     bucket: 'inbox'|'today'|'later', note: '', nextStepAt: 0, resumeAcknowledgedAt: 0, microSteps: [], microNotes: [], timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
+ *     bucket: 'inbox'|'today'|'later'|'waiting', note: '', waitingNote: '', nextStepAt: 0, resumeAcknowledgedAt: 0, microSteps: [], microNotes: [], timeBlock: '', tomorrowPlan: '', completed, doneAt, createdAt }
  */
 
 import { normalizeMicroSteps, resetMicroSteps } from './micro-steps.js';
 import { normalizeMicroNotes } from './micro-notes.js';
 
 const REPEAT_DEFAULT = 'none';
-const TODO_BUCKETS = new Set(['inbox', 'today', 'later', 'archive']);
+const TODO_BUCKETS = new Set(['inbox', 'today', 'later', 'waiting', 'archive']);
 
 function localDateKey(value = new Date()) {
     const date = value instanceof Date ? value : new Date(value);
@@ -47,6 +47,7 @@ export class TodoList {
             inbox:    items.filter((item) => todoBucket(item, today) === 'inbox'),
             today:    items.filter((item) => todoBucket(item, today) === 'today'),
             later:    items.filter((item) => todoBucket(item, today) === 'later'),
+            waiting:  items.filter((item) => todoBucket(item, today) === 'waiting'),
             upcoming: items.filter((item) => todoBucket(item, today) === 'later'),
             done:     items.filter(i => i.completed),
             all:      items,
@@ -56,6 +57,7 @@ export class TodoList {
                 inbox: items.filter((item) => todoBucket(item, today) === 'inbox').length,
                 today: items.filter((item) => todoBucket(item, today) === 'today').length,
                 later: items.filter((item) => todoBucket(item, today) === 'later').length,
+                waiting: items.filter((item) => todoBucket(item, today) === 'waiting').length,
             },
         };
     }
@@ -65,6 +67,7 @@ export class TodoList {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: String(title || '').trim().slice(0, 120),
             note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
+            waitingNote: '',
             nextStepAt: 0,
             resumeAcknowledgedAt: 0,
             microSteps: normalizeMicroSteps(microSteps),
@@ -100,7 +103,9 @@ export class TodoList {
         this.update(id, {
             bucket,
             dueAt: bucket === 'today' ? new Date().toISOString() : null,
-            timeBlock: bucket === 'today' ? (items.find((item) => item.id === id)?.timeBlock || '') : '',
+            timeBlock: ['today', 'waiting'].includes(bucket)
+                ? (items.find((item) => item.id === id)?.timeBlock || '')
+                : '',
             tomorrowPlan: '',
         });
         return true;
@@ -141,6 +146,7 @@ export class TodoList {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: done.title,
             note: done.note || '',
+            waitingNote: '',
             nextStepAt: 0,
             resumeAcknowledgedAt: 0,
             microSteps: resetMicroSteps(done.microSteps),

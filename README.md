@@ -27,6 +27,14 @@ v2 在 v1 的动画宠物之上，增加了**性格系统**（心情 / 好感 / 
 - 🧭 **首次启动引导（Onboarding）** 与 **时段问候气泡**
 - 💤 **多级闲置行为**：闲置偶发 PEEK → SIT 后 YAWN → 进入 SLEEP
 
+## 1.3.7 Gentle Waiting
+
+Tasks can be softly set aside in a separate local waiting lane. You may add a
+short reason such as “waiting for a reply”; the task keeps its existing notes,
+micro steps, return cue, and time block while staying out of Today until you
+bring it back. There are no timers, reminders, notifications, or automatic
+focus actions.
+
 ## 18 状态表
 
 12 个核心状态：

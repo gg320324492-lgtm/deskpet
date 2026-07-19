@@ -23,6 +23,7 @@ import { beginNextMicroStepPatch, completeMicroStepPatch, currentMicroStep, hasF
 import { appendMicroNotePatch, latestMicroNote, normalizeMicroNotes } from '../renderer/micro-notes.js';
 import { buildTaskCloseoutReview } from '../renderer/task-closeout-review.js';
 import { hasPendingResumeHint, hasResumeHint, resumeAcknowledgementPatch, resumeContinuationPatch, resumeHintPatch } from '../renderer/task-resume.js';
+import { resumeWaitingTaskPatch } from '../renderer/task-waiting.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -94,6 +95,7 @@ function makeInboxTodo(title, note = '') {
         id: `t${Date.now()}${Math.random().toString(36).slice(2, 7)}`,
         title: String(title || '').trim().slice(0, 120),
         note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
+        waitingNote: '',
         nextStepAt: 0,
         resumeAcknowledgedAt: 0,
         microSteps: [],
@@ -947,6 +949,7 @@ export const feedTab = {
         const companion = buildFocusCompanion(getFocusState());
         const focusEchoes = buildTodayFocusEchoes({ rhythm, todayFocus });
         const laterTasks = allTodos.filter((item) => todoBucket(item) === 'later');
+        const waitingTasks = allTodos.filter((item) => todoBucket(item) === 'waiting');
         const archivedTasks = allTodos.filter((item) => todoBucket(item) === 'archive');
         const completedTasks = completedToday({ todos: allTodos });
         const stale = staleTasks({ todos: allTodos });
@@ -960,12 +963,14 @@ export const feedTab = {
             } });
             refreshCurrent();
         };
-        const placeTodo = (task, bucket) => applyTodoPatch(task.id, {
-            bucket,
-            dueAt: bucket === 'today' ? new Date().toISOString() : null,
-            timeBlock: bucket === 'today' ? task.timeBlock || '' : '',
-            tomorrowPlan: bucket === 'today' ? '' : task.tomorrowPlan || '',
-        });
+        const placeTodo = (task, bucket) => applyTodoPatch(task.id, bucket === 'today' && todoBucket(task) === 'waiting'
+            ? resumeWaitingTaskPatch(task)
+            : {
+                bucket,
+                dueAt: bucket === 'today' ? new Date().toISOString() : null,
+                timeBlock: bucket === 'today' ? task.timeBlock || '' : '',
+                tomorrowPlan: bucket === 'today' ? '' : task.tomorrowPlan || '',
+            });
         const completeTodo = async (task) => {
             const now = Date.now();
             const updated = { ...task, completed: true, doneAt: now };
@@ -1072,7 +1077,7 @@ export const feedTab = {
             await setSettings({ rhythm: { ...rhythm, reflections } });
             refreshCurrent();
         };
-        const openTaskEditor = (task) => {
+        const openTaskEditor = (task, { initialBucket = todoBucket(task), focusWaitingNote = false } = {}) => {
             const noteLabel = hasPendingResumeHint(task)
                 ? '下次起点（还会在首页轻轻出现）'
                 : hasResumeHint(task)
@@ -1091,35 +1096,46 @@ export const feedTab = {
                 class: 'task-editor-note', maxlength: 240, rows: 3,
                 placeholder: '例如：先找三份参考资料', 'aria-label': noteLabel, value: task.note || '',
             });
+            const waitingNoteInput = el('input', {
+                class: 'task-editor-input task-editor-waiting-note', type: 'text', maxlength: 160,
+                placeholder: '例如：等对方确认时间（可选）', 'aria-label': '正在等什么（可选）', value: task.waitingNote || '',
+            });
             const microStepInputs = [0, 1, 2].map((index) => el('input', {
                 class: 'task-editor-micro-input', type: 'text', maxlength: 120,
                 placeholder: index === 0 ? '例如：打开资料文件夹' : '再留一件小事（可选）',
                 value: task.microSteps?.[index]?.text || '',
                 'aria-label': `微步骤 ${index + 1}（可选）`,
             }));
-            const bucketInput = el('select', { class: 'task-editor-location', 'aria-label': '任务位置', value: todoBucket(task) },
+            const bucketInput = el('select', { class: 'task-editor-location', 'aria-label': '任务位置', value: initialBucket },
                 el('option', { value: 'inbox' }, '收件箱'),
                 el('option', { value: 'today' }, '今天'),
                 el('option', { value: 'later' }, '稍后'),
+                el('option', { value: 'waiting' }, '先等着'),
                 el('option', { value: 'archive' }, '归档'),
             );
-            bucketInput.value = todoBucket(task);
+            bucketInput.value = initialBucket;
             const close = () => backdrop.remove();
             let saveButton;
             const form = el('form', {
                 class: 'task-editor-form',
                 onsubmit: (event) => {
                     event.preventDefault();
-                    runAsync(saveButton, () => applyTodoPatch(task.id, taskEditorPatch({
-                        task,
-                        title: titleInput.value,
-                        note: noteInput.value,
-                        microSteps: microStepInputs.map((input, index) => ({
-                            text: input.value,
-                            completed: task.microSteps?.[index]?.completed === true,
-                        })),
-                        bucket: bucketInput.value,
-                    })), { announce, success: '任务已轻轻更新。', failure: (error) => error?.message || '无法保存任务。' });
+                    runAsync(saveButton, async () => {
+                        const patch = taskEditorPatch({
+                            task, title: titleInput.value, note: noteInput.value, waitingNote: waitingNoteInput.value,
+                            microSteps: microStepInputs.map((input, index) => ({ text: input.value, completed: task.microSteps?.[index]?.completed === true })),
+                            bucket: bucketInput.value,
+                        });
+                        if (patch.bucket === 'waiting' && todayFocus.task?.id === task.id) {
+                            await setSettings({
+                                todos: { items: allTodos.map((item) => item.id === task.id ? { ...item, ...patch } : item) },
+                                rhythm: { ...rhythm, todayFocus: clearTodayFocusPatch() },
+                            });
+                            refreshCurrent();
+                            return;
+                        }
+                        await applyTodoPatch(task.id, patch);
+                    }, { announce, success: '任务已轻轻更新。', failure: (error) => error?.message || '无法保存任务。' });
                 },
             },
             el('div', { class: 'task-editor-head' },
@@ -1131,6 +1147,8 @@ export const feedTab = {
             el('label', { class: 'task-editor-label', for: 'task-editor-note' }, noteLabel),
             noteInput,
             el('small', { class: 'task-editor-note-hint' }, noteHint),
+            el('label', { class: 'task-editor-label' }, '正在等什么（可选）'),
+            waitingNoteInput,
             el('div', { class: 'task-editor-micro' },
                 el('div', { class: 'task-editor-micro-head' },
                     el('span', {}, 'TINY ACTIONS · 可选'),
@@ -1148,8 +1166,8 @@ export const feedTab = {
             backdrop.addEventListener('click', (event) => { if (event.target === backdrop) close(); });
             backdrop.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
             root.appendChild(backdrop);
-            titleInput.focus();
-            titleInput.select();
+            (focusWaitingNote ? waitingNoteInput : titleInput).focus();
+            if (!focusWaitingNote) titleInput.select();
         };
         const laneRow = (task, lane) => {
             const actions = [];
@@ -1192,6 +1210,13 @@ export const feedTab = {
                 }, '稍后');
                 actions.push(laterButton);
             }
+            if (lane !== 'waiting') {
+                const waitButton = el('button', {
+                    class: 'todo-lane-button todo-wait-button', type: 'button',
+                    onclick: () => openTaskEditor(task, { initialBucket: 'waiting', focusWaitingNote: true }),
+                }, '先等着');
+                actions.push(waitButton);
+            }
             if (lane === 'today') {
                 let mainlineButton;
                 const isMainline = todayFocus.task?.id === task.id;
@@ -1230,7 +1255,9 @@ export const feedTab = {
             return el('article', { class: `todo-board-row lane-${lane}` },
                 el('div', { class: 'todo-board-copy' },
                     el('strong', {}, task.title),
-                    el('small', {}, activeMicroStep
+                    el('small', {}, lane === 'waiting'
+                        ? task.waitingNote ? `正在等 · ${task.waitingNote}` : '正在等一个合适的时机'
+                        : activeMicroStep
                         ? `当前一小步 · ${activeMicroStep.text}`
                         : hasFinishedMicroSteps(task) ? '这几步已经走完了 · 任务仍由你决定何时结束'
                         : task.note ? `下一步 · ${task.note}` : task.dueAt ? `已安排 ${task.dueAt.slice(0, 10)}` : '尚未安排时间'),
@@ -1243,7 +1270,7 @@ export const feedTab = {
             el('div', { class: 'todo-lane-head' }, el('div', {}, el('h4', {}, label), el('small', {}, caption)), el('span', {}, String(tasks.length))),
             tasks.length
                 ? el('div', { class: 'todo-board-list' }, ...tasks.slice(0, 4).map((task) => laneRow(task, laneName)))
-                : el('p', { class: 'todo-lane-empty' }, laneName === 'inbox' ? '先随手记下，之后再决定。' : '这里暂时很安静。'),
+                : el('p', { class: 'todo-lane-empty' }, laneName === 'inbox' ? '先随手记下，之后再决定。' : laneName === 'waiting' ? '暂时没有需要等着的事。' : '这里暂时很安静。'),
         );
         const captureInput = el('input', {
             class: 'todo-capture-input', type: 'text', maxlength: 120,
@@ -1693,7 +1720,7 @@ export const feedTab = {
             stale.length ? el('div', { class: 'triage-list' }, ...stale.slice(0, 4).map((task) => triageRow(task))) : el('p', { class: 'triage-empty' }, '没有久留任务。'),
             archivedTasks.length ? el('details', { class: 'triage-archive' }, el('summary', {}, `已归档 ${archivedTasks.length} 件`), el('div', { class: 'triage-list' }, ...archivedTasks.slice(0, 6).map((task) => triageRow(task, true)))) : null,
         ));
-        const locationLabel = { inbox: '收件箱', today: '今天', later: '稍后', archive: '归档' };
+        const locationLabel = { inbox: '收件箱', today: '今天', later: '稍后', waiting: '正在等', archive: '归档' };
         const searchInput = el('input', {
             class: 'task-search-input', type: 'search', maxlength: 120,
             placeholder: '搜索任务标题…', 'aria-label': '搜索任务标题',
@@ -1772,6 +1799,12 @@ export const feedTab = {
                 lane('收件箱', '尚未安排', inboxTasks, 'inbox'),
                 lane('今天', '可以开始', todayTasks, 'today'),
                 lane('稍后', '留给以后', laterTasks, 'later'),
+            ),
+            el('section', { class: 'todo-waiting-lane' },
+                el('div', { class: 'todo-lane-head' }, el('div', {}, el('h4', {}, '正在等'), el('small', {}, '等条件到了，再接上')), el('span', {}, String(waitingTasks.length))),
+                waitingTasks.length
+                    ? el('div', { class: 'todo-board-list' }, ...waitingTasks.slice(0, 4).map((task) => laneRow(task, 'waiting')))
+                    : el('p', { class: 'todo-lane-empty' }, '暂时没有需要等着的事。'),
             ),
         ));
 

@@ -47,6 +47,7 @@ test('collection sanitization keeps valid records and normalizes optional fields
         id: 'a',
         title: '保留我',
         note: '',
+        waitingNote: '',
         nextStepAt: 0,
         resumeAcknowledgedAt: 0,
         microSteps: [],
@@ -84,6 +85,9 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
         items: [{ id: 't1', title: '备注过长', note: 'x'.repeat(241) }],
     }), /up to 240 characters/);
     assert.throws(() => validateDomainPatch('todos', {
+        items: [{ id: 't1', title: '等待备注过长', waitingNote: 'x'.repeat(161) }],
+    }), /up to 160 characters/);
+    assert.throws(() => validateDomainPatch('todos', {
         items: [{ id: 't1', title: '错误下一步时间', nextStepAt: -1 }],
     }), /allowed range/);
     assert.throws(() => validateDomainPatch('todos', {
@@ -103,6 +107,12 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
             { id: 'c', text: '三', at: 3 }, { id: 'd', text: '四', at: 4 },
         ] }],
     }), /at most 3 items/);
+});
+
+test('waiting tasks remain accepted by the shared storage schema', () => {
+    assert.doesNotThrow(() => validateDomainPatch('todos', {
+        items: [{ id: 'waiting-1', title: 'waiting task', bucket: 'waiting', waitingNote: 'waiting for a reply' }],
+    }));
 });
 
 test('weekly plans accept up to three concise goals and reject malformed entries', () => {

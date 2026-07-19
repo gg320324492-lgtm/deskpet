@@ -22,3 +22,11 @@ test('task search normalizes whitespace and case, and does not show results for 
     assert.deepEqual(searchTasks({ todos, query: ' book ' }).map(({ task }) => task.id), ['one']);
     assert.deepEqual(searchTasks({ todos, query: '   ' }), []);
 });
+
+test('task search keeps waiting tasks discoverable without treating them as today work', () => {
+    const results = searchTasks({
+        todos: [{ id: 'waiting', title: '等待法务回复', bucket: 'waiting', completed: false }],
+        query: '法务', now: new Date(2026, 6, 18, 12),
+    });
+    assert.deepEqual(results.map(({ task, bucket }) => [task.id, bucket]), [['waiting', 'waiting']]);
+});

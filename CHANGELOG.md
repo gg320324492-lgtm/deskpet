@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.7 - 2026-07-19
+
+### Added
+
+- An unfinished task can be placed in a local, separate “waiting” lane with an
+  optional one-line note about what it is waiting for.
+
+### Improved
+
+- Waiting quietly removes a task from Today’s suggestions and mainline without
+  completing it or discarding its notes, tiny steps, saved return cue, or time
+  block.
+- A waiting task can be brought back to Today at any time. This adds no due
+  date pressure, countdown, notification, or automatic focus.
+
 ## 1.3.6 - 2026-07-19
 
 ### Added
