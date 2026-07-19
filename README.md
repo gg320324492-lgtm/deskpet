@@ -1,5 +1,13 @@
 # Date Night Girl — 桌面动态宠物 v2
 
+## 1.3.8 Lightweight Task Threads
+
+Completed or archived tasks may keep one optional sentence about where you got
+to. A task’s local detail view gathers the latest tiny steps, small notes,
+waiting reason, and last starting point; the daily page shows only a small
+sample of completed and waiting tasks. This is local context for returning,
+not a reminder, score, or notification system.
+
 一个基于 **Electron + HTML/Canvas** 的 Windows 桌面动态宠物，以治愈系二次元少女"Date Night Girl"为形象。悬浮在桌面上方，背景透明、可拖拽、可交互。
 
 v2 在 v1 的动画宠物之上，增加了**性格系统**（心情 / 好感 / 记忆）、**效率工具**（番茄钟 / 待办 / 提醒 / 勿扰）、**成就与换装**、**本地对话 + 可选 LLM 接入**，以及一个独立的**角色房间窗口**。所有状态通过磁盘持久化（9 个数据域）。

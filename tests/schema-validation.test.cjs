@@ -48,6 +48,8 @@ test('collection sanitization keeps valid records and normalizes optional fields
         title: '保留我',
         note: '',
         waitingNote: '',
+        threadNote: '',
+        threadAt: 0,
         nextStepAt: 0,
         resumeAcknowledgedAt: 0,
         microSteps: [],
@@ -88,6 +90,9 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
         items: [{ id: 't1', title: '等待备注过长', waitingNote: 'x'.repeat(161) }],
     }), /up to 160 characters/);
     assert.throws(() => validateDomainPatch('todos', {
+        items: [{ id: 't1', title: '脉络备注过长', threadNote: 'x'.repeat(161) }],
+    }), /up to 160 characters/);
+    assert.throws(() => validateDomainPatch('todos', {
         items: [{ id: 't1', title: '错误下一步时间', nextStepAt: -1 }],
     }), /allowed range/);
     assert.throws(() => validateDomainPatch('todos', {
@@ -112,6 +117,12 @@ test('deep patch validation rejects malformed nested records and unsafe keys', (
 test('waiting tasks remain accepted by the shared storage schema', () => {
     assert.doesNotThrow(() => validateDomainPatch('todos', {
         items: [{ id: 'waiting-1', title: 'waiting task', bucket: 'waiting', waitingNote: 'waiting for a reply' }],
+    }));
+});
+
+test('task thread notes remain accepted by the shared storage schema', () => {
+    assert.doesNotThrow(() => validateDomainPatch('todos', {
+        items: [{ id: 'thread-1', title: 'thread task', threadNote: '资料已归位', threadAt: 1 }],
     }));
 });
 

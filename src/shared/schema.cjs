@@ -240,11 +240,13 @@ function assertJsonValue(value, name, depth = 0) {
 function validateTodoItem(item, index = 0) {
     const name = `todos.items[${index}]`;
     assertPlainRecord(item, name);
-    assertKnownKeys(item, ['id', 'title', 'note', 'waitingNote', 'nextStepAt', 'resumeAcknowledgedAt', 'microSteps', 'microNotes', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
+    assertKnownKeys(item, ['id', 'title', 'note', 'waitingNote', 'threadNote', 'threadAt', 'nextStepAt', 'resumeAcknowledgedAt', 'microSteps', 'microNotes', 'priority', 'dueAt', 'repeat', 'bucket', 'timeBlock', 'tomorrowPlan', 'completed', 'doneAt', 'createdAt'], name);
     assertString(item.id, `${name}.id`, 80, { allowEmpty: false });
     assertString(item.title, `${name}.title`, 120, { allowEmpty: false });
     if (Object.hasOwn(item, 'note')) assertString(item.note, `${name}.note`, 240);
     if (Object.hasOwn(item, 'waitingNote')) assertString(item.waitingNote, `${name}.waitingNote`, 160);
+    if (Object.hasOwn(item, 'threadNote')) assertString(item.threadNote, `${name}.threadNote`, 160);
+    if (Object.hasOwn(item, 'threadAt')) assertNumber(item.threadAt, `${name}.threadAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
     if (Object.hasOwn(item, 'nextStepAt')) assertNumber(item.nextStepAt, `${name}.nextStepAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
     if (Object.hasOwn(item, 'resumeAcknowledgedAt')) assertNumber(item.resumeAcknowledgedAt, `${name}.resumeAcknowledgedAt`, { min: 0, max: 8_640_000_000_000_000, integer: true });
     if (Object.hasOwn(item, 'microSteps')) validateMicroSteps(item.microSteps, `${name}.microSteps`);
@@ -289,6 +291,8 @@ function normalizeTodoItem(item, index) {
         title: item.title,
         note: item.note ?? '',
         waitingNote: item.waitingNote ?? '',
+        threadNote: item.threadNote ?? '',
+        threadAt: item.threadAt ?? 0,
         nextStepAt: item.nextStepAt ?? 0,
         resumeAcknowledgedAt: item.resumeAcknowledgedAt ?? 0,
         microSteps: item.microSteps ?? [],

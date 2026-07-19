@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.8 - 2026-07-19
+
+### Added
+
+- A task can keep one optional local “this is where I got to” sentence when it
+  is completed or archived.
+- Task editing now includes a compact thread view for its latest tiny steps,
+  small notes, waiting reason, last starting point, and closing sentence.
+
+### Improved
+
+- Daily task review shows at most a few completed and waiting tasks as useful
+  context for picking up later. It is not a reminder, score, ranking, or
+  notification surface.
+- All task-thread context stays in the existing local task record and remains
+  reversible through the existing restore flows.
+
 ## 1.3.7 - 2026-07-19
 
 ### Added

@@ -24,6 +24,7 @@ import { appendMicroNotePatch, latestMicroNote, normalizeMicroNotes } from '../r
 import { buildTaskCloseoutReview } from '../renderer/task-closeout-review.js';
 import { hasPendingResumeHint, hasResumeHint, resumeAcknowledgementPatch, resumeContinuationPatch, resumeHintPatch } from '../renderer/task-resume.js';
 import { resumeWaitingTaskPatch } from '../renderer/task-waiting.js';
+import { buildTaskThread, taskThreadPatch } from '../renderer/task-thread.js';
 
 const meterPct = (value, low, high) => {
     if (!Number.isFinite(value) || high <= low) return 0;
@@ -96,6 +97,8 @@ function makeInboxTodo(title, note = '') {
         title: String(title || '').trim().slice(0, 120),
         note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
         waitingNote: '',
+        threadNote: '',
+        threadAt: 0,
         nextStepAt: 0,
         resumeAcknowledgedAt: 0,
         microSteps: [],
@@ -142,6 +145,57 @@ function resumeReconnectEntry(task, { announce, onResume, surface }) {
         el('div', { class: 'resume-reconnect-actions' }, resumeButton, laterButton),
         el('small', { class: 'resume-reconnect-note' }, '接上后只会设为今日主线；不会自动开始专注，也不会改动原来的安放。'),
     );
+}
+
+function taskThreadDetail(task) {
+    const thread = buildTaskThread(task);
+    const hasTrace = thread.closingNote || thread.waitingNote || thread.lastStartingPoint || thread.steps.length || thread.notes.length;
+    return el('aside', { class: 'task-thread-detail', 'aria-label': `${task.title} 的任务脉络` },
+        el('div', { class: 'task-thread-detail-head' },
+            el('span', {}, 'TASK THREAD'),
+            el('small', {}, hasTrace ? '只留下几段有用的线索' : '还没有需要回看的线索'),
+        ),
+        hasTrace ? el('div', { class: 'task-thread-detail-list' },
+            thread.closingNote ? el('p', { class: 'task-thread-detail-note closing' }, el('span', {}, '这次做到哪了'), thread.closingNote) : null,
+            thread.waitingNote ? el('p', { class: 'task-thread-detail-note waiting' }, el('span', {}, '曾在等什么'), thread.waitingNote) : null,
+            thread.lastStartingPoint ? el('p', { class: 'task-thread-detail-note start' }, el('span', {}, '上次起点'), thread.lastStartingPoint) : null,
+            thread.steps.length ? el('p', { class: 'task-thread-detail-note steps' }, el('span', {}, '微步骤'), thread.steps.map((step) => `${step.completed ? '✓' : '·'} ${step.text}`).join('  ·  ')) : null,
+            thread.notes.length ? el('p', { class: 'task-thread-detail-note notes' }, el('span', {}, '最近小记'), thread.notes.map((note) => note.text).join('  ·  ')) : null,
+        ) : el('p', { class: 'task-thread-detail-empty' }, '推进、等待或收尾时留下的一句话，会安静放在这里。'),
+    );
+}
+
+function openTaskThreadCapture(root, task, { kicker, title, actionLabel, success, announce, onSave }) {
+    const input = el('input', {
+        class: 'task-thread-capture-input', type: 'text', maxlength: 160,
+        value: task.threadNote || '', placeholder: '例如：资料已整理好，等确认后继续（可选）',
+        'aria-label': `${task.title} 这次做到哪了（可选）`,
+    });
+    const close = () => backdrop.remove();
+    let saveButton;
+    const form = el('form', {
+        class: 'task-thread-capture-form',
+        onsubmit: (event) => {
+            event.preventDefault();
+            runAsync(saveButton, async () => { await onSave(input.value); close(); }, { announce, success, failure: (error) => error?.message || '暂时没能保存这件事。' });
+        },
+    },
+    el('div', { class: 'task-thread-capture-head' },
+        el('div', {}, el('span', {}, kicker), el('h3', {}, title)),
+        el('button', { class: 'task-editor-close', type: 'button', onclick: close, 'aria-label': '关闭' }, '×'),
+    ),
+    el('p', { class: 'task-thread-capture-copy' }, '可留一句“这次做到哪了”。不写也没关系，任务本身不会被删掉。'),
+    el('label', { class: 'task-editor-label' }, '这次做到哪了（可选）', input),
+    el('div', { class: 'task-thread-capture-actions' },
+        el('button', { class: 'task-editor-cancel', type: 'button', onclick: close }, '取消'),
+        saveButton = el('button', { class: 'task-editor-save', type: 'submit' }, actionLabel),
+    ));
+    const backdrop = el('div', { class: 'task-editor-backdrop task-thread-capture-backdrop', role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, form);
+    backdrop.addEventListener('click', (event) => { if (event.target === backdrop) close(); });
+    backdrop.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+    root.appendChild(backdrop);
+    input.focus();
+    input.select();
 }
 
 // ============ Stats ============
@@ -217,7 +271,7 @@ export const statsTab = {
             ),
         ));
 
-        const decideCapturedThought = async (task, destination) => {
+        const decideCapturedThought = async (task, destination, threadNote = '') => {
             const patch = destination === 'today'
                 ? { bucket: 'today', dueAt: new Date().toISOString(), timeBlock: '', tomorrowPlan: '' }
                 : destination === 'later'
@@ -230,7 +284,9 @@ export const statsTab = {
                 now: Date.now(),
             });
             await setSettings({
-                todos: { items: todos.map((item) => item.id === task.id ? { ...item, ...patch } : item) },
+                todos: { items: todos.map((item) => item.id === task.id ? {
+                    ...item, ...patch, ...(destination === 'archive' ? taskThreadPatch(task, threadNote) : {}),
+                } : item) },
                 rhythm: { ...rhythm, inboxTriage: nextTriage },
             });
             refreshCurrent();
@@ -253,8 +309,9 @@ export const statsTab = {
             let archiveButton;
             archiveButton = el('button', {
                 class: 'inbox-landing-action archive', type: 'button',
-                onclick: () => runAsync(archiveButton, () => decideCapturedThought(task, 'archive'), {
-                    announce, success: '已归档，想找回时仍在。', failure: (error) => error?.message || '暂时没能更新这件事。',
+                onclick: () => openTaskThreadCapture(root, task, {
+                    kicker: 'PUT AWAY, NOT LOST', title: '先把这一段收在这里', actionLabel: '归档任务', success: '已归档，想找回时仍在。',
+                    announce, onSave: (threadNote) => decideCapturedThought(task, 'archive', threadNote),
                 }),
             }, '归档');
             return el('article', { class: 'inbox-landing-row' },
@@ -366,7 +423,7 @@ export const statsTab = {
 
         const completeFinishedMicroTask = async (task, microNote = '') => {
             const now = Date.now();
-            const completed = { ...task, ...appendMicroNotePatch(task, microNote, now), completed: true, doneAt: now };
+            const completed = { ...task, ...appendMicroNotePatch(task, microNote, now), ...taskThreadPatch(task, microNote, now), completed: true, doneAt: now };
             const items = todos.map((item) => item.id === task.id ? completed : item);
             if (task.repeat && task.repeat !== 'none') {
                 const due = new Date(now);
@@ -971,9 +1028,9 @@ export const feedTab = {
                 timeBlock: bucket === 'today' ? task.timeBlock || '' : '',
                 tomorrowPlan: bucket === 'today' ? '' : task.tomorrowPlan || '',
             });
-        const completeTodo = async (task) => {
+        const completeTodo = async (task, threadNote = '') => {
             const now = Date.now();
-            const updated = { ...task, completed: true, doneAt: now };
+            const updated = { ...task, ...taskThreadPatch(task, threadNote, now), completed: true, doneAt: now };
             const nextItems = allTodos.map((item) => item.id === task.id ? updated : item);
             if (task.repeat && task.repeat !== 'none') {
                 const due = new Date(now);
@@ -1000,7 +1057,9 @@ export const feedTab = {
             return applyTodoPatch(task.id, tomorrowPlanPatch(role));
         };
         const returnTomorrowTask = (task) => applyTodoPatch(task.id, returnToInboxPatch());
-        const archiveTask = (task) => applyTodoPatch(task.id, archiveTaskPatch());
+        const archiveTask = (task, threadNote = '') => applyTodoPatch(task.id, {
+            ...archiveTaskPatch(), ...taskThreadPatch(task, threadNote),
+        });
         const restoreTask = (task) => applyTodoPatch(task.id, restoreTaskPatch());
         const undoCompletion = (task, destination) => applyTodoPatch(task.id, restoreCompletedTaskPatch(task, destination));
         const setTodayFocus = async (task) => {
@@ -1078,6 +1137,9 @@ export const feedTab = {
             refreshCurrent();
         };
         const openTaskEditor = (task, { initialBucket = todoBucket(task), focusWaitingNote = false } = {}) => {
+            const editableBucket = ['inbox', 'today', 'later', 'waiting', 'archive'].includes(initialBucket)
+                ? initialBucket
+                : (['inbox', 'today', 'later', 'waiting', 'archive'].includes(task.bucket) ? task.bucket : 'inbox');
             const noteLabel = hasPendingResumeHint(task)
                 ? '下次起点（还会在首页轻轻出现）'
                 : hasResumeHint(task)
@@ -1100,20 +1162,24 @@ export const feedTab = {
                 class: 'task-editor-input task-editor-waiting-note', type: 'text', maxlength: 160,
                 placeholder: '例如：等对方确认时间（可选）', 'aria-label': '正在等什么（可选）', value: task.waitingNote || '',
             });
+            const threadNoteInput = el('input', {
+                class: 'task-editor-input', type: 'text', maxlength: 160,
+                placeholder: '例如：资料已整理好，等确认后继续（可选）', 'aria-label': '这次做到哪了（可选）', value: task.threadNote || '',
+            });
             const microStepInputs = [0, 1, 2].map((index) => el('input', {
                 class: 'task-editor-micro-input', type: 'text', maxlength: 120,
                 placeholder: index === 0 ? '例如：打开资料文件夹' : '再留一件小事（可选）',
                 value: task.microSteps?.[index]?.text || '',
                 'aria-label': `微步骤 ${index + 1}（可选）`,
             }));
-            const bucketInput = el('select', { class: 'task-editor-location', 'aria-label': '任务位置', value: initialBucket },
+            const bucketInput = el('select', { class: 'task-editor-location', 'aria-label': '任务位置', value: editableBucket },
                 el('option', { value: 'inbox' }, '收件箱'),
                 el('option', { value: 'today' }, '今天'),
                 el('option', { value: 'later' }, '稍后'),
                 el('option', { value: 'waiting' }, '先等着'),
                 el('option', { value: 'archive' }, '归档'),
             );
-            bucketInput.value = initialBucket;
+            bucketInput.value = editableBucket;
             const close = () => backdrop.remove();
             let saveButton;
             const form = el('form', {
@@ -1122,7 +1188,7 @@ export const feedTab = {
                     event.preventDefault();
                     runAsync(saveButton, async () => {
                         const patch = taskEditorPatch({
-                            task, title: titleInput.value, note: noteInput.value, waitingNote: waitingNoteInput.value,
+                            task, title: titleInput.value, note: noteInput.value, waitingNote: waitingNoteInput.value, threadNote: threadNoteInput.value,
                             microSteps: microStepInputs.map((input, index) => ({ text: input.value, completed: task.microSteps?.[index]?.completed === true })),
                             bucket: bucketInput.value,
                         });
@@ -1149,6 +1215,10 @@ export const feedTab = {
             el('small', { class: 'task-editor-note-hint' }, noteHint),
             el('label', { class: 'task-editor-label' }, '正在等什么（可选）'),
             waitingNoteInput,
+            taskThreadDetail(task),
+            el('label', { class: 'task-editor-label' }, '这次做到哪了（可选）'),
+            threadNoteInput,
+            el('small', { class: 'task-editor-note-hint' }, '完成或归档前留一句，之后仍可在这里补充或修改。'),
             el('div', { class: 'task-editor-micro' },
                 el('div', { class: 'task-editor-micro-head' },
                     el('span', {}, 'TINY ACTIONS · 可选'),
@@ -1176,7 +1246,10 @@ export const feedTab = {
             let completeButton;
             completeButton = el('button', {
                 class: 'todo-complete-button', type: 'button',
-                onclick: () => runAsync(completeButton, () => completeTodo(task), { announce, success: `已完成：${task.title}` }),
+                onclick: () => openTaskThreadCapture(root, task, {
+                    kicker: 'A QUIET FINISH', title: '把这一段轻轻收好', actionLabel: '标记完成', success: `已完成：${task.title}`,
+                    announce, onSave: (threadNote) => completeTodo(task, threadNote),
+                }),
             }, '完成');
             actions.push(completeButton);
             if (activeMicroStep) {
@@ -1709,8 +1782,9 @@ export const feedTab = {
             let second;
             second = el('button', {
                 class: 'triage-action archive', type: 'button',
-                onclick: () => runAsync(second, () => archiveTask(task), {
-                    announce, success: '已归档，可随时恢复。',
+                onclick: () => openTaskThreadCapture(root, task, {
+                    kicker: 'PUT AWAY, NOT LOST', title: '先把这一段收在这里', actionLabel: '归档任务', success: '已归档，可随时恢复。',
+                    announce, onSave: (threadNote) => archiveTask(task, threadNote),
                 }),
             }, '归档');
             return el('article', { class: 'triage-row' }, el('strong', {}, task.title), el('div', {}, first, second, editButton));
@@ -1842,6 +1916,35 @@ export const feedTab = {
                 ),
                 el('p', { class: 'completion-review-description' }, '误点完成没关系。恢复后，任务和下一步备注都会留在原处。'),
                 el('div', { class: 'completion-review-list' }, ...completionRows),
+            ));
+        }
+
+        const dailyThreadTasks = [
+            ...completedTasks.slice(0, 3).map((task) => ({ task, kind: 'completed' })),
+            ...waitingTasks.slice(0, 2).map((task) => ({ task, kind: 'waiting' })),
+        ].slice(0, 4);
+        if (dailyThreadTasks.length) {
+            const threadRows = dailyThreadTasks.map(({ task, kind }) => {
+                const thread = buildTaskThread(task);
+                const detail = kind === 'completed'
+                    ? thread.closingNote || thread.notes[0]?.text || '已轻轻收好；需要时还能回到今天。'
+                    : thread.waitingNote || thread.lastStartingPoint || '先等条件到了，再从这里接上。';
+                return el('article', { class: `task-thread-review-row ${kind}` },
+                    el('div', { class: 'task-thread-review-copy' },
+                        el('span', {}, kind === 'completed' ? '已完成' : '正在等'),
+                        el('strong', {}, task.title),
+                        el('small', {}, detail),
+                    ),
+                    el('button', { class: 'task-thread-review-action', type: 'button', onclick: () => openTaskEditor(task) }, '查看脉络'),
+                );
+            });
+            root.appendChild(el('section', { class: 'card task-thread-review-card' },
+                el('div', { class: 'task-thread-review-head' },
+                    el('div', {}, el('span', {}, 'TODAY\'S THREADS'), el('h3', {}, '今天留下的几段脉络')),
+                    el('span', {}, `只看 ${dailyThreadTasks.length} 件`),
+                ),
+                el('p', { class: 'task-thread-review-description' }, '完成与等待都只是过程的一段。这里不催办、不评分，只留给以后接上的线索。'),
+                el('div', { class: 'task-thread-review-list' }, ...threadRows),
             ));
         }
 
