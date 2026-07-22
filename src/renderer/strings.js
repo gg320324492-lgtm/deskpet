@@ -41,6 +41,11 @@ export const S = Object.freeze({
     ONBOARDING_ASK_NAME: '你可以给我起个昵称吗？（用于设置里的称呼）',
 });
 
+export function cleanText(value, max = Infinity) {
+    const text = String(value ?? '').replace(/\u0000/g, '').trim();
+    return Number.isFinite(max) ? text.slice(0, max) : text;
+}
+
 export function interpolate(template, vars) {
     return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }

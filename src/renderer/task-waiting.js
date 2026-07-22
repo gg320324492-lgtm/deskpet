@@ -1,7 +1,9 @@
+import { cleanText } from './strings.js';
+
 const MAX_WAITING_NOTE_TEXT = 160;
 
 export function normalizeWaitingNote(value) {
-    return String(value ?? '').replace(/\u0000/g, '').trim().slice(0, MAX_WAITING_NOTE_TEXT);
+    return cleanText(value, MAX_WAITING_NOTE_TEXT);
 }
 
 /** Put an unfinished task aside without treating it as complete or overdue. */

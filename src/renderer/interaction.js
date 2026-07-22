@@ -67,7 +67,6 @@ export class Interaction {
         this._extraMenuGroups = options.extraMenuGroups || [];
 
         this._pressTimer = null;
-        this._lastClickTime = 0;
         this._clickTimes = [];
         this._pressStart = null;
         this._dragging = false;
@@ -171,7 +170,6 @@ export class Interaction {
         this._clickTimes.push(now);
 
         clearTimeout(this._pressTimer);
-        this._lastClickTime = now;
         this._pressTimer = setTimeout(() => {
             this._pressTimer = null;
             this._handleClickSequence(wasShift);
@@ -180,11 +178,22 @@ export class Interaction {
 
     _handleClickSequence(wasShift) {
         const n = this._clickTimes.length;
+        // README 交互速查表（精确对齐）：
+        //   n === 1 → SURPRISE（落回默认分支）
+        //   n === 2 → CHEER
+        //   n === 3 → LOVE
+        //   n === 4 → CHEER（与双击对称，强化 CHEER）
+        //   n >= 5 → LOVE（极致庆祝 / 强化比心）
+        // 偶数连击 → CHEER，奇数连击 ≥3 → LOVE，与 README 明示的 1/2/3 完全一致。
         if (n >= 5) {
+            this._clickTimes = [];
+            return this._trigger(STATES.LOVE);
+        }
+        if (n === 4) {
             this._clickTimes = [];
             return this._trigger(STATES.CHEER);
         }
-        if (n >= 3) {
+        if (n === 3) {
             this._clickTimes = [];
             return this._trigger(STATES.LOVE);
         }
@@ -271,6 +280,10 @@ export class Interaction {
         if (document.activeElement !== this._root) return;
         const k = e.key.toLowerCase();
 
+        // Extend WORK session idle window on any key press (self-guarded
+        // inside IdleWatcher; no-op when not in WORK).
+        this._idle.notifyKeyInWork();
+
         // Ctrl+Shift+D → DND toggle (always consumed; not in pet-only mode)
         if (e.ctrlKey && e.shiftKey && k === 'd') {
             e.preventDefault();
@@ -348,8 +361,15 @@ export class Interaction {
         // open the hit-test keeps the window clickable (see bootstrap
         // setupMouseHitTest), so on close we hand control back to click-through
         // until the next mousemove re-evaluates over the sprite.
+        let outsideClose = null;
         const closeMenu = () => {
             menu.remove();
+            // Detach the outside-click listener so it doesn't leak when the menu
+            // is closed via keyboard (Escape) or by selecting an item.
+            if (outsideClose) {
+                document.removeEventListener('mousedown', outsideClose, true);
+                outsideClose = null;
+            }
             try { window.petAPI.setIgnoreMouse(true); } catch (_) {}
             try { this._root.focus({ preventScroll: true }); } catch (_) {}
         };
@@ -377,13 +397,12 @@ export class Interaction {
         });
 
         setTimeout(() => {
-            const close = (ev) => {
+            outsideClose = (ev) => {
                 if (!menu.contains(ev.target)) {
                     closeMenu();
-                    document.removeEventListener('mousedown', close, true);
                 }
             };
-            document.addEventListener('mousedown', close, true);
+            document.addEventListener('mousedown', outsideClose, true);
         }, 0);
     }
 

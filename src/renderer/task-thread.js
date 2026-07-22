@@ -1,10 +1,11 @@
 import { normalizeMicroNotes } from './micro-notes.js';
 import { normalizeMicroSteps } from './micro-steps.js';
+import { cleanText } from './strings.js';
 
 const MAX_THREAD_NOTE_TEXT = 160;
 
 export function normalizeTaskThreadNote(value) {
-    return String(value ?? '').replace(/\u0000/g, '').trim().slice(0, MAX_THREAD_NOTE_TEXT);
+    return cleanText(value, MAX_THREAD_NOTE_TEXT);
 }
 
 /** Preserve one optional sentence when a task is gently closed or put away. */

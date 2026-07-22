@@ -1,3 +1,5 @@
+import { cleanText } from './strings.js';
+
 /** Local, bounded daily rhythm ledger shared by the pet and the character room. */
 const MAX_EVENTS = 360;
 const MAX_REFLECTIONS = 90;
@@ -33,21 +35,17 @@ export function formatRhythmEvent(event = {}) {
     return label;
 }
 
-function clampText(value, max) {
-    return String(value ?? '').replace(/\u0000/g, '').trim().slice(0, max);
-}
-
 function normalizeEvent(input, now) {
     const at = Number.isInteger(input.at) && input.at >= 0 ? input.at : now;
     const minutes = Math.max(0, Math.min(1_440, Math.round(Number(input.minutes) || 0)));
     return {
-        id: clampText(input.id, 80) || `rhythm-${at}-${Math.random().toString(36).slice(2, 8)}`,
+        id: cleanText(input.id, 80) || `rhythm-${at}-${Math.random().toString(36).slice(2, 8)}`,
         type: EVENT_LABELS[input.type] ? input.type : 'scene-change',
         at,
-        title: clampText(input.title, 120),
-        detail: clampText(input.detail, 120),
+        title: cleanText(input.title, 120),
+        detail: cleanText(input.detail, 120),
         minutes,
-        ...(clampText(input.taskId, 80) ? { taskId: clampText(input.taskId, 80) } : {}),
+        ...(cleanText(input.taskId, 80) ? { taskId: cleanText(input.taskId, 80) } : {}),
     };
 }
 
@@ -84,9 +82,9 @@ export class RhythmTracker {
         const rhythm = this.snapshot();
         const previous = rhythm.reflections[date] || {};
         const reflection = {
-            note: clampText(note, 280),
-            tomorrow: clampText(tomorrow, 120),
-            closeout: clampText(previous.closeout, 280),
+            note: cleanText(note, 280),
+            tomorrow: cleanText(tomorrow, 120),
+            closeout: cleanText(previous.closeout, 280),
             updatedAt: this._now(),
         };
         const reflections = { ...rhythm.reflections, [date]: reflection };
@@ -99,7 +97,7 @@ export class RhythmTracker {
     saveWeeklyPlan({ week = weekStartKey(dayOffset(new Date(this._now()), 7)), goals = [] } = {}) {
         const rhythm = this.snapshot();
         const normalizedGoals = [...new Set((Array.isArray(goals) ? goals : [])
-            .map((goal) => clampText(goal, 100))
+            .map((goal) => cleanText(goal, 100))
             .filter(Boolean))].slice(0, 3);
         const weeklyPlans = {
             ...rhythm.weeklyPlans,

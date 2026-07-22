@@ -1,8 +1,10 @@
+import { cleanText } from './strings.js';
+
 const MAX_MICRO_NOTES = 3;
 const MAX_MICRO_NOTE_TEXT = 160;
 
 export function normalizeMicroNoteText(value) {
-    return String(value ?? '').replace(/\u0000/g, '').trim().slice(0, MAX_MICRO_NOTE_TEXT);
+    return cleanText(value, MAX_MICRO_NOTE_TEXT);
 }
 
 /** Keep only a small, chronological local trace of what a task has moved through. */

@@ -1,9 +1,10 @@
 import { normalizeMicroSteps } from './micro-steps.js';
+import { cleanText } from './strings.js';
 
 const TASK_BUCKETS = new Set(['inbox', 'today', 'later', 'waiting', 'archive']);
 
 export function normalizeTaskText(value, maxLength) {
-    return String(value ?? '').replace(/\u0000/g, '').trim().slice(0, maxLength);
+    return cleanText(value, maxLength);
 }
 
 /** Build a safe, self-contained edit patch for a task in the character room. */

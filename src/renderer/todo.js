@@ -13,6 +13,7 @@
 
 import { normalizeMicroSteps, resetMicroSteps } from './micro-steps.js';
 import { normalizeMicroNotes } from './micro-notes.js';
+import { cleanText } from './strings.js';
 
 const REPEAT_DEFAULT = 'none';
 const TODO_BUCKETS = new Set(['inbox', 'today', 'later', 'waiting', 'archive']);
@@ -24,6 +25,7 @@ function localDateKey(value = new Date()) {
 
 export function todoBucket(item, today = localDateKey()) {
     if (!item || item.completed) return 'done';
+    if (item.bucket === 'waiting') return 'waiting';
     const dueDate = typeof item.dueAt === 'string' ? item.dueAt.slice(0, 10) : '';
     if (dueDate) return dueDate <= today ? 'today' : 'later';
     return TODO_BUCKETS.has(item.bucket) ? item.bucket : 'inbox';
@@ -66,7 +68,7 @@ export class TodoList {
         const item = {
             id: 't' + Date.now() + Math.random().toString(36).slice(2, 7),
             title: String(title || '').trim().slice(0, 120),
-            note: String(note || '').replace(/\u0000/g, '').trim().slice(0, 240),
+            note: cleanText(note, 240),
             waitingNote: '',
             threadNote: '',
             threadAt: 0,

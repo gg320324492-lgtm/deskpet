@@ -179,6 +179,8 @@ deskpet/
 | 左键单击 | SURPRISE |
 | 左键双击 | CHEER |
 | 左键三连击 | LOVE（+ 爱心粒子） |
+| 左键四连击 | CHEER（与双击对称，强化干杯） |
+| 左键 ≥5 连击 | LOVE（极致比心） |
 | 中键 | EAT |
 | 滚轮上 / 下 | LOVE / SURPRISE |
 | 左键拖动 | WALK（窗口跟随） |

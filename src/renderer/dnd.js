@@ -8,16 +8,8 @@
 
 const SCHEDULE_INTERVAL_MS = 30_000;
 
-export function isWithinDndHours(date, startHour, endHour) {
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
-    if (!Number.isInteger(startHour) || startHour < 0 || startHour > 23) return false;
-    if (!Number.isInteger(endHour) || endHour < 0 || endHour > 23) return false;
-    if (startHour === endHour) return false;
-
-    const hour = date.getHours();
-    if (startHour < endHour) return hour >= startHour && hour < endHour;
-    return hour >= startHour || hour < endHour;
-}
+import { isWithinHours as isWithinDndHours } from './time-window.js';
+export { isWithinHours as isWithinDndHours } from './time-window.js';
 export class DndController {
     constructor({
         getSettings,

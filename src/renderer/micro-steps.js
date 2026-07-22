@@ -1,8 +1,10 @@
+import { cleanText } from './strings.js';
+
 const MAX_MICRO_STEPS = 3;
 const MAX_MICRO_STEP_TEXT = 120;
 
 export function normalizeMicroStepText(value) {
-    return String(value ?? '').replace(/\u0000/g, '').trim().slice(0, MAX_MICRO_STEP_TEXT);
+    return cleanText(value, MAX_MICRO_STEP_TEXT);
 }
 
 /** Normalize one optional set of one-to-three tiny actions for a task. */

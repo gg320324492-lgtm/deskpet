@@ -7,13 +7,8 @@ export const SCENES = Object.freeze({
     night: { id: 'night', label: '深夜休息', autonomyLevel: 'low', dnd: true },
 });
 
-export function isWithinSceneHours(date, startHour, endHour) {
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
-    if (!Number.isInteger(startHour) || !Number.isInteger(endHour)) return false;
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour === endHour) return false;
-    const hour = date.getHours();
-    return startHour < endHour ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour;
-}
+import { isWithinHours as isWithinSceneHours } from './time-window.js';
+export { isWithinHours as isWithinSceneHours } from './time-window.js';
 
 export function getSceneStatus(settings = {}, now = new Date()) {
     const manualId = SCENE_IDS.includes(settings.sceneMode) ? settings.sceneMode : 'manual';
