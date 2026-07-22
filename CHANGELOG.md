@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.3.9 - 2026-07-22
+
+### Fixed
+
+- The nickname entered during first-run onboarding is now saved correctly; it
+  was previously lost every time because the input was read after removal.
+- Resuming a paused Pomodoro no longer resets the remaining time back to the
+  full session length, and pressing pause twice no longer raises an error.
+- Mood bias, achievement de-duplication, remembered preferences (nickname and
+  likes), and affinity tier unlocks now actually take effect in the running
+  app; a snapshot-shape mismatch had silently disabled all of them.
+- Tasks placed in the waiting lane are no longer pulled back into Today or
+  Later by their due date; waiting now reliably wins until you bring them back.
+- Pausing or resuming during a rest segment of Focus Flow is no longer
+  miscounted as a completed focus and no longer pops the end-of-focus decision.
+- Keyboard activity during the Focus Work scene now extends the idle window as
+  designed; the extension path previously never fired.
+- The local conversation fallback no longer shows an empty bubble when the
+  backend returns a blank reply.
+- Closing the context menu with ESC or a menu item no longer leaks a global
+  mouse listener; popover timers and listeners are also cleaned up reliably,
+  keeping long sessions light.
+- Rapid-click reactions now match the documented thresholds: one click
+  surprises, two cheer, three show love, four cheer again, and five or more
+  show love.
+
+### Improved
+
+- Text cleanup for notes, tiny steps, reflections, and task fields now goes
+  through one shared helper instead of nine near-identical copies.
+- Quiet-hours checks in Do Not Disturb and scene scheduling now share a single
+  time-window helper, so both always agree.
+- The conversation history limit is now defined in one place and shared between
+  the AI service and its policy, removing a duplicated magic number.
+- Main-process request handlers are now individually guarded, and unexpected
+  errors or rejected promises are caught process-wide instead of crashing
+  silently.
+- Task pickup ordering in gentle start, soft windows, and task resume now uses
+  one shared comparator instead of three duplicated ones.
+- Unused internal fields and dead code paths were removed, stale comments and
+  file headers were corrected, and mouse hit-testing does about half as much
+  DOM work per movement.
+- The task editor dialog now announces itself correctly to assistive
+  technology, and background task failures are logged instead of swallowed.
+- Test runs no longer leave temporary storage directories behind, and the
+  storage tests now assert that the `.bak` file always keeps the previous
+  valid data — the backup behaviour itself was verified correct and unchanged.
+- The README click-reaction table now documents the four-click and
+  five-or-more-click reactions.
+
 ## 1.3.8 - 2026-07-19
 
 ### Added
