@@ -100,11 +100,30 @@ function onFrom(channel, allowedKinds, handler) {
 }
 
 function handleFrom(channel, allowedKinds, handler) {
-    ipcMain.handle(channel, (event, ...args) => {
-        assertSender(event, allowedKinds);
-        return handler(event, ...args);
+    ipcMain.handle(channel, async (event, ...args) => {
+        try {
+            assertSender(event, allowedKinds);
+            return await handler(event, ...args);
+        } catch (error) {
+            console.warn(`[ipc] rejected ${channel}: ${error.message}`);
+            // Return a structured failure so the renderer's invoke() promise rejects
+            // with a stable shape instead of a raw thrown Error leaking internals.
+            throw new Error(`IPC handler '${channel}' failed: ${error.message}`);
+        }
     });
 }
+
+// Best-effort guard against unhandled rejections in the main process (e.g. an
+// async storage write that throws after the IPC reply has already been sent).
+// Without this Electron terminates silently on an unhandled promise rejection
+// in newer versions, which masks storage / IPC failures from the renderer.
+process.on('unhandledRejection', (reason) => {
+    const message = reason instanceof Error ? reason.stack || reason.message : String(reason);
+    console.warn('[main] unhandledRejection:', message);
+});
+process.on('uncaughtException', (error) => {
+    console.warn('[main] uncaughtException:', error.stack || error.message);
+});
 
 // 鼠标穿透切换
 onFrom('set-ignore-mouse', ['pet'], (_event, ignore) => {

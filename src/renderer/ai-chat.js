@@ -76,6 +76,13 @@ export class LocalTemplateBackend {
             reply = this._dialogue.pick({ state: ctx.lastState || 'idle', mood });
         }
 
+        // The local backend is the guaranteed "always-works" path. dialogue.pick
+        // can legitimately return '' when no candidates match the current state /
+        // time bucket, so never surface an empty reply to the user.
+        if (typeof reply !== 'string' || !reply.trim()) {
+            reply = '我在这儿呢，想聊点什么都可以。';
+        }
+
         return { reply, tokens: stripped.length, latencyMs: Date.now() - t0, backend: this.id };
     }
 }

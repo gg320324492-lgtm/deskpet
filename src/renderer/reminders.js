@@ -41,6 +41,9 @@ export class ReminderEngine {
 
     setDnd(flag) { this._dndHold = !!flag; }
 
+    /** Pull the latest settings (e.g. after the settings UI mutates them). */
+    sync() { this._recomputeAll(); }
+
     stop() {
         if (this._interval) clearInterval(this._interval);
         this._interval = null;

@@ -29,7 +29,6 @@ export class Animator {
         this._fxCtx = this._fxCanvas.getContext('2d');
         this._activeEffect = null;     // { name, raf, stop }
         this._blinkTimeout = null;
-        this._blinkPhase = 0;          // schedule next blink
 
         this._sm.onChange((next) => this._onStateChange(next));
         this._scheduleNextBlink();
@@ -166,8 +165,6 @@ export class Animator {
 
     // ===== SLEEP Z characters =====
     _startSleepZ() {
-        const W = this._fxCanvas.width;
-        const H = this._fxCanvas.height;
         const zs = [
             { x: 200, y: 100, size: 22, life: 1, dur: 4000, delay: 0   },
             { x: 215, y: 110, size: 18, life: 1, dur: 3500, delay: 600 },

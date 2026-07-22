@@ -14,12 +14,17 @@ export function runOnboarding({ root, getSettings, setSettings, popover, autosta
     const settings = getSettings();
     if (settings.onboardingDone) return false;
 
-    const onClose = async (accepted) => {
+    // Captured while the popover DOM is still mounted. The popover removes its
+    // host node before invoking onClose, so reading the input there would always
+    // yield null; we snapshot the value at confirm-time instead.
+    let capturedName = '';
+
+    const onClose = async (reason) => {
         await setSettings({
             settings: {
                 ...settings,
                 onboardingDone: true,
-                preferredName: accepted ? (document.getElementById('onb-name')?.value || '') : '',
+                preferredName: reason === 'ok' ? capturedName : '',
             },
         });
     };
@@ -63,9 +68,9 @@ export function runOnboarding({ root, getSettings, setSettings, popover, autosta
             alert('请确认隐私说明后再继续。');
             return;
         }
+        capturedName = (host.querySelector('#onb-name')?.value || '').trim();
         try {
             const cur = await autostartGet();
-            const want = auto ? !cur.openAtLogin : cur.openAtLogin;
             if (auto !== !!cur.openAtLogin) {
                 await autostartSet(auto);
             }

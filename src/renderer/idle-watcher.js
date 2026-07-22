@@ -2,10 +2,10 @@
  * idle-watcher.js
  * Multi-timer scheduler for auto behaviors:
  *   - _sleepTimer       (30s)            -> SLEEP
- *   - _microPeekTimer   (8s + 30s loop)  -> 1% PEEK
+ *   - _microPeekTimer   (8s + 30s loop)  -> 10% PEEK
  *   - _yawnTimer        (SIT 25s)        -> YAWN
  *   - _workIdleTimer    (WORK 5s no-key) -> IDLE
- *   - _sleepBlinkTimer  (SLEEP 60s)      -> 1% peek then SLEEP
+ *   - _sleepBlinkTimer  (SLEEP 60s)      -> 5% peek then SLEEP
  *
  * poke() resets all timers and is called on any user input.
  */
@@ -16,6 +16,7 @@ const MICRO_PEEK_START_MS    = 8_000;
 const MICRO_PEEK_INTERVAL_MS = 30_000;
 const YAWN_AFTER_SIT_MS      = 25_000;
 const WORK_IDLE_MS           = 5_000;
+const WORK_INITIAL_MS        = 30_000;   // grace before first no-activity revert
 const SLEEP_GLANCE_INTERVAL  = 60_000;
 
 export class IdleWatcher {
@@ -55,7 +56,7 @@ export class IdleWatcher {
             if (this._sm.state === STATES.WORK) {
                 this._sm.transitionTo(STATES.IDLE);
             }
-        }, 30_000);
+        }, WORK_INITIAL_MS);
     }
 
     exitWork() {

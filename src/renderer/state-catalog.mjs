@@ -1,5 +1,5 @@
 /**
- * src/renderer/state-catalog.js
+ * src/renderer/state-catalog.mjs
  *
  * SSOT (single source of truth) for every pet state.
  *

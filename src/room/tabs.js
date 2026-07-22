@@ -80,6 +80,7 @@ function runAsync(button, task, { announce, success, failure }) {
             return result;
         })
         .catch((error) => {
+            if (error) console.error('[room] async task failed:', error);
             const message = typeof failure === 'function'
                 ? failure(error)
                 : (failure || '保存失败，请稍后再试。');
@@ -1232,7 +1233,7 @@ export const feedTab = {
                 el('button', { class: 'task-editor-cancel', type: 'button', onclick: close }, '先不改'),
                 saveButton = el('button', { class: 'task-editor-save', type: 'submit' }, '保存修改'),
             ));
-            const backdrop = el('div', { class: 'task-editor-backdrop', role: 'presentation' }, form);
+            const backdrop = el('div', { class: 'task-editor-backdrop', role: 'dialog', 'aria-modal': 'true', 'aria-label': '编辑任务' }, form);
             backdrop.addEventListener('click', (event) => { if (event.target === backdrop) close(); });
             backdrop.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
             root.appendChild(backdrop);

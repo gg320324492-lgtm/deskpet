@@ -23,6 +23,9 @@ export class PomodoroTimer {
         this._phase = 'idle';        // 'idle' | 'work' | 'rest' | 'longRest' | 'paused'
         this._phaseStartedAt = 0;
         this._remainingMs = 0;
+        this._phaseTotalMs = 0;
+        this._phaseRemainingBefore = 0;
+        this._pausedPhase = '';
         this._interval = null;
         this._listeners = new Set();
     }
@@ -46,7 +49,7 @@ export class PomodoroTimer {
     }
 
     pause() {
-        if (this._phase === 'idle') return false;
+        if (this._phase === 'idle' || this._phase === 'paused') return false;
         this._phaseRemainingBefore = this._remainingMs;
         this._pausedPhase = this._phase;   // remember which phase to resume into
         clearInterval(this._interval);
@@ -121,6 +124,7 @@ export class PomodoroTimer {
 
         this._phase = phase;
         this._phaseStartedAt = Date.now();
+        this._phaseTotalMs = durationMs;
         this._remainingMs = durationMs;
         this._tickerBound = this._ticker.bind(this);
         this._interval = setInterval(this._tickerBound, 1000);
@@ -130,11 +134,7 @@ export class PomodoroTimer {
     _ticker() {
         if (this._phase === 'idle' || this._phase === 'paused') return;
         const elapsed = Date.now() - this._phaseStartedAt;
-        const settings = this._getSettings().pomodoro;
-        const totalMs = this._phase === 'work'
-            ? settings.workMin * 60_000
-            : (this._phase === 'rest' ? settings.breakMin * 60_000 : settings.longBreakMin * 60_000);
-        this._remainingMs = Math.max(0, totalMs - elapsed);
+        this._remainingMs = Math.max(0, this._phaseTotalMs - elapsed);
         if (this._remainingMs <= 0) {
             clearInterval(this._interval);
             this._interval = null;

@@ -24,6 +24,7 @@ export class FocusFlow {
         this._message = '';
         this._focusStartedAt = 0;
         this._focusElapsedMs = 0;
+        this._pausedWasWork = false;
         this._previousPhase = pomodoro.snapshot().phase;
         this._unsubscribe = pomodoro.onChange((snapshot) => this._onPomodoroChange(snapshot));
     }
@@ -100,7 +101,9 @@ export class FocusFlow {
     pause() {
         const paused = this._pomodoro.pause();
         if (paused) {
-            this._say('暂停也可以，进度会留在这里。');
+            if (this._previousPhase === 'work') {
+                this._say('暂停也可以，进度会留在这里。');
+            }
             this._emit();
         }
         return paused;
@@ -108,7 +111,9 @@ export class FocusFlow {
     resume() {
         const resumed = this._pomodoro.resume();
         if (resumed) {
-            this._say('回来啦，继续陪你走。');
+            if (this._previousPhase === 'paused' && this._pomodoro.snapshot().phase === 'work') {
+                this._say('回来啦，继续陪你走。');
+            }
             this._emit();
         }
         return resumed;
@@ -193,14 +198,18 @@ export class FocusFlow {
             this._focusStartedAt = Date.now();
             this._scene.setOverride('focus', { notify: false, source: 'focus-flow' });
         }
-        if (phase === 'paused' && this._previousPhase === 'work') {
-            this._focusElapsedMs += Math.max(0, Date.now() - this._focusStartedAt);
-            this._focusStartedAt = 0;
+        if (phase === 'paused') {
+            this._pausedWasWork = this._previousPhase === 'work';
+            if (this._previousPhase === 'work') {
+                this._focusElapsedMs += Math.max(0, Date.now() - this._focusStartedAt);
+                this._focusStartedAt = 0;
+            }
         }
         if (REST_PHASES.has(phase)) {
             this._scene.setOverride('relaxed', { notify: false, source: 'focus-flow' });
             const minutes = this._finishFocusMinutes();
-            const endedWork = this._previousPhase === 'work' || this._previousPhase === 'paused';
+            const endedWork = this._previousPhase === 'work'
+                || (this._previousPhase === 'paused' && this._pausedWasWork);
             if (endedWork) {
                 const event = this._record(this._skipPending ? 'focus-skip' : 'focus-complete', { minutes });
                 this._reflectionEventId = !this._skipPending && typeof event?.id === 'string' ? event.id : '';

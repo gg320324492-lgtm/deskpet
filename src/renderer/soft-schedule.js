@@ -2,29 +2,14 @@ import { localDateKey } from './rhythm.js';
 import { timeBlockForHour, timeBlockLabel } from './time-blocks.js';
 import { todoBucket } from './todo.js';
 import { hasFinishedMicroSteps } from './micro-steps.js';
-import { hasPendingResumeHint } from './task-resume.js';
+import { hasPendingResumeHint, taskResumeOrder } from './task-resume.js';
+import { tomorrowDueAt } from './day-closeout.js';
 
 const BLOCK_ORDER = ['morning', 'afternoon', 'evening'];
 
 function asDate(value) {
     const date = value instanceof Date ? new Date(value) : new Date(value);
     return Number.isNaN(date.valueOf()) ? new Date() : date;
-}
-
-function taskOrder(left, right) {
-    const nextStep = (hasPendingResumeHint(right) ? Number(right?.nextStepAt || 0) : 0)
-        - (hasPendingResumeHint(left) ? Number(left?.nextStepAt || 0) : 0);
-    if (nextStep) return nextStep;
-    const priority = Number(right?.priority || 1) - Number(left?.priority || 1);
-    if (priority) return priority;
-    return Number(left?.createdAt || 0) - Number(right?.createdAt || 0);
-}
-
-function tomorrowMorning(date) {
-    const due = new Date(date);
-    due.setDate(due.getDate() + 1);
-    due.setHours(9, 0, 0, 0);
-    return due.toISOString();
 }
 
 /** The next soft window after this moment; it may be tomorrow morning. */
@@ -42,7 +27,7 @@ export function nextSoftTimeBlockPatch(now = new Date()) {
     const date = asDate(now);
     const next = nextSoftTimeBlock(date);
     if (next.tomorrow) {
-        return { bucket: 'later', dueAt: tomorrowMorning(date), timeBlock: next.id, tomorrowPlan: '' };
+        return { bucket: 'later', dueAt: tomorrowDueAt(date), timeBlock: next.id, tomorrowPlan: '' };
     }
     return { bucket: 'today', dueAt: date.toISOString(), timeBlock: next.id, tomorrowPlan: '' };
 }
@@ -56,7 +41,7 @@ export function buildSoftSchedule({ todos = [], now = new Date() } = {}) {
     const list = Array.isArray(todos) ? todos : [];
     const todayTasks = list
         .filter((task) => todoBucket(task, todayKey) === 'today' && (!hasFinishedMicroSteps(task) || hasPendingResumeHint(task)))
-        .sort(taskOrder);
+        .sort(taskResumeOrder);
     const assigned = currentId ? todayTasks.filter((task) => task.timeBlock === currentId) : [];
     const unassigned = todayTasks.filter((task) => !task.timeBlock);
     const resumeTask = todayTasks.find((task) => hasPendingResumeHint(task)) || null;

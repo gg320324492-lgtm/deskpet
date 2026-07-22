@@ -3,6 +3,7 @@
 const {
     MAX_REPLY_CHARS,
     MAX_RESPONSE_BYTES,
+    MAX_HISTORY_MESSAGES,
     AI_REQUEST_TIMEOUT_MS,
     AI_TEST_TIMEOUT_MS,
     isLoopbackHostname,
@@ -177,7 +178,9 @@ class AiService {
         const reply = rawReply.trim().slice(0, MAX_REPLY_CHARS);
         this._history.push({ role: 'user', content: safePrompt });
         this._history.push({ role: 'assistant', content: reply });
-        if (this._history.length > 12) this._history.splice(0, this._history.length - 12);
+        if (this._history.length > MAX_HISTORY_MESSAGES) {
+            this._history.splice(0, this._history.length - MAX_HISTORY_MESSAGES);
+        }
         const tokens = Number.isFinite(data?.usage?.total_tokens) ? data.usage.total_tokens : undefined;
         return {
             reply,

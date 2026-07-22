@@ -19,6 +19,12 @@ const { EventEmitter } = require('node:events');
 
 const TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'deskpet-store-'));
 
+// Remove the temp store directory once the process is fully done. `process.exit`
+// runs after node:test has awaited every pending debounced write timer inside
+// storage.js, so this reliably avoids leaking deskpet-store-* directories that a
+// late-firing write would otherwise recreate after a plain after() hook.
+process.on('exit', () => { fs.rmSync(TMP_DIR, { recursive: true, force: true }); });
+
 // Stub the `electron` module before storage.js calls require('electron').
 const electronStub = {
     app: {

@@ -47,8 +47,6 @@ export class Popover {
         host.innerHTML = opts.html || '';
 
         const rect = this._pet.getBoundingClientRect();
-        const petRight = rect.left + rect.width;
-        const petTop   = rect.top;
         // Position relative to the pet root.
         const r = (this._pet.offsetParent || document.body).getBoundingClientRect();
         let top  = 0;
@@ -65,7 +63,22 @@ export class Popover {
 
         this._pet.appendChild(host);
 
+        let autoCloseTimer = null;
+        let docListenerAttached = false;
+        const onDocDown = (ev) => {
+            if (!host.contains(ev.target)) close('outside-click');
+        };
+
+        const cleanup = () => {
+            if (autoCloseTimer) { clearTimeout(autoCloseTimer); autoCloseTimer = null; }
+            if (docListenerAttached) {
+                document.removeEventListener('mousedown', onDocDown, true);
+                docListenerAttached = false;
+            }
+        };
+
         const close = (reason) => {
+            cleanup();
             if (host.parentNode) host.parentNode.removeChild(host);
             if (this._current && this._current.el === host) {
                 this._current = null;
@@ -75,26 +88,22 @@ export class Popover {
 
         if (opts.autoClose !== false) {
             const ms = opts.autoClose || 60_000;
-            this._autoCloseTimer = setTimeout(() => close('timeout'), ms);
+            autoCloseTimer = setTimeout(() => close('timeout'), ms);
         }
 
-        // Click outside dismisses.
-        const onDocDown = (ev) => {
-            if (!host.contains(ev.target)) {
-                document.removeEventListener('mousedown', onDocDown, true);
-                close('outside-click');
-            }
-        };
-        setTimeout(() => document.addEventListener('mousedown', onDocDown, true), 0);
+        // Click outside dismisses (deferred so the opening click doesn't self-close).
+        setTimeout(() => {
+            document.addEventListener('mousedown', onDocDown, true);
+            docListenerAttached = true;
+        }, 0);
 
-        this._current = { el: host, onClose: close };
+        this._current = { el: host, onClose: close, cleanup };
         return { close, host };
     }
 
     close() {
-        if (this._autoCloseTimer) clearTimeout(this._autoCloseTimer);
-        this._autoCloseTimer = null;
         if (this._current) {
+            if (typeof this._current.cleanup === 'function') this._current.cleanup();
             try { this._current.el.remove(); } catch (_) {}
             this._current = null;
         }

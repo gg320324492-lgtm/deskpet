@@ -25,7 +25,6 @@ export class BehaviorArbiter {
         this._sm = stateMachine;
         this._sources = [];
         this._enabled = true;
-        this._userJustInteracted = false;
         this._userSuppressUntil  = 0;
         this._dndHold            = false;
 

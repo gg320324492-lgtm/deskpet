@@ -443,9 +443,9 @@ function setupMouseHitTest(root, sm, spriteEl) {
     // pixels — or onto the menu, which sits above #pet as a body-level sibling —
     // fires mousemove/mouseleave here, flips the window back to click-through,
     // and the overlay silently stops receiving clicks.
-    const overlayOpen = () =>
-        document.getElementById('pet-context-menu') ||
-        document.getElementById('pet-popover');
+    // Cache the overlay ids — overlayOpen() is called on every mousemove tick.
+    const overlayIds = ['pet-context-menu', 'pet-popover'];
+    const overlayOpen = () => overlayIds.some((id) => document.getElementById(id));
     root.addEventListener('mousemove', (e) => {
         if (overlayOpen()) { window.petAPI.setIgnoreMouse(false); return; }
         const rect = spriteEl.getBoundingClientRect();
