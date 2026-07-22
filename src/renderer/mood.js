@@ -58,7 +58,12 @@ export class MoodEngine {
     _emit(snapshot) { for (const f of this._listeners) f(snapshot); }
 
     snapshot() {
-        return { ...(this._getSettings().mood || {}) };
+        // The `getSettings` getter provided by bootstrap returns the flat
+        // mood-domain root (i.e. `{ mood, energy, hunger, affinity, focus,
+        // lastTickAt, ... }` directly), NOT a nested `{ mood: {...} }`
+        // envelope.  Engines must consume it as the flat domain object.
+        const cur = this._getSettings() || {};
+        return { ...cur };
     }
 
     /** Atomic delta with clamp + persistence. */

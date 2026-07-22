@@ -32,12 +32,13 @@ export class MemoryEngine {
 
     /** Persistent preferences (opt-in). */
     async setPref(key, value) {
-        const mem = this._getSettings().memory || {};
+        // bootstrap passes the flat memory-domain root, NOT a nested envelope.
+        const mem = this._getSettings() || {};
         await this._setSettings({ memory: { ...mem, [key]: value, rememberedAt: Date.now() } });
     }
 
     prefs() {
-        const mem = this._getSettings().memory || {};
+        const mem = this._getSettings() || {};
         return { ...mem };
     }
 

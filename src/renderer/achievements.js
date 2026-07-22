@@ -39,12 +39,15 @@ export class AchievementEngine {
     onUnlock(fn) { this._listeners.add(fn); return () => this._listeners.delete(fn); }
 
     async unlock(id, meta = {}) {
-        const cur = this._getSettings().achievements?.unlocked || {};
-        if (cur[id]) return false;
+        // bootstrap passes the flat achievements-domain root
+        // (`{ unlocked: {...} }`), NOT a nested `{ achievements: {...} }` envelope.
+        const cur = this._getSettings() || {};
+        const unlocked = cur.unlocked || {};
+        if (unlocked[id]) return false;
         const at = Date.now();
         const def = Object.values(ACHIEVEMENTS).find(a => a.id === id) || { id, label: id, hidden: false };
-        const nextUnlocked = { ...cur, [id]: { ...meta, unlockedAt: at, label: def.label } };
-        await this._setSettings({ achievements: { ...(this._getSettings().achievements || {}), unlocked: nextUnlocked } });
+        const nextUnlocked = { ...unlocked, [id]: { ...meta, unlockedAt: at, label: def.label } };
+        await this._setSettings({ achievements: { ...cur, unlocked: nextUnlocked } });
         const payload = { id, label: def.label, at, ...meta };
         for (const fn of this._listeners) {
             try { fn(payload); } catch (_) {}
@@ -53,12 +56,13 @@ export class AchievementEngine {
     }
 
     snapshot() {
-        const cur = this._getSettings().achievements?.unlocked || {};
+        const cur = this._getSettings() || {};
+        const unlocked = cur.unlocked || {};
         const all = Object.values(ACHIEVEMENTS);
-        const visible = all.filter(a => !a.hidden || cur[a.id]).map(a => ({
+        const visible = all.filter(a => !a.hidden || unlocked[a.id]).map(a => ({
             ...a,
-            unlocked: !!cur[a.id],
-            unlockedAt: cur[a.id]?.unlockedAt || null,
+            unlocked: !!unlocked[a.id],
+            unlockedAt: unlocked[a.id]?.unlockedAt || null,
         }));
         return {
             all: visible,
